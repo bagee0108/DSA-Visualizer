@@ -105,6 +105,7 @@ export function Player(): ReactNode {
     speed,
     atStart,
     atEnd,
+    frameDurationMs,
     play,
     pause,
     stepBack,
@@ -182,6 +183,12 @@ export function Player(): ReactNode {
           />
           <span className="w-12 shrink-0 font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
             {speed.toFixed(2)}x
+          </span>
+          <span
+            className="hidden w-16 shrink-0 font-mono text-[11px] tabular-nums text-slate-400 xl:inline"
+            title="How long the current frame stays on screen"
+          >
+            {(frameDurationMs / 1000).toFixed(1)}s/f
           </span>
         </div>
 

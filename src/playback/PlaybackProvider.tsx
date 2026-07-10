@@ -16,8 +16,8 @@ import {
 } from 'react';
 
 import type { Frame } from '../core/types';
+import { frameDwellMs } from './dwell';
 
-export const BASE_FRAME_MS = 140;
 export const MIN_SPEED = 0.25;
 export const MAX_SPEED = 4;
 
@@ -124,24 +124,27 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
     let rafId = 0;
     let previous = performance.now();
     let accumulated = 0;
-    const durationMs = BASE_FRAME_MS / speed;
+    const lastFrameIndex = frames.length - 1;
 
     const tick = (now: number): void => {
       accumulated += now - previous;
       previous = now;
 
+      let cursor = indexRef.current;
       let advance = 0;
-      while (accumulated >= durationMs && advance < 512) {
-        accumulated -= durationMs;
+      while (advance < 512 && cursor < lastFrameIndex) {
+        const dwell = frameDwellMs(frames[cursor], speed);
+        if (accumulated < dwell) break;
+        accumulated -= dwell;
+        cursor += 1;
         advance += 1;
       }
 
       if (advance > 0) {
-        const next = Math.min(indexRef.current + advance, frames.length - 1);
-        indexRef.current = next;
-        setIndexState(next);
+        indexRef.current = cursor;
+        setIndexState(cursor);
         setJumped(advance > 1);
-        if (next >= frames.length - 1) {
+        if (cursor >= lastFrameIndex) {
           setPlaying(false);
           return;
         }
@@ -151,7 +154,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [playing, speed, frames.length]);
+  }, [playing, speed, frames]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -213,7 +216,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
       atStart: index <= 0,
       atEnd: index >= lastIndex,
       jumped,
-      frameDurationMs: BASE_FRAME_MS / speed,
+      frameDurationMs: frameDwellMs(frames[index], speed),
       play,
       pause,
       toggle,

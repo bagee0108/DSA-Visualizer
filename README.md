@@ -67,6 +67,19 @@ npm run preview    # serve the production build locally
 
 Shortcuts are ignored while a text field has focus.
 
+## Pacing
+
+The slow part of a frame is the sentence under the canvas, not the animation,
+so 1x is a *reading* pace rather than a watching pace. Each frame is charged its
+own dwell — a base cost plus a per-word increment, clamped to 0.4s–2.2s — which
+means a frame that just advances a pointer goes by quickly while one that
+explains an invariant holds long enough to actually read. The speed slider
+divides that dwell, so 4x is for scanning and 0.25x is for picking apart a step.
+
+The practical consequence: playing a large run end to end takes a while. Use the
+scrub bar and `End` for those, and keep explanation strings tight — verbose ones
+now cost playback time. Tuning constants live in `src/playback/dwell.ts`.
+
 ## Architecture
 
 Algorithm logic and rendering never touch each other.

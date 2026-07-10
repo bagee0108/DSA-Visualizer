@@ -153,6 +153,10 @@ pointing at a line that did not run.
 "Comparing a[3] and a[7]" is weak. "a[3] = 27 is below the pivot 45, so it
 belongs in the left region" is what someone is actually here to learn.
 
+Length is not free: playback dwell scales with the word count of the
+explanation, so a rambling sentence slows the whole run down. Say the useful
+thing and stop.
+
 ---
 
 # Adding a structure family
