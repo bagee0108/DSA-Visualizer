@@ -95,7 +95,23 @@ function ControlButton({
   );
 }
 
-const SPEED_MARKS = [0.25, 0.5, 1, 2, 4] as const;
+const SPEED_MARKS = [0.25, 0.5, 1, 2, 4, 8, 16] as const;
+
+const SLIDER_STEPS = 600;
+const SPEED_RATIO = MAX_SPEED / MIN_SPEED;
+
+function speedToSlider(speed: number): number {
+  return Math.round((Math.log(speed / MIN_SPEED) / Math.log(SPEED_RATIO)) * SLIDER_STEPS);
+}
+
+function sliderToSpeed(position: number): number {
+  const raw = MIN_SPEED * SPEED_RATIO ** (position / SLIDER_STEPS);
+  return Math.round(raw * 100) / 100;
+}
+
+function formatSpeed(speed: number): string {
+  return speed >= 10 ? `${speed.toFixed(1)}x` : `${speed.toFixed(2)}x`;
+}
 
 export function Player(): ReactNode {
   const {
@@ -173,16 +189,17 @@ export function Player(): ReactNode {
           <span className="text-xs text-slate-500 dark:text-slate-400">Speed</span>
           <input
             type="range"
-            min={MIN_SPEED}
-            max={MAX_SPEED}
-            step={0.25}
-            value={speed}
-            onChange={(event) => setSpeed(Number(event.target.value))}
+            min={0}
+            max={SLIDER_STEPS}
+            step={1}
+            value={speedToSlider(speed)}
+            onChange={(event) => setSpeed(sliderToSpeed(Number(event.target.value)))}
             className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-slate-800"
             aria-label="Playback speed"
+            aria-valuetext={formatSpeed(speed)}
           />
-          <span className="w-12 shrink-0 font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
-            {speed.toFixed(2)}x
+          <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
+            {formatSpeed(speed)}
           </span>
           <span
             className="hidden w-16 shrink-0 font-mono text-[11px] tabular-nums text-slate-400 xl:inline"
@@ -192,13 +209,14 @@ export function Player(): ReactNode {
           </span>
         </div>
 
-        <div className="hidden items-center gap-1 lg:flex">
+        <div className="hidden items-center gap-0.5 lg:flex">
           {SPEED_MARKS.map((mark) => (
             <button
               key={mark}
               type="button"
               onClick={() => setSpeed(mark)}
-              className={`rounded px-1.5 py-0.5 font-mono text-[11px] transition-colors ${
+              title={mark > 4 ? 'Visuals only - the explanation goes by too fast to read' : undefined}
+              className={`rounded px-1 py-0.5 font-mono text-[11px] transition-colors ${
                 Math.abs(speed - mark) < 0.01
                   ? 'bg-indigo-600 text-white'
                   : 'text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'

@@ -19,7 +19,7 @@ import type { Frame } from '../core/types';
 import { frameDwellMs } from './dwell';
 
 export const MIN_SPEED = 0.25;
-export const MAX_SPEED = 4;
+export const MAX_SPEED = 16;
 
 export interface PlaybackValue {
   readonly frames: readonly Frame[];

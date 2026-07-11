@@ -74,11 +74,14 @@ so 1x is a *reading* pace rather than a watching pace. Each frame is charged its
 own dwell — a base cost plus a per-word increment, clamped to 0.4s–2.2s — which
 means a frame that just advances a pointer goes by quickly while one that
 explains an invariant holds long enough to actually read. The speed slider
-divides that dwell, so 4x is for scanning and 0.25x is for picking apart a step.
+divides that dwell across a logarithmic 0.25x–16x range: 0.25x picks a single
+step apart, 1x reads, and past roughly 4x the commentary stops being legible and
+it becomes a visuals-only view of the structure moving.
 
-The practical consequence: playing a large run end to end takes a while. Use the
-scrub bar and `End` for those, and keep explanation strings tight — verbose ones
-now cost playback time. Tuning constants live in `src/playback/dwell.ts`.
+That ceiling exists because big runs are long — a 200-element quicksort is
+~5,200 frames, two hours at 1x but under eight minutes at 16x. The scrub bar and
+`End` cover the rest. Keep explanation strings tight, since verbose ones now
+cost playback time. Tuning constants live in `src/playback/dwell.ts`.
 
 ## Architecture
 

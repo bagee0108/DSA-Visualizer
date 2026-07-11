@@ -57,11 +57,16 @@ describe('frame dwell', () => {
     const base = BASE_DWELL_MS + 8 * MS_PER_WORD;
     expect(frameDwellMs(frame, 1)).toBeCloseTo(base, 5);
     expect(frameDwellMs(frame, 4)).toBeCloseTo(base / 4, 5);
+    expect(frameDwellMs(frame, 16)).toBeCloseTo(base / 16, 5);
     expect(frameDwellMs(frame, 0.25)).toBeCloseTo(base * 4, 5);
   });
 
+  it('stays above one animation frame even at the 16x ceiling', () => {
+    expect(frameDwellMs(frameWith('Sorted.'), 16)).toBeGreaterThan(16);
+  });
+
   it('never returns zero or a negative duration', () => {
-    for (const speed of [0, -1, 0.25, 1, 4]) {
+    for (const speed of [0, -1, 0.25, 1, 4, 16]) {
       expect(frameDwellMs(frameWith('hi'), speed)).toBeGreaterThan(0);
     }
   });
