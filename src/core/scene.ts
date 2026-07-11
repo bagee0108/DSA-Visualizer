@@ -28,6 +28,7 @@ export interface FrameInput {
   readonly regions?: readonly ArrayRegion[];
   readonly phase?: string;
   readonly includeSorted?: boolean;
+  readonly auxPointers?: Pointers;
 }
 
 export class ArrayScene {
@@ -46,6 +47,15 @@ export class ArrayScene {
   private elementsCache: readonly ArrayElement[] | null = null;
   private stackCache: readonly CallStackEntry[] | null = null;
   private sortedCache: readonly number[] | null = null;
+
+  private auxValues: number[] | null = null;
+  private auxIds: number[] = [];
+  private auxLabel = 'aux';
+  private auxFrom = 0;
+  private auxTo = -1;
+  private auxCache: readonly ArrayElement[] | null = null;
+
+  private heapSize: number | null = null;
 
   constructor(values: readonly number[]) {
     this.values = [...values];
@@ -114,8 +124,68 @@ export class ArrayScene {
     return a < value ? -1 : a > value ? 1 : 0;
   }
 
+  copyToAux(label: string, from: number, to: number): void {
+    if (this.auxValues === null) {
+      this.auxValues = new Array<number>(this.values.length).fill(0);
+      this.auxIds = new Array<number>(this.values.length).fill(-1);
+    }
+    for (let i = from; i <= to; i++) {
+      this.auxValues[i] = this.at(i);
+      this.auxIds[i] = this.ids[i] ?? i;
+      this.reads += 1;
+      this.writes += 1;
+    }
+    this.auxLabel = label;
+    this.auxFrom = from;
+    this.auxTo = to;
+    this.auxCache = null;
+  }
+
+  private auxAt(index: number): number {
+    const value = this.auxValues?.[index];
+    if (value === undefined) throw new RangeError(`aux index ${index} is not populated`);
+    return value;
+  }
+
+  auxPeek(index: number): number {
+    return this.auxAt(index);
+  }
+
+  compareAux(i: number, j: number): number {
+    this.comparisons += 1;
+    this.reads += 2;
+    const a = this.auxAt(i);
+    const b = this.auxAt(j);
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+
+  moveFromAux(target: number, source: number): void {
+    const value = this.auxAt(source);
+    this.at(target);
+    this.reads += 1;
+    this.writes += 1;
+    this.values[target] = value;
+    const movedId = this.auxIds[source];
+    if (movedId !== undefined && movedId >= 0) this.ids[target] = movedId;
+    this.elementsCache = null;
+  }
+
+  clearAux(): void {
+    this.auxFrom = 0;
+    this.auxTo = -1;
+    this.auxCache = null;
+  }
+
+  setHeapSize(size: number | null): void {
+    this.heapSize = size;
+  }
+
   countCall(): void {
     this.recursiveCalls += 1;
+  }
+
+  countComparison(count = 1): void {
+    this.comparisons += count;
   }
 
   bump(key: string, by = 1): void {
@@ -188,12 +258,36 @@ export class ArrayScene {
     return this.sortedCache;
   }
 
+  private auxElements(): readonly ArrayElement[] {
+    if (this.auxCache === null) {
+      const source = this.auxValues ?? [];
+      const next: ArrayElement[] = source.map((value, index) => ({
+        id: this.auxIds[index] ?? index,
+        value,
+      }));
+      this.auxCache = Object.freeze(next);
+    }
+    return this.auxCache;
+  }
+
   /** Build one immutable frame from the current state. */
   frame(input: FrameInput): Frame {
     const structure: ArraySnapshot = {
       kind: 'array',
       elements: this.elements(),
       regions: input.regions ?? NO_REGIONS,
+      ...(this.auxValues === null || this.auxTo < this.auxFrom
+        ? {}
+        : {
+            auxiliary: {
+              label: this.auxLabel,
+              elements: this.auxElements(),
+              activeFrom: this.auxFrom,
+              activeTo: this.auxTo,
+              pointers: input.auxPointers ?? NO_POINTERS,
+            },
+          }),
+      ...(this.heapSize === null ? {} : { heap: { size: this.heapSize } }),
     };
 
     let highlights: Highlights = input.highlights ?? {};

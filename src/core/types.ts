@@ -21,11 +21,24 @@ export interface ArrayRegion {
   readonly tone: RegionTone;
 }
 
+export interface AuxiliaryView {
+  readonly label: string;
+  readonly elements: readonly ArrayElement[];
+  readonly activeFrom: number;
+  readonly activeTo: number;
+  readonly pointers: Pointers;
+}
+
+export interface HeapView {
+  readonly size: number;
+}
+
 export interface ArraySnapshot {
   readonly kind: 'array';
   readonly elements: readonly ArrayElement[];
   readonly regions: readonly ArrayRegion[];
-  readonly treeView?: boolean;
+  readonly auxiliary?: AuxiliaryView;
+  readonly heap?: HeapView;
 }
 
 export type StructureSnapshot = ArraySnapshot;
