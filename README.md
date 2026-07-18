@@ -13,7 +13,7 @@ frame.
 
 | Phase | Scope | State |
 | --- | --- | --- |
-| 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | Quicksort shipped; the rest are scaffolded in the catalog |
+| 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 7 algorithms, 133 tests |
 | 2 | Trees: BST, AVL, red-black, heap, trie, traversals | Planned |
 | 3 | Graphs: BFS/DFS, Dijkstra, A*, Bellman-Ford, toposort, DSU, Kruskal, Prim, Tarjan | Planned |
 | 4 | Segment tree, Fenwick, DP tables, KMP, backtracking | Planned |

@@ -1,10 +1,12 @@
 /** The registration list. */
 
 import { register } from '../core/registry';
-import { quicksort } from './arrays/quicksort';
-import { mergesort } from './arrays/mergesort';
-import { heapsort } from './arrays/heapsort';
 import { binarySearch } from './arrays/binarySearch';
+import { heapsort } from './arrays/heapsort';
+import { kadane } from './arrays/kadane';
+import { mergesort } from './arrays/mergesort';
+import { quicksort } from './arrays/quicksort';
+import { slidingWindow } from './arrays/slidingWindow';
 import { twoPointers } from './arrays/twoPointers';
 
 register(quicksort);
@@ -12,5 +14,7 @@ register(mergesort);
 register(heapsort);
 register(binarySearch);
 register(twoPointers);
+register(slidingWindow);
+register(kadane);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
