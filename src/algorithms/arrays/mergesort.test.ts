@@ -4,6 +4,7 @@ import { presetParams } from '../../core/arrayInput';
 import { makeRng } from '../../core/random';
 import type { Frame } from '../../core/types';
 import {
+  arrayOf,
   expectDeterministic,
   expectFrameHygiene,
   expectInputContract,
@@ -102,15 +103,15 @@ describe('mergesort: the auxiliary view', () => {
   const frames = runFrames(mergesort, { input: '5, 3, 8, 1, 9, 2' });
 
   it('shows the aux buffer during merges and hides it otherwise', () => {
-    const withAux = frames.filter((frame: Frame) => frame.structure.auxiliary !== undefined);
+    const withAux = frames.filter((frame: Frame) => arrayOf(frame).auxiliary !== undefined);
     expect(withAux.length).toBeGreaterThan(0);
     expect(withAux.length).toBeLessThan(frames.length);
-    expect(lastFrame(frames).structure.auxiliary).toBeUndefined();
+    expect(arrayOf(lastFrame(frames)).auxiliary).toBeUndefined();
   });
 
   it('keeps the aux window inside the range being merged', () => {
     for (const frame of frames) {
-      const aux = frame.structure.auxiliary;
+      const aux = arrayOf(frame).auxiliary;
       if (aux === undefined) continue;
       expect(aux.activeFrom).toBeLessThanOrEqual(aux.activeTo);
       for (const [label, index] of Object.entries(aux.pointers)) {

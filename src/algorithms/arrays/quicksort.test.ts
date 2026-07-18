@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { presetParams } from '../../core/arrayInput';
 import type { ParamMap } from '../../core/define';
 import { makeRng, shuffle } from '../../core/random';
-import type { ArraySnapshot, Frame } from '../../core/types';
+import type { Frame } from '../../core/types';
+import { arrayOf } from '../frameHygiene';
 import { quicksort } from './quicksort';
 
 function run(params: ParamMap): readonly Frame[] {
@@ -13,8 +14,7 @@ function run(params: ParamMap): readonly Frame[] {
 }
 
 function valuesOf(frame: Frame): number[] {
-  const structure: ArraySnapshot = frame.structure;
-  return structure.elements.map((element) => element.value);
+  return arrayOf(frame).elements.map((element) => element.value);
 }
 
 function lastFrame(frames: readonly Frame[]): Frame {
@@ -130,7 +130,7 @@ describe('quicksort: correctness', () => {
   it('keeps element ids a permutation of the originals in every frame', () => {
     const frames = run(paramsFor([9, 4, 7, 1, 8, 3, 6, 2, 5]));
     for (const frame of frames) {
-      const ids = frame.structure.elements.map((element) => element.id).sort((x, y) => x - y);
+      const ids = arrayOf(frame).elements.map((element) => element.id).sort((x, y) => x - y);
       expect(ids).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
     }
   });
@@ -218,7 +218,7 @@ describe('quicksort: frame hygiene', () => {
   });
 
   it('keeps pointers and highlights inside the array', () => {
-    const size = frames[0]?.structure.elements.length ?? 0;
+    const size = arrayOf(frames[0]).elements.length ?? 0;
     for (const frame of frames) {
       for (const value of Object.values(frame.pointers)) {
         expect(value).toBeGreaterThanOrEqual(-1);
@@ -234,9 +234,9 @@ describe('quicksort: frame hygiene', () => {
   });
 
   it('keeps regions inside the array and non-empty', () => {
-    const size = frames[0]?.structure.elements.length ?? 0;
+    const size = arrayOf(frames[0]).elements.length ?? 0;
     for (const frame of frames) {
-      for (const region of frame.structure.regions) {
+      for (const region of arrayOf(frame).regions) {
         expect(region.from).toBeGreaterThanOrEqual(0);
         expect(region.to).toBeLessThan(size);
         expect(region.from).toBeLessThanOrEqual(region.to);
@@ -252,7 +252,7 @@ describe('quicksort: frame hygiene', () => {
   });
 
   it('marks every index sorted in the final frame', () => {
-    const size = lastFrame(frames).structure.elements.length;
+    const size = arrayOf(lastFrame(frames)).elements.length;
     expect(lastFrame(frames).highlights.sorted ?? []).toHaveLength(size);
   });
 
@@ -260,7 +260,7 @@ describe('quicksort: frame hygiene', () => {
     const first = frames[0];
     if (first === undefined) throw new Error('no frames');
     expect(valuesOf(first)).not.toEqual(valuesOf(lastFrame(frames)));
-    expect(Object.isFrozen(first.structure.elements)).toBe(true);
+    expect(Object.isFrozen(arrayOf(first).elements)).toBe(true);
   });
 
   it('is deterministic for identical params', () => {

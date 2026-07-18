@@ -6,6 +6,7 @@ import {
   expectDeterministic,
   expectFrameHygiene,
   expectInputContract,
+  indexPointer,
   lastFrame,
   runFrames,
 } from '../frameHygiene';
@@ -77,7 +78,7 @@ describe('sliding window: the monotone cursors', () => {
   it('never moves left backwards - this is why it is linear, not quadratic', () => {
     let furthest = -1;
     for (const frame of frames) {
-      const left = frame.pointers.left;
+      const left = indexPointer(frame, 'left');
       if (left === undefined) continue;
       expect(left).toBeGreaterThanOrEqual(furthest);
       furthest = left;
@@ -87,7 +88,7 @@ describe('sliding window: the monotone cursors', () => {
   it('never moves right backwards', () => {
     let furthest = -1;
     for (const frame of frames) {
-      const right = frame.pointers.right;
+      const right = indexPointer(frame, 'right');
       if (right === undefined) continue;
       expect(right).toBeGreaterThanOrEqual(furthest);
       furthest = right;
@@ -96,7 +97,7 @@ describe('sliding window: the monotone cursors', () => {
 
   it('keeps left at or behind right', () => {
     for (const frame of frames) {
-      const { left, right } = frame.pointers;
+      const left = indexPointer(frame, 'left'); const right = indexPointer(frame, 'right');
       if (left === undefined || right === undefined) continue;
       expect(left).toBeLessThanOrEqual(right + 1);
     }

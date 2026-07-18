@@ -3,7 +3,7 @@
 import { expect } from 'vitest';
 
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
-import type { ArraySnapshot, Frame } from '../core/types';
+import type { ArraySnapshot, Frame, TreeSnapshot } from '../core/types';
 
 export function runFrames(algorithm: RegisteredAlgorithm, params: ParamMap): readonly Frame[] {
   const result = algorithm.build(params);
@@ -17,18 +17,34 @@ export function lastFrame(frames: readonly Frame[]): Frame {
   return frame;
 }
 
+export function arrayOf(frame: Frame | undefined): ArraySnapshot {
+  if (frame === undefined) throw new Error('no frame');
+  if (frame.structure.kind !== 'array') throw new Error(`expected an array frame, got ${frame.structure.kind}`);
+  return frame.structure;
+}
+
+export function treeOf(frame: Frame | undefined): TreeSnapshot {
+  if (frame === undefined) throw new Error('no frame');
+  if (frame.structure.kind !== 'tree') throw new Error(`expected a tree frame, got ${frame.structure.kind}`);
+  return frame.structure;
+}
+
 export function valuesOf(frame: Frame): number[] {
-  const structure: ArraySnapshot = frame.structure;
-  return structure.elements.map((element) => element.value);
+  return arrayOf(frame).elements.map((element) => element.value);
 }
 
 export function idsOf(frame: Frame): number[] {
-  const structure: ArraySnapshot = frame.structure;
-  return structure.elements.map((element) => element.id);
+  return arrayOf(frame).elements.map((element) => element.id);
+}
+
+export function indexPointer(frame: Frame, name: string): number | undefined {
+  const value = frame.pointers[name];
+  return typeof value === 'number' ? value : undefined;
 }
 
 export interface HygieneOptions {
   readonly allowNonEmptyFinalStack?: boolean;
+  readonly allowSizeChange?: boolean;
 }
 
 export function expectFrameHygiene(
@@ -37,9 +53,7 @@ export function expectFrameHygiene(
   options: HygieneOptions = {},
 ): void {
   expect(frames.length).toBeGreaterThan(0);
-
   const codeLineCount = algorithm.codeLines.length;
-  const size = frames[0]?.structure.elements.length ?? 0;
 
   let previous: Frame | null = null;
   for (const [position, frame] of frames.entries()) {
@@ -50,60 +64,18 @@ export function expectFrameHygiene(
 
     expect(frame.explanation.trim().length, `${where}: explanation`).toBeGreaterThan(0);
 
-    expect(frame.structure.elements.length, `${where}: size`).toBe(size);
-
-    // Snapshots are frozen, so a renderer cannot corrupt playback.
-    expect(Object.isFrozen(frame.structure.elements), `${where}: frozen`).toBe(true);
-
-    for (const [label, index] of Object.entries(frame.pointers)) {
-      expect(index, `${where}: pointer ${label}`).toBeGreaterThanOrEqual(-1);
-      expect(index, `${where}: pointer ${label}`).toBeLessThanOrEqual(size);
-    }
-
-    for (const [role, ids] of Object.entries(frame.highlights)) {
-      for (const id of ids ?? []) {
-        if (typeof id === 'number') {
-          expect(id, `${where}: highlight ${role}`).toBeGreaterThanOrEqual(0);
-          expect(id, `${where}: highlight ${role}`).toBeLessThan(size);
-        } else {
-          const match = /^aux:(\d+)$/.exec(id);
-          expect(match, `${where}: highlight ${role} id "${id}"`).not.toBeNull();
-          expect(Number(match?.[1] ?? -1), `${where}: aux highlight`).toBeLessThan(size);
-        }
-      }
-    }
-
-    for (const region of frame.structure.regions) {
-      expect(region.from, `${where}: region ${region.label}`).toBeGreaterThanOrEqual(0);
-      expect(region.to, `${where}: region ${region.label}`).toBeLessThan(size);
-      expect(region.from, `${where}: region ${region.label}`).toBeLessThanOrEqual(region.to);
-    }
-
-    const aux = frame.structure.auxiliary;
-    if (aux !== undefined) {
-      expect(aux.activeFrom, `${where}: aux from`).toBeGreaterThanOrEqual(0);
-      expect(aux.activeTo, `${where}: aux to`).toBeLessThan(size);
-      expect(aux.elements.length, `${where}: aux size`).toBe(size);
-    }
-
-    const heap = frame.structure.heap;
-    if (heap !== undefined) {
-      expect(heap.size, `${where}: heap size`).toBeGreaterThanOrEqual(0);
-      expect(heap.size, `${where}: heap size`).toBeLessThanOrEqual(size);
-    }
-
     expect(frame.callStack.length, `${where}: stack depth`).toBeLessThan(64);
 
     if (previous !== null) {
-      expect(frame.counters.comparisons, `${where}: comparisons`).toBeGreaterThanOrEqual(
-        previous.counters.comparisons,
-      );
-      expect(frame.counters.swaps, `${where}: swaps`).toBeGreaterThanOrEqual(previous.counters.swaps);
-      expect(frame.counters.reads, `${where}: reads`).toBeGreaterThanOrEqual(previous.counters.reads);
-      expect(frame.counters.writes, `${where}: writes`).toBeGreaterThanOrEqual(previous.counters.writes);
-      expect(frame.counters.recursiveCalls, `${where}: calls`).toBeGreaterThanOrEqual(
-        previous.counters.recursiveCalls,
-      );
+      for (const key of ['comparisons', 'swaps', 'reads', 'writes', 'recursiveCalls'] as const) {
+        expect(frame.counters[key], `${where}: ${key}`).toBeGreaterThanOrEqual(previous.counters[key]);
+      }
+    }
+
+    if (frame.structure.kind === 'array') {
+      expectArrayFrame(frame.structure, frame, where, previous, options);
+    } else {
+      expectTreeFrame(frame.structure, frame, where);
     }
     previous = frame;
   }
@@ -113,11 +85,130 @@ export function expectFrameHygiene(
   }
 }
 
+function expectArrayFrame(
+  structure: ArraySnapshot,
+  frame: Frame,
+  where: string,
+  previous: Frame | null,
+  options: HygieneOptions,
+): void {
+  const size = structure.elements.length;
+
+  if (previous !== null && previous.structure.kind === 'array' && options.allowSizeChange !== true) {
+    expect(size, `${where}: size`).toBe(previous.structure.elements.length);
+  }
+
+  // Snapshots are frozen, so a renderer cannot corrupt playback.
+  expect(Object.isFrozen(structure.elements), `${where}: frozen`).toBe(true);
+
+  for (const [label, index] of Object.entries(frame.pointers)) {
+    expect(typeof index, `${where}: pointer ${label} must be an index`).toBe('number');
+    if (typeof index !== 'number') continue;
+    expect(index, `${where}: pointer ${label}`).toBeGreaterThanOrEqual(-1);
+    expect(index, `${where}: pointer ${label}`).toBeLessThanOrEqual(size);
+  }
+
+  for (const [role, ids] of Object.entries(frame.highlights)) {
+    for (const id of ids ?? []) {
+      if (typeof id === 'number') {
+        expect(id, `${where}: highlight ${role}`).toBeGreaterThanOrEqual(0);
+        expect(id, `${where}: highlight ${role}`).toBeLessThan(size);
+      } else {
+        const match = /^aux:(\d+)$/.exec(id);
+        expect(match, `${where}: highlight ${role} id "${id}"`).not.toBeNull();
+        expect(Number(match?.[1] ?? -1), `${where}: aux highlight`).toBeLessThan(size);
+      }
+    }
+  }
+
+  for (const region of structure.regions) {
+    expect(region.from, `${where}: region ${region.label}`).toBeGreaterThanOrEqual(0);
+    expect(region.to, `${where}: region ${region.label}`).toBeLessThan(size);
+    expect(region.from, `${where}: region ${region.label}`).toBeLessThanOrEqual(region.to);
+  }
+
+  const aux = structure.auxiliary;
+  if (aux !== undefined) {
+    expect(aux.activeFrom, `${where}: aux from`).toBeGreaterThanOrEqual(0);
+    expect(aux.activeTo, `${where}: aux to`).toBeLessThan(size);
+    expect(aux.elements.length, `${where}: aux size`).toBe(size);
+  }
+
+  const heap = structure.heap;
+  if (heap !== undefined) {
+    expect(heap.size, `${where}: heap size`).toBeGreaterThanOrEqual(0);
+    expect(heap.size, `${where}: heap size`).toBeLessThanOrEqual(size);
+  }
+}
+
+function expectTreeFrame(structure: TreeSnapshot, frame: Frame, where: string): void {
+  expect(Object.isFrozen(structure.nodes), `${where}: frozen`).toBe(true);
+
+  const ids = new Set(structure.nodes.map((node) => node.id));
+  expect(ids.size, `${where}: duplicate node ids`).toBe(structure.nodes.length);
+  const byId = new Map(structure.nodes.map((node) => [node.id, node] as const));
+
+  if (structure.rootId !== null) {
+    expect(ids.has(structure.rootId), `${where}: root ${structure.rootId} exists`).toBe(true);
+    expect(byId.get(structure.rootId)?.parentId, `${where}: root has no parent`).toBeNull();
+  }
+
+  for (const node of structure.nodes) {
+    if (structure.arity === 'binary') {
+      expect(node.children.length, `${where}: node ${node.id} slots`).toBe(2);
+    }
+    for (const child of node.children) {
+      if (child === null) continue;
+      expect(ids.has(child), `${where}: child ${child} of ${node.id} exists`).toBe(true);
+      expect(byId.get(child)?.parentId, `${where}: child ${child} points back to ${node.id}`).toBe(node.id);
+    }
+    if (node.parentId !== null) {
+      expect(ids.has(node.parentId), `${where}: parent ${node.parentId} of ${node.id} exists`).toBe(true);
+      expect(
+        byId.get(node.parentId)?.children.includes(node.id),
+        `${where}: parent ${node.parentId} lists ${node.id}`,
+      ).toBe(true);
+    }
+  }
+
+  if (structure.rootId !== null) {
+    const seen = new Set<string>();
+    const stack = [structure.rootId];
+    while (stack.length > 0) {
+      const id = stack.pop();
+      if (id === undefined) break;
+      expect(seen.has(id), `${where}: cycle through ${id}`).toBe(false);
+      seen.add(id);
+      for (const child of byId.get(id)?.children ?? []) if (child !== null) stack.push(child);
+    }
+    expect(seen.size, `${where}: every node reachable from the root`).toBe(structure.nodes.length);
+  }
+
+  for (const [label, target] of Object.entries(frame.pointers)) {
+    expect(typeof target, `${where}: pointer ${label} must be a node id`).toBe('string');
+    if (typeof target === 'string') expect(ids.has(target), `${where}: pointer ${label} -> ${target}`).toBe(true);
+  }
+  for (const [role, targets] of Object.entries(frame.highlights)) {
+    for (const target of targets ?? []) {
+      expect(typeof target, `${where}: highlight ${role} must be a string`).toBe('string');
+      if (typeof target !== 'string') continue;
+      const stripped = target.replace(/^(queue|stack|output):/, '');
+      expect(ids.has(stripped) || target !== stripped, `${where}: highlight ${role} -> ${target}`).toBe(true);
+    }
+  }
+
+  for (const strip of structure.strips) {
+    expect(strip.label.length, `${where}: strip label`).toBeGreaterThan(0);
+    const chipIds = new Set(strip.items.map((item) => item.id));
+    expect(chipIds.size, `${where}: strip ${strip.label} duplicate chips`).toBe(strip.items.length);
+  }
+}
+
 export function expectDeterministic(algorithm: RegisteredAlgorithm, params: ParamMap): void {
   const a = runFrames(algorithm, params);
   const b = runFrames(algorithm, params);
   expect(a.length).toBe(b.length);
-  expect(a.map(valuesOf)).toEqual(b.map(valuesOf));
+  expect(a.map((frame) => JSON.stringify(frame.structure))).toEqual(b.map((frame) => JSON.stringify(frame.structure)));
   expect(a.map((frame) => frame.explanation)).toEqual(b.map((frame) => frame.explanation));
   expect(a.map((frame) => frame.codeLine)).toEqual(b.map((frame) => frame.codeLine));
 }

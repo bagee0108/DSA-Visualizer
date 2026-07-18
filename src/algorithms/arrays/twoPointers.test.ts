@@ -6,6 +6,7 @@ import {
   expectDeterministic,
   expectFrameHygiene,
   expectInputContract,
+  indexPointer,
   lastFrame,
   runFrames,
   valuesOf,
@@ -113,8 +114,8 @@ describe('two pointers: frame hygiene', () => {
     let lowest = -1;
     let highest = Infinity;
     for (const frame of frames) {
-      const l = frame.pointers.l;
-      const r = frame.pointers.r;
+      const l = indexPointer(frame, 'l');
+      const r = indexPointer(frame, 'r');
       if (l !== undefined) {
         expect(l).toBeGreaterThanOrEqual(lowest);
         lowest = l;

@@ -25,7 +25,7 @@ const ROLE_COLOR: Record<HighlightRole, string> = {
   pivot: 'var(--viz-pivot)',
   candidate: 'var(--viz-candidate)',
   sorted: 'var(--viz-sorted)',
-  visited: 'var(--viz-excluded)',
+  visited: 'var(--viz-visited)',
   active: 'var(--viz-active)',
   excluded: 'var(--viz-excluded)',
 };
@@ -77,7 +77,7 @@ interface PointerGroup {
 function groupPointers(pointers: Pointers, size: number): readonly PointerGroup[] {
   const byIndex = new Map<number, string[]>();
   for (const [label, index] of Object.entries(pointers)) {
-    if (!Number.isFinite(index) || index < 0 || index >= size) continue;
+    if (typeof index !== 'number' || !Number.isFinite(index) || index < 0 || index >= size) continue;
     const bucket = byIndex.get(index);
     if (bucket === undefined) byIndex.set(index, [label]);
     else bucket.push(label);

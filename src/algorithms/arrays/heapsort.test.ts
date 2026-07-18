@@ -4,6 +4,7 @@ import { presetParams } from '../../core/arrayInput';
 import { makeRng } from '../../core/random';
 import type { Frame } from '../../core/types';
 import {
+  arrayOf,
   expectDeterministic,
   expectFrameHygiene,
   expectInputContract,
@@ -68,7 +69,7 @@ describe('heapsort: the heap invariant', () => {
     expect(lastBuild).toBeGreaterThan(0);
     const frame = frames[lastBuild];
     if (frame === undefined) throw new Error('no build frame');
-    expect(isMaxHeap(valuesOf(frame), frame.structure.heap?.size ?? 0)).toBe(true);
+    expect(isMaxHeap(valuesOf(frame), arrayOf(frame).heap?.size ?? 0)).toBe(true);
   });
 
   it('restores the heap property every time a sift settles', () => {
@@ -76,7 +77,7 @@ describe('heapsort: the heap invariant', () => {
     let checked = 0;
     for (const frame of frames) {
       if (frame.phase !== 'sort' || frame.codeLine !== SETTLED_LINE) continue;
-      const size = frame.structure.heap?.size ?? 0;
+      const size = arrayOf(frame).heap?.size ?? 0;
       expect(isMaxHeap(valuesOf(frame), size), `settled heap of size ${size}`).toBe(true);
       checked += 1;
     }
@@ -86,17 +87,17 @@ describe('heapsort: the heap invariant', () => {
   it('shrinks the heap monotonically and ends with the tree hidden', () => {
     let previous = Infinity;
     for (const frame of frames) {
-      const size = frame.structure.heap?.size;
+      const size = arrayOf(frame).heap?.size;
       if (size === undefined) continue;
       expect(size).toBeLessThanOrEqual(previous);
       previous = size;
     }
-    expect(lastFrame(frames).structure.heap).toBeUndefined();
+    expect(arrayOf(lastFrame(frames)).heap).toBeUndefined();
   });
 
   it('grows the sorted tail one slot at a time', () => {
     const tailSizes = frames
-      .map((frame: Frame) => frame.structure.heap?.size)
+      .map((frame: Frame) => arrayOf(frame).heap?.size)
       .filter((size): size is number => size !== undefined);
     expect(tailSizes[0]).toBe(10);
     expect(Math.min(...tailSizes)).toBe(1);
