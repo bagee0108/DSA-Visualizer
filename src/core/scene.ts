@@ -57,13 +57,34 @@ export class ArrayScene {
 
   private heapSize: number | null = null;
 
+  private nextId: number;
+
   constructor(values: readonly number[]) {
     this.values = [...values];
     this.ids = values.map((_, index) => index);
+    this.nextId = values.length;
   }
 
   get length(): number {
     return this.values.length;
+  }
+
+  push(value: number): number {
+    this.values.push(value);
+    this.ids.push(this.nextId);
+    this.nextId += 1;
+    this.writes += 1;
+    this.elementsCache = null;
+    return this.values.length - 1;
+  }
+
+  pop(): number {
+    const value = this.values.pop();
+    this.ids.pop();
+    if (value === undefined) throw new RangeError('pop on an empty array');
+    this.reads += 1;
+    this.elementsCache = null;
+    return value;
   }
 
   private at(index: number): number {
