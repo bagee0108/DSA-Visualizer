@@ -16,6 +16,9 @@
   --viz-active: #0ea5e9;
   --viz-candidate: #06b6d4;
   --viz-excluded: #cbd5e1;
+  --viz-visited: #a5b4fc;
+  --viz-rb-red: #dc2626;
+  --viz-rb-black: #1e293b;
 
   --viz-region-active: rgba(99, 102, 241, 0.12);
   --viz-region-left: rgba(16, 185, 129, 0.14);
@@ -38,6 +41,9 @@
   --viz-active: #38bdf8;
   --viz-candidate: #22d3ee;
   --viz-excluded: #334155;
+  --viz-visited: #6366f1;
+  --viz-rb-red: #ef4444;
+  --viz-rb-black: #cbd5e1;
 
   --viz-region-active: rgba(129, 140, 248, 0.16);
   --viz-region-left: rgba(52, 211, 153, 0.16);

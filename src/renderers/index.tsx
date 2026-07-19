@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import type { Frame } from '../core/types';
 import { ArrayRenderer } from './ArrayRenderer';
+import { TreeRenderer } from './TreeRenderer';
 
 export interface StructureCanvasProps {
   readonly frame: Frame;
@@ -23,6 +24,16 @@ export function StructureCanvas({ frame, animate, durationMs }: StructureCanvasP
           durationMs={durationMs}
         />
       );
+    case 'tree':
+      return (
+        <TreeRenderer
+          snapshot={frame.structure}
+          highlights={frame.highlights}
+          pointers={frame.pointers}
+          animate={animate}
+          durationMs={durationMs}
+        />
+      );
     default:
       return (
         <div className="flex h-full items-center justify-center text-sm text-slate-500">
@@ -33,3 +44,4 @@ export function StructureCanvas({ frame, animate, durationMs }: StructureCanvasP
 }
 
 export { ArrayRenderer } from './ArrayRenderer';
+export { TreeRenderer } from './TreeRenderer';
