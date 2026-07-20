@@ -108,10 +108,7 @@ export function defineAlgorithm<TInput>(def: AlgorithmDefinition<TInput>): Regis
     defaults,
     codeLines: def.meta.code.replace(/\s+$/, '').split('\n'),
     build(params: ParamMap): BuildResult {
-      const merged: Record<string, string> = { ...defaults };
-      for (const [key, value] of Object.entries(params)) {
-        if (value !== '') merged[key] = value;
-      }
+      const merged: Record<string, string> = { ...defaults, ...params };
 
       const parsed = def.parse(merged);
       if (!parsed.ok) return parsed;

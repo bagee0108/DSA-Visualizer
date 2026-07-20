@@ -30,7 +30,7 @@ function searchToParams(search: string): ParamMap {
 function paramsToSearch(params: ParamMap, defaults: ParamMap): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value === '' || value === defaults[key]) continue;
+    if (value === defaults[key]) continue;
     query.set(key, value);
   }
   const text = query.toString();
