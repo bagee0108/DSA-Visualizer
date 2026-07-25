@@ -9,6 +9,7 @@ import { quicksort } from './arrays/quicksort';
 import { slidingWindow } from './arrays/slidingWindow';
 import { twoPointers } from './arrays/twoPointers';
 import { bst } from './trees/bst';
+import { avl } from './trees/avl';
 
 register(quicksort);
 register(mergesort);
@@ -19,5 +20,6 @@ register(slidingWindow);
 register(kadane);
 
 register(bst);
+register(avl);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
