@@ -10,6 +10,7 @@ import { slidingWindow } from './arrays/slidingWindow';
 import { twoPointers } from './arrays/twoPointers';
 import { bst } from './trees/bst';
 import { avl } from './trees/avl';
+import { redBlack } from './trees/redBlack';
 
 register(quicksort);
 register(mergesort);
@@ -21,5 +22,6 @@ register(kadane);
 
 register(bst);
 register(avl);
+register(redBlack);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
