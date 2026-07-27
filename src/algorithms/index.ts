@@ -11,6 +11,7 @@ import { twoPointers } from './arrays/twoPointers';
 import { bst } from './trees/bst';
 import { avl } from './trees/avl';
 import { redBlack } from './trees/redBlack';
+import { binaryHeap } from './trees/binaryHeap';
 
 register(quicksort);
 register(mergesort);
@@ -23,5 +24,6 @@ register(kadane);
 register(bst);
 register(avl);
 register(redBlack);
+register(binaryHeap);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
