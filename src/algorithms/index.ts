@@ -12,6 +12,7 @@ import { bst } from './trees/bst';
 import { avl } from './trees/avl';
 import { redBlack } from './trees/redBlack';
 import { binaryHeap } from './trees/binaryHeap';
+import { trie } from './trees/trie';
 
 register(quicksort);
 register(mergesort);
@@ -25,5 +26,6 @@ register(bst);
 register(avl);
 register(redBlack);
 register(binaryHeap);
+register(trie);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
