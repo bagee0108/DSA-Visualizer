@@ -13,6 +13,7 @@ import { avl } from './trees/avl';
 import { redBlack } from './trees/redBlack';
 import { binaryHeap } from './trees/binaryHeap';
 import { trie } from './trees/trie';
+import { treeTraversals } from './trees/traversals';
 
 register(quicksort);
 register(mergesort);
@@ -27,5 +28,6 @@ register(avl);
 register(redBlack);
 register(binaryHeap);
 register(trie);
+register(treeTraversals);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
