@@ -14,7 +14,7 @@ frame.
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 7 algorithms, 133 tests |
-| 2 | Trees: BST, AVL, red-black, heap, trie, traversals | Planned |
+| 2 | Trees: BST, AVL, red-black, heap, trie, traversals | **Complete** — 6 algorithms, 88 tests |
 | 3 | Graphs: BFS/DFS, Dijkstra, A*, Bellman-Ford, toposort, DSU, Kruskal, Prim, Tarjan | Planned |
 | 4 | Segment tree, Fenwick, DP tables, KMP, backtracking | Planned |
 
@@ -93,6 +93,7 @@ src/
     types.ts       Frame, snapshots, highlights, counters
     define.ts      defineAlgorithm(), type erasure, frame ceiling
     scene.ts       ArrayScene: backing store + automatic counters
+    treeScene.ts   TreeScene: node table + rotations + counters
     registry.ts    id -> algorithm
   algorithms/      one file per algorithm, pure generators
   playback/        PlaybackProvider: the single cursor into a run

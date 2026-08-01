@@ -169,11 +169,12 @@ Phases 2-4 need renderers beyond arrays. The path:
    highlights and pointers, and returns SVG. No state, no effects, no
    algorithm imports.
 3. Add the case to the switch in `src/renderers/index.tsx`.
-4. Consider a `TreeScene` in `src/core/` mirroring `ArrayScene`, so tree
-   algorithms get the same free counters.
+4. Give it a scene class mirroring `ArrayScene` and `TreeScene`, so its
+   algorithms get the same free counters and cached snapshots.
 
-Layout maths (tree positions, force layout) may use D3 modules — `d3-hierarchy`
-and friends. Rendering stays hand-written SVG; no chart or graph libraries.
+Layout maths may use D3 modules if a hand-rolled layout is not enough; the
+tree renderer did not need one (in-order rank for binary trees, leaf-count
+spans for n-ary). Rendering stays hand-written SVG; no chart or graph libraries.
 
 ---
 
