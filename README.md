@@ -133,6 +133,15 @@ written, so links stay short.
   transition rather than a re-layout.
 - Targets: 200 elements for sorting, ~150 nodes for graphs.
 
+## Known limitations
+
+- **Red-black delete is not implemented.** Only insertion (with the CLRS
+  three-case fixup) is visualized. Deletion has six fixup cases and warrants a
+  dedicated screen rather than a footnote to insert. The operations parser
+  rejects `delete` for this algorithm explicitly (`"delete" is not supported by
+  this algorithm.`) instead of silently ignoring it, so a URL that asks for one
+  fails loudly.
+
 ## Deploying
 
 Static build, no backend:
