@@ -7,6 +7,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 
 import type {
   EntityId,
+  Frame,
   Highlights,
   HighlightRole,
   Pointers,
@@ -54,6 +55,57 @@ export interface TreeRendererProps {
 interface Placed {
   readonly x: number;
   readonly y: number;
+}
+
+export interface TreeRunBound {
+  readonly columns: number;
+  readonly depth: number;
+  readonly strips: number;
+}
+
+interface Measure {
+  readonly columns: number;
+  readonly depth: number;
+}
+
+function measureTree(snapshot: TreeSnapshot): Measure {
+  const byId = new Map<string, TreeNodeSnapshot>();
+  for (const node of snapshot.nodes) byId.set(node.id, node);
+  if (snapshot.rootId === null || !byId.has(snapshot.rootId)) return { columns: 0, depth: 0 };
+
+  let depth = 0;
+  let columns = 0;
+  const walk = (id: string, level: number): void => {
+    const node = byId.get(id);
+    if (node === undefined) return;
+    if (level > depth) depth = level;
+    const kids = node.children.filter((child): child is string => child !== null);
+    if (snapshot.arity === 'binary' || kids.length === 0) columns += 1;
+    for (const child of kids) walk(child, level + 1);
+  };
+  walk(snapshot.rootId, 0);
+  return { columns, depth };
+}
+
+/**
+ * Bound over a whole run. Consecutive frames that did not mutate the tree
+ * share one frozen node array, so each distinct shape is measured once.
+ */
+export function treeRunBound(frames: readonly Frame[]): TreeRunBound {
+  let columns = 1;
+  let depth = 0;
+  let strips = 0;
+  const measured = new Set<readonly TreeNodeSnapshot[]>();
+  for (const frame of frames) {
+    if (frame.structure.kind !== 'tree') continue;
+    if (frame.structure.strips.length > strips) strips = frame.structure.strips.length;
+    if (measured.has(frame.structure.nodes)) continue;
+    measured.add(frame.structure.nodes);
+    const size = measureTree(frame.structure);
+    if (size.columns > columns) columns = size.columns;
+    if (size.depth > depth) depth = size.depth;
+  }
+  return { columns, depth, strips };
 }
 
 function resolveRoles(highlights: Highlights): ReadonlyMap<EntityId, HighlightRole> {
