@@ -1,6 +1,9 @@
 /**
  * Tree renderer. Layout is deliberate pedagogy, not just tidiness: binary
- * trees put every node at x = its in-order rank.
+ * trees put every node at x = its in-order rank. The bound is derived by the
+ * caller from the frame array and passed in as a prop; it is never written
+ * into a frame, because frames are frozen the moment they are yielded and the
+ * bound is only known once the run ends.
  */
 
 import { memo, useMemo, type ReactNode } from 'react';
@@ -21,6 +24,8 @@ const VIEW_H = 400;
 const PAD_X = 16;
 const TREE_TOP = 28;
 const STRIP_HEIGHT = 46;
+const MAX_SLOT = 88;
+const MAX_LEVEL_HEIGHT = 66;
 
 const ROLE_COLOR: Record<HighlightRole, string> = {
   comparing: 'var(--viz-comparing)',
@@ -44,6 +49,12 @@ const ROLE_PRIORITY: readonly HighlightRole[] = [
   'excluded',
 ];
 
+export interface TreeRunBound {
+  readonly columns: number;
+  readonly depth: number;
+  readonly strips: number;
+}
+
 export interface TreeRendererProps {
   readonly snapshot: TreeSnapshot;
   readonly bound: TreeRunBound;
@@ -56,12 +67,6 @@ export interface TreeRendererProps {
 interface Placed {
   readonly x: number;
   readonly y: number;
-}
-
-export interface TreeRunBound {
-  readonly columns: number;
-  readonly depth: number;
-  readonly strips: number;
 }
 
 interface Measure {
@@ -119,38 +124,48 @@ function resolveRoles(highlights: Highlights): ReadonlyMap<EntityId, HighlightRo
   return roles;
 }
 
-interface Layout {
-  readonly positions: ReadonlyMap<string, Placed>;
+interface Scale {
+  readonly slot: number;
+  readonly levelHeight: number;
   readonly radius: number;
+  readonly x0: number;
+  readonly treeBottom: number;
 }
 
-function layoutTree(snapshot: TreeSnapshot, treeBottom: number): Layout {
+function scaleFor(bound: TreeRunBound): Scale {
+  const innerWidth = VIEW_W - PAD_X * 2;
+  const treeBottom = VIEW_H - bound.strips * STRIP_HEIGHT - 10;
+  const treeHeight = treeBottom - TREE_TOP;
+  const columns = Math.max(1, bound.columns);
+  const slot = Math.min(MAX_SLOT, innerWidth / columns);
+  const levelHeight = bound.depth === 0 ? 0 : Math.min(MAX_LEVEL_HEIGHT, (treeHeight - 40) / bound.depth);
+  const radius = Math.max(5, Math.min(17, slot * 0.42, bound.depth === 0 ? 17 : levelHeight * 0.4));
+  return { slot, levelHeight, radius, x0: (VIEW_W - slot * columns) / 2, treeBottom };
+}
+
+function layoutTree(snapshot: TreeSnapshot, scale: Scale): ReadonlyMap<string, Placed> {
   const byId = new Map<string, TreeNodeSnapshot>();
   for (const node of snapshot.nodes) byId.set(node.id, node);
 
   const positions = new Map<string, Placed>();
-  if (snapshot.rootId === null || !byId.has(snapshot.rootId)) return { positions, radius: 12 };
-
-  const innerWidth = VIEW_W - PAD_X * 2;
-  const treeHeight = treeBottom - TREE_TOP;
+  if (snapshot.rootId === null || !byId.has(snapshot.rootId)) return positions;
 
   // Column assignment: in-order rank for binary, leaf-span centre for n-ary.
+  // These are two different systems on purpose; see CONTRIBUTING.md.
   const column = new Map<string, number>();
   const depthOf = new Map<string, number>();
-  let maxDepth = 0;
-  let columns = 0;
 
   if (snapshot.arity === 'binary') {
+    let rank = 0;
     const walk = (id: string, depth: number): void => {
       const node = byId.get(id);
       if (node === undefined) return;
       const left = node.children[0] ?? null;
       const right = node.children[1] ?? null;
       if (left !== null) walk(left, depth + 1);
-      column.set(id, columns + 0.5);
-      columns += 1;
+      column.set(id, rank + 0.5);
+      rank += 1;
       depthOf.set(id, depth);
-      if (depth > maxDepth) maxDepth = depth;
       if (right !== null) walk(right, depth + 1);
     };
     walk(snapshot.rootId, 0);
@@ -164,14 +179,13 @@ function layoutTree(snapshot: TreeSnapshot, treeBottom: number): Layout {
       leaves.set(id, total);
       return total;
     };
-    columns = count(snapshot.rootId);
+    count(snapshot.rootId);
     const walk = (id: string, start: number, depth: number): void => {
       const node = byId.get(id);
       if (node === undefined) return;
       const span = leaves.get(id) ?? 1;
       column.set(id, start + span / 2);
       depthOf.set(id, depth);
-      if (depth > maxDepth) maxDepth = depth;
       let cursor = start;
       for (const child of node.children) {
         if (child === null) continue;
@@ -182,19 +196,13 @@ function layoutTree(snapshot: TreeSnapshot, treeBottom: number): Layout {
     walk(snapshot.rootId, 0, 0);
   }
 
-  const slot = Math.min(88, innerWidth / Math.max(1, columns));
-  const usedWidth = slot * columns;
-  const x0 = (VIEW_W - usedWidth) / 2;
-  const levelHeight = maxDepth === 0 ? 0 : Math.min(66, (treeHeight - 40) / maxDepth);
-  const radius = Math.max(5, Math.min(17, slot * 0.42, maxDepth === 0 ? 17 : levelHeight * 0.4));
-
   for (const [id, col] of column) {
     positions.set(id, {
-      x: x0 + col * slot,
-      y: TREE_TOP + radius + 6 + (depthOf.get(id) ?? 0) * levelHeight,
+      x: scale.x0 + col * scale.slot,
+      y: TREE_TOP + scale.radius + 6 + (depthOf.get(id) ?? 0) * scale.levelHeight,
     });
   }
-  return { positions, radius };
+  return positions;
 }
 
 function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
@@ -208,18 +216,16 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
-function TreeRendererImpl({ snapshot, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
-  const stripsHeight = snapshot.strips.length * STRIP_HEIGHT;
-  const treeBottom = VIEW_H - stripsHeight - 10;
-
-  const layout = useMemo(() => layoutTree(snapshot, treeBottom), [snapshot, treeBottom]);
+function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
+  const scale = useMemo(() => scaleFor(bound), [bound]);
+  const positions = useMemo(() => layoutTree(snapshot, scale), [snapshot, scale]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
 
   const transition = animate
     ? `transform ${Math.min(220, Math.max(60, durationMs * 0.6))}ms ease-out`
     : 'none';
-  const { radius } = layout;
+  const { radius, treeBottom } = scale;
   const showText = radius >= 7;
 
   return (
@@ -238,8 +244,8 @@ function TreeRendererImpl({ snapshot, highlights, pointers, animate, durationMs 
 
       {snapshot.nodes.map((node) => {
         if (node.parentId === null) return null;
-        const child = layout.positions.get(node.id);
-        const parent = layout.positions.get(node.parentId);
+        const child = positions.get(node.id);
+        const parent = positions.get(node.parentId);
         if (child === undefined || parent === undefined) return null;
         const dx = child.x - parent.x;
         const dy = child.y - parent.y;
@@ -269,7 +275,7 @@ function TreeRendererImpl({ snapshot, highlights, pointers, animate, durationMs 
       })}
 
       {snapshot.nodes.map((node) => {
-        const placed = layout.positions.get(node.id);
+        const placed = positions.get(node.id);
         if (placed === undefined) return null;
         const role = roles.get(node.id);
         const painted = node.color !== undefined;
