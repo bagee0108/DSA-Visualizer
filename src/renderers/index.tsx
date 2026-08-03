@@ -1,18 +1,21 @@
 /** Renderer registry: one renderer per structure family. */
 
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 import type { Frame } from '../core/types';
 import { ArrayRenderer } from './ArrayRenderer';
-import { TreeRenderer } from './TreeRenderer';
+import { TreeRenderer, treeRunBound } from './TreeRenderer';
 
 export interface StructureCanvasProps {
   readonly frame: Frame;
+  readonly frames: readonly Frame[];
   readonly animate: boolean;
   readonly durationMs: number;
 }
 
-export function StructureCanvas({ frame, animate, durationMs }: StructureCanvasProps): ReactNode {
+export function StructureCanvas({ frame, frames, animate, durationMs }: StructureCanvasProps): ReactNode {
+  const treeBound = useMemo(() => treeRunBound(frames), [frames]);
+
   switch (frame.structure.kind) {
     case 'array':
       return (
@@ -28,6 +31,7 @@ export function StructureCanvas({ frame, animate, durationMs }: StructureCanvasP
       return (
         <TreeRenderer
           snapshot={frame.structure}
+          bound={treeBound}
           highlights={frame.highlights}
           pointers={frame.pointers}
           animate={animate}

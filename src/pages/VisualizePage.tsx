@@ -149,7 +149,7 @@ function AlgorithmHeader({ algorithm }: { algorithm: RegisteredAlgorithm }): Rea
 }
 
 function Canvas({ error }: { error: string | null }): ReactNode {
-  const { frame, jumped, frameDurationMs } = usePlayback();
+  const { frame, frames, jumped, frameDurationMs } = usePlayback();
 
   return (
     <div
@@ -168,6 +168,7 @@ function Canvas({ error }: { error: string | null }): ReactNode {
       ) : (
         <StructureCanvas
           frame={frame}
+          frames={frames}
           animate={!jumped && frameDurationMs >= 60}
           durationMs={frameDurationMs}
         />

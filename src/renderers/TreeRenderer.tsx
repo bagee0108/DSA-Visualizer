@@ -46,6 +46,7 @@ const ROLE_PRIORITY: readonly HighlightRole[] = [
 
 export interface TreeRendererProps {
   readonly snapshot: TreeSnapshot;
+  readonly bound: TreeRunBound;
   readonly highlights: Highlights;
   readonly pointers: Pointers;
   readonly animate: boolean;
