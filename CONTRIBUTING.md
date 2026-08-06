@@ -148,6 +148,38 @@ line 14 must be the line that just executed. When the visualization takes a
 shortcut the source does not show, say so in the explanation instead of
 pointing at a line that did not run.
 
+### The tree renderer has two layouts on purpose. Do not unify them.
+
+`layoutTree` in `src/renderers/TreeRenderer.tsx` assigns columns two different
+ways depending on `snapshot.arity`, and it looks like a candidate for
+simplification. It is not.
+
+- **Binary trees put every node at x = its in-order rank.** A rotation is
+  defined by the fact that it preserves in-order, so under rank layout a
+  rotation renders as nodes moving *purely vertically*: the pivot rises, the
+  old parent drops, the crossing subtree changes depth, and nothing moves
+  sideways. That picture is the whole point of the AVL and red-black screens.
+  It also makes the BST invariant visible (every node sits to the right of its
+  entire left subtree). The cost is that a parent is not centred over its
+  children, so edges skew toward the heavier subtree. That skew is accepted:
+  it is the honest picture of subtree sizes.
+- **N-ary trees (the trie) centre each node over its subtree's leaf span.** A
+  trie has no in-order semantics and no rotations, so there is no order to
+  preserve and no vertical-motion property to protect; leaf-span centring is
+  simply the readable choice. Children are kept in lexicographic order by
+  `TreeScene.attach`.
+
+A single "tidy tree" layout that centres parents over children would make
+every rotation a diagonal shuffle and destroy the property the binary branch
+exists for. If a third structure needs a third layout, add a third branch.
+
+Layout *scale* is a separate matter and is shared: slot width, level height and
+the strip area are fixed for a whole run from a bound over the precomputed
+frame array (`treeRunBound`), so an insertion never rescales the tree and a
+node's x is a function of its rank alone. That bound is derived by the caller
+and passed to the renderer as a prop. It is never written into a frame: frames
+are frozen when yielded, and the bound is only known once the run has ended.
+
 ### Explanations are sentences, not labels
 
 "Comparing a[3] and a[7]" is weak. "a[3] = 27 is below the pivot 45, so it
@@ -174,7 +206,8 @@ Phases 2-4 need renderers beyond arrays. The path:
 
 Layout maths may use D3 modules if a hand-rolled layout is not enough; the
 tree renderer did not need one (in-order rank for binary trees, leaf-count
-spans for n-ary). Rendering stays hand-written SVG; no chart or graph libraries.
+spans for n-ary - two deliberate systems, see the rule below). Rendering stays
+hand-written SVG; no chart or graph libraries.
 
 ---
 
