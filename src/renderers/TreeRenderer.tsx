@@ -222,9 +222,9 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
 
-  const transition = animate
-    ? `transform ${Math.min(220, Math.max(60, durationMs * 0.6))}ms ease-out`
-    : 'none';
+  const moveMs = Math.min(220, Math.max(60, durationMs * 0.6));
+  const transition = animate ? `transform ${moveMs}ms ease-out` : 'none';
+  const mount = animate ? `viz-node-mount ${Math.min(320, moveMs + 120)}ms ease-out` : 'none';
   const { radius, treeBottom } = scale;
   const showText = radius >= 7;
 
@@ -292,23 +292,25 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
 
         return (
           <g key={node.id} style={{ transform: `translate(${placed.x}px, ${placed.y}px)`, transition }}>
-            {ring !== null && <circle r={radius + 3.5} fill="none" stroke={ring} strokeWidth={3} />}
-            <circle r={radius} fill={fill} />
-            {node.terminal === true && (
-              <circle r={Math.max(2, radius - 3.5)} fill="none" stroke="var(--viz-bg)" strokeWidth={1.6} />
-            )}
-            {showText && (
-              <text
-                y={radius * 0.36}
-                textAnchor="middle"
-                fontSize={Math.min(12, radius * 0.95)}
-                fontWeight={600}
-                fill={painted || role !== undefined ? '#fff' : 'var(--viz-text)'}
-                className="font-mono"
-              >
-                {node.label}
-              </text>
-            )}
+            <g style={{ animation: mount, transformBox: 'fill-box', transformOrigin: 'center' }}>
+              {ring !== null && <circle r={radius + 3.5} fill="none" stroke={ring} strokeWidth={3} />}
+              <circle r={radius} fill={fill} />
+              {node.terminal === true && (
+                <circle r={Math.max(2, radius - 3.5)} fill="none" stroke="var(--viz-bg)" strokeWidth={1.6} />
+              )}
+              {showText && (
+                <text
+                  y={radius * 0.36}
+                  textAnchor="middle"
+                  fontSize={Math.min(12, radius * 0.95)}
+                  fontWeight={600}
+                  fill={painted || role !== undefined ? '#fff' : 'var(--viz-text)'}
+                  className="font-mono"
+                >
+                  {node.label}
+                </text>
+              )}
+            </g>
             {badges !== null && badges.length > 0 && (
               <text
                 x={radius + 3}
