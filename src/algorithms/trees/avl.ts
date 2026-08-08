@@ -6,9 +6,19 @@
  */
 
 import { seedField } from '../../core/arrayInput';
-import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
+import { defineAlgorithm, type ParamMap, type ParseResult, type PresetSpec } from '../../core/define';
+import { randomInt } from '../../core/random';
 import { LEFT, RIGHT, TreeScene, type Side } from '../../core/treeScene';
-import { keysField, opsField, parseKeyOps, parseTreeKeys, treePresets, type KeyOp } from '../../core/treeInput';
+import {
+  distinctKeys,
+  keysField,
+  medianFirst,
+  opsField,
+  parseKeyOps,
+  parseTreeKeys,
+  treePresets,
+  type KeyOp,
+} from '../../core/treeInput';
 import type { Frame } from '../../core/types';
 
 interface AvlInput {
@@ -436,6 +446,22 @@ function parse(params: ParamMap): ParseResult<AvlInput> {
   return { ok: true, value: { keys: keys.value, ops: ops.value } };
 }
 
+const lowKeyPreset: PresetSpec = {
+  id: 'low-key',
+  label: 'Insert low key',
+  build: (size, rng) => {
+    const keys = distinctKeys(size, rng, 20, 99).sort((a, b) => a - b);
+    const present = new Set(keys);
+    let middle = 60;
+    while (present.has(middle)) middle += 1;
+    return {
+      input: medianFirst(keys).join(', '),
+      ops: `insert ${randomInt(rng, 1, 9)}; insert ${middle}; insert ${randomInt(rng, 10, 19)}`,
+      seed: String(randomInt(rng, 0, 999999)),
+    };
+  },
+};
+
 export const avl = defineAlgorithm<AvlInput>({
   meta: {
     id: 'avl',
@@ -460,7 +486,7 @@ export const avl = defineAlgorithm<AvlInput>({
     opsField('insert 5; insert 4; delete 40; delete 50', ['insert', 'delete']),
     seedField,
   ],
-  presets: treePresets(['insert', 'delete']),
+  presets: [...treePresets(['insert', 'delete']), lowKeyPreset],
   sizeRange: { min: 1, max: 40, step: 1 },
   parse,
   *run(input) {
