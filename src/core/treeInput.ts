@@ -87,10 +87,26 @@ export function parseTreeKeys(raw: string, maxLength = 60): ParseResult<number[]
   return parsed;
 }
 
-function distinctKeys(size: number, rng: () => number, low = 1, high = 99): number[] {
+export function distinctKeys(size: number, rng: () => number, low = 1, high = 99): number[] {
   const pool = Array.from({ length: high - low + 1 }, (_, index) => low + index);
   shuffle(pool, rng);
   return pool.slice(0, size);
+}
+
+export function medianFirst(sorted: readonly number[]): number[] {
+  const order: number[] = [];
+  const queue: Array<[number, number]> = [[0, sorted.length - 1]];
+  while (queue.length > 0) {
+    const range = queue.shift();
+    if (range === undefined) break;
+    const [lo, hi] = range;
+    if (lo > hi) continue;
+    const mid = (lo + hi) >> 1;
+    const key = sorted[mid];
+    if (key !== undefined) order.push(key);
+    queue.push([lo, mid - 1], [mid + 1, hi]);
+  }
+  return order;
 }
 
 function pickOps(keys: readonly number[], rng: () => number, allowed: readonly KeyOpKind[]): string {
@@ -129,22 +145,7 @@ export function treePresets(allowed: readonly KeyOpKind[]): readonly PresetSpec[
     {
       id: 'balanced',
       label: 'Balanced order',
-      build: (size, rng) => {
-        const sorted = distinctKeys(size, rng).sort((a, b) => a - b);
-        const order: number[] = [];
-        const queue: Array<[number, number]> = [[0, sorted.length - 1]];
-        while (queue.length > 0) {
-          const range = queue.shift();
-          if (range === undefined) break;
-          const [lo, hi] = range;
-          if (lo > hi) continue;
-          const mid = (lo + hi) >> 1;
-          const key = sorted[mid];
-          if (key !== undefined) order.push(key);
-          queue.push([lo, mid - 1], [mid + 1, hi]);
-        }
-        return toParams(order, rng);
-      },
+      build: (size, rng) => toParams(medianFirst(distinctKeys(size, rng).sort((a, b) => a - b)), rng),
     },
   ];
 }
