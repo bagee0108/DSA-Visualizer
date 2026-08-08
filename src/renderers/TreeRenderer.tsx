@@ -223,7 +223,8 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
 
   const moveMs = Math.min(220, Math.max(60, durationMs * 0.6));
-  const transition = animate ? `transform ${moveMs}ms ease-out` : 'none';
+  const slide = animate ? `transform ${moveMs}ms ease-in-out` : 'none';
+  const drop = animate ? `transform ${moveMs}ms ease-out` : 'none';
   const mount = animate ? `viz-node-mount ${Math.min(320, moveMs + 120)}ms ease-out` : 'none';
   const { radius, treeBottom } = scale;
   const showText = radius >= 7;
@@ -253,23 +254,24 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
         const role = roles.get(node.id);
         return (
-          <g
-            key={`edge-${node.id}`}
-            style={{
-              transform: `translate(${parent.x}px, ${parent.y}px) rotate(${angle}deg) scale(${length}, 1)`,
-              transition,
-            }}
-          >
-            <line
-              x1={0}
-              y1={0}
-              x2={1}
-              y2={0}
-              stroke={role === undefined ? 'var(--viz-grid)' : ROLE_COLOR[role]}
-              strokeOpacity={role === undefined ? 1 : 0.7}
-              strokeWidth={role === undefined ? 1.5 : 2.5}
-              vectorEffect="non-scaling-stroke"
-            />
+          <g key={`edge-${node.id}`} style={{ transform: `translateX(${parent.x}px)`, transition: slide }}>
+            <g
+              style={{
+                transform: `translateY(${parent.y}px) rotate(${angle}deg) scale(${length}, 1)`,
+                transition: drop,
+              }}
+            >
+              <line
+                x1={0}
+                y1={0}
+                x2={1}
+                y2={0}
+                stroke={role === undefined ? 'var(--viz-grid)' : ROLE_COLOR[role]}
+                strokeOpacity={role === undefined ? 1 : 0.7}
+                strokeWidth={role === undefined ? 1.5 : 2.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
           </g>
         );
       })}
@@ -291,49 +293,51 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
         const badges = node.badges === undefined ? null : Object.entries(node.badges);
 
         return (
-          <g key={node.id} style={{ transform: `translate(${placed.x}px, ${placed.y}px)`, transition }}>
-            <g style={{ animation: mount, transformBox: 'fill-box', transformOrigin: 'center' }}>
-              {ring !== null && <circle r={radius + 3.5} fill="none" stroke={ring} strokeWidth={3} />}
-              <circle r={radius} fill={fill} />
-              {node.terminal === true && (
-                <circle r={Math.max(2, radius - 3.5)} fill="none" stroke="var(--viz-bg)" strokeWidth={1.6} />
-              )}
-              {showText && (
+          <g key={node.id} style={{ transform: `translateX(${placed.x}px)`, transition: slide }}>
+            <g style={{ transform: `translateY(${placed.y}px)`, transition: drop }}>
+              <g style={{ animation: mount, transformBox: 'fill-box', transformOrigin: 'center' }}>
+                {ring !== null && <circle r={radius + 3.5} fill="none" stroke={ring} strokeWidth={3} />}
+                <circle r={radius} fill={fill} />
+                {node.terminal === true && (
+                  <circle r={Math.max(2, radius - 3.5)} fill="none" stroke="var(--viz-bg)" strokeWidth={1.6} />
+                )}
+                {showText && (
+                  <text
+                    y={radius * 0.36}
+                    textAnchor="middle"
+                    fontSize={Math.min(12, radius * 0.95)}
+                    fontWeight={600}
+                    fill={painted || role !== undefined ? '#fff' : 'var(--viz-text)'}
+                    className="font-mono"
+                  >
+                    {node.label}
+                  </text>
+                )}
+              </g>
+              {badges !== null && badges.length > 0 && (
                 <text
-                  y={radius * 0.36}
-                  textAnchor="middle"
-                  fontSize={Math.min(12, radius * 0.95)}
-                  fontWeight={600}
-                  fill={painted || role !== undefined ? '#fff' : 'var(--viz-text)'}
+                  x={radius + 3}
+                  y={-radius * 0.2}
+                  fontSize={9}
+                  fill="var(--viz-text-dim)"
                   className="font-mono"
                 >
-                  {node.label}
+                  {badges.map(([key, value]) => `${key}${value}`).join(' ')}
+                </text>
+              )}
+              {tags !== undefined && (
+                <text
+                  y={-radius - 5}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontWeight={600}
+                  fill="var(--viz-active)"
+                  className="font-mono"
+                >
+                  {tags.join(',')}
                 </text>
               )}
             </g>
-            {badges !== null && badges.length > 0 && (
-              <text
-                x={radius + 3}
-                y={-radius * 0.2}
-                fontSize={9}
-                fill="var(--viz-text-dim)"
-                className="font-mono"
-              >
-                {badges.map(([key, value]) => `${key}${value}`).join(' ')}
-              </text>
-            )}
-            {tags !== undefined && (
-              <text
-                y={-radius - 5}
-                textAnchor="middle"
-                fontSize={10}
-                fontWeight={600}
-                fill="var(--viz-active)"
-                className="font-mono"
-              >
-                {tags.join(',')}
-              </text>
-            )}
           </g>
         );
       })}
@@ -344,7 +348,7 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
           strip={strip}
           y={treeBottom + 12 + row * STRIP_HEIGHT}
           roles={roles}
-          transition={transition}
+          transition={slide}
         />
       ))}
     </svg>
