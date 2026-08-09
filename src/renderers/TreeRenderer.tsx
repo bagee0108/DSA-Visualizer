@@ -26,6 +26,7 @@ const TREE_TOP = 28;
 const STRIP_HEIGHT = 46;
 const MAX_SLOT = 88;
 const MAX_LEVEL_HEIGHT = 66;
+const BADGE_MIN_SLOT = 36;
 
 const ROLE_COLOR: Record<HighlightRole, string> = {
   comparing: 'var(--viz-comparing)',
@@ -226,8 +227,9 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
   const slide = animate ? `transform ${moveMs}ms ease-in-out` : 'none';
   const drop = animate ? `transform ${moveMs}ms ease-out` : 'none';
   const mount = animate ? `viz-node-mount ${Math.min(320, moveMs + 120)}ms ease-out` : 'none';
-  const { radius, treeBottom } = scale;
+  const { radius, slot, treeBottom } = scale;
   const showText = radius >= 7;
+  const allBadges = slot >= BADGE_MIN_SLOT;
 
   return (
     <svg
@@ -290,7 +292,8 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
             : ROLE_COLOR[role];
         const ring = painted && role !== undefined ? ROLE_COLOR[role] : null;
         const tags = labels.get(node.id);
-        const badges = node.badges === undefined ? null : Object.entries(node.badges);
+        const mentioned = role !== undefined || tags !== undefined;
+        const badges = node.badges === undefined || !(allBadges || mentioned) ? null : Object.entries(node.badges);
 
         return (
           <g key={node.id} style={{ transform: `translateX(${placed.x}px)`, transition: slide }}>
