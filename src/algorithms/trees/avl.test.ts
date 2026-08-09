@@ -176,4 +176,24 @@ describe('avl: frame hygiene', () => {
   it('refuses search, which it does not visualise', () => {
     expect(avl.build({ input: '1,2,3', ops: 'search 2' }).ok).toBe(false);
   });
+
+  it('builds a runnable input from every preset', () => {
+    for (const preset of avl.presets) {
+      const params = preset.build(12, makeRng(7));
+      expect(avl.build(params).ok, `preset=${preset.id}`).toBe(true);
+    }
+  });
+
+  it('low-key preset inserts below every initial key, so the rank shift is total', () => {
+    const preset = avl.presets.find((candidate) => candidate.id === 'low-key');
+    expect(preset).toBeDefined();
+    if (preset === undefined) return;
+    const params = preset.build(12, makeRng(3));
+    const initial = (params.input ?? '').split(',').map(Number);
+    const first = Number(/insert (\d+)/.exec(params.ops ?? '')?.[1]);
+    expect(first).toBeLessThan(Math.min(...initial));
+    const keys = inorderKeys(treeOf(lastFrame(runFrames(avl, params))));
+    expect(keys[0]).toBe(first);
+    expect(keys).toHaveLength(initial.length + 3);
+  });
 });
