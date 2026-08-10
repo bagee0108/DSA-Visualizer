@@ -33,7 +33,7 @@ function paramsToSearch(params: ParamMap, defaults: ParamMap): string {
     if (value === defaults[key]) continue;
     query.set(key, value);
   }
-  const text = query.toString();
+  const text = query.toString().replace(/%2C/g, ',').replace(/%3A/g, ':');
   return text.length > 0 ? `?${text}` : '';
 }
 
