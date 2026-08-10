@@ -211,6 +211,95 @@ hand-written SVG; no chart or graph libraries.
 
 ---
 
+# Graphs
+
+Three decisions shape the graph family. They were settled before the first
+graph algorithm landed, and the later algorithms (and the editor, when it
+comes) fit inside them without a rewrite.
+
+### 1. Topology is held by reference, never snapshotted per frame
+
+A `GraphSnapshot` carries the `Graph` (nodes with positions, edges, directed
+and weighted flags) **by reference**. Every frame of a run points at the same
+object, and nothing mutates it: a structural change is a new run, not a new
+frame. What a frame snapshots is only the mutable state of the algorithm -
+the visited set, distance labels, the tree edges chosen so far, the queue /
+stack / priority-queue contents, and the edge under examination - and
+`GraphScene` caches each of those as a frozen array or record until it
+actually changes, the same way `ArrayScene` shares an elements array across
+frames that did not write.
+
+The reason is arithmetic. Dijkstra on 150 nodes yields thousands of frames;
+if each frame copied ~300 edges the run would cost frames x edges and the
+150-node target would not survive it. With topology shared, a frame costs
+what changed in it.
+
+Layout is part of topology. Positions are computed once at parse time by
+`graphLayout.ts` (a deterministic force-directed pass, or a ring or lattice
+when asked), so generators stay pure and the renderer only ever reads
+`node.x` / `node.y`.
+
+### 2. Interaction is an explicit mode machine
+
+`src/playback/mode.ts` defines the modes and the only legal moves between
+them. `PlaybackProvider` holds a `Mode`, not a boolean; `playing` is derived.
+
+```
+idle          no frames (nothing built, or the input failed to parse)
+precomputing  a build is in flight
+paused        frames exist, the cursor is stopped
+playing       frames exist, the clock is running
+editing       the structure is being changed; frames are discarded
+```
+
+| from \ event | invalidate | precompute | ready | play | pause | end | edit | commit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| idle | idle | precomputing | - | - | - | - | editing | - |
+| precomputing | idle | - | paused | - | - | - | - | - |
+| paused | idle | - | - | playing | - | - | editing | - |
+| playing | idle | - | - | - | paused | paused | editing | - |
+| editing | - | - | - | - | - | - | - | idle |
+
+`-` means the event is ignored. `invalidate` is what any structural change
+sends: it pauses playback, discards the frame array, and leaves the machine in
+`idle`, so the next `play` has to go through `precompute` again. `edit` does
+the same and lands in `editing`, from which `commit` returns to `idle`. There
+is no path from `playing` or `paused` to a structural change that keeps the
+frames: no structural edits mid-run, ever.
+
+Today the build is synchronous, so `precomputing` is entered and left within
+one effect, and nothing in the UI sends `edit` - the graph editor is deferred.
+Both states exist now so that an asynchronous build and the editor slot in
+without touching the machine.
+
+### 3. Graphs travel in the URL as a compact edge list, with a cap
+
+The `g` param is the edge list, and it is the same string the text field
+shows:
+
+```
+g=0-1,0-2,1-3:5,2-3:2,7
+```
+
+- `a-b` is an edge between integer node ids; `a-b:w` gives it a weight.
+- A bare `n` declares an isolated node. Node ids run `0..max` and every id
+  below the maximum exists, so `7` alone is a graph of eight nodes.
+- Direction is a separate param (`directed=1`); for undirected graphs each
+  edge is listed once.
+- Tokens are separated by commas, which the query-string serializer keeps
+  literal (it also keeps `:`), so the URL is readable and the same length as
+  the field.
+
+**Cap: 4,000 characters for the encoded `g` value.** Every current browser
+and host accepts URLs far longer than that; the cap keeps the whole link
+under the 8 KB request-line limit of common proxies with room to spare, and
+it fits every built-in preset at the 150-node target (a 12x13 lattice is
+about 2.2 KB). Past the cap the run still works, but the page holds the graph
+in memory instead of the URL: the header shows **custom graph - not
+shareable**, Copy link is disabled, and a reload or back navigation returns
+to the defaults. A link is never produced that would fail to reproduce its
+run.
+
 # House rules
 
 - **Strict TypeScript, no `any`.** `noUncheckedIndexedAccess` is on, which is
