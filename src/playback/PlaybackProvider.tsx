@@ -17,6 +17,7 @@ import {
 
 import type { Frame } from '../core/types';
 import { frameDwellMs } from './dwell';
+import { transition, type Mode, type ModeEvent } from './mode';
 
 export const MIN_SPEED = 0.25;
 export const MAX_SPEED = 16;
@@ -26,6 +27,8 @@ export interface PlaybackValue {
   readonly frame: Frame | null;
   readonly index: number;
   readonly count: number;
+  readonly mode: Mode;
+  /** Derived: `mode === 'playing'`. */
   readonly playing: boolean;
   readonly speed: number;
   readonly atStart: boolean;
@@ -62,19 +65,27 @@ export interface PlaybackProviderProps {
 
 export function PlaybackProvider({ frames, children }: PlaybackProviderProps): ReactNode {
   const [index, setIndexState] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [mode, setMode] = useState<Mode>('idle');
   const [speed, setSpeedState] = useState(1);
   const [jumped, setJumped] = useState(false);
 
   const indexRef = useRef(0);
   const lastIndex = Math.max(0, frames.length - 1);
+  const playing = mode === 'playing';
 
+  const send = useCallback((...events: readonly ModeEvent[]) => {
+    setMode((current) => events.reduce(transition, current));
+  }, []);
+
+  // A new frame array is a structural change: the old run is discarded and,
+  // because the build already happened upstream, rebuilt in the same effect.
   useEffect(() => {
     indexRef.current = 0;
     setIndexState(0);
-    setPlaying(false);
     setJumped(true);
-  }, [frames]);
+    if (frames.length === 0) send('invalidate');
+    else send('invalidate', 'precompute', 'ready');
+  }, [frames, send]);
 
   const moveTo = useCallback(
     (next: number, viaJump: boolean) => {
@@ -89,31 +100,31 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
   const play = useCallback(() => {
     if (frames.length === 0) return;
     if (indexRef.current >= frames.length - 1) moveTo(0, true);
-    setPlaying(true);
-  }, [frames.length, moveTo]);
+    send('play');
+  }, [frames.length, moveTo, send]);
 
-  const pause = useCallback(() => setPlaying(false), []);
+  const pause = useCallback(() => send('pause'), [send]);
   const toggle = useCallback(() => (playing ? pause() : play()), [pause, play, playing]);
   const stepForward = useCallback(() => {
-    setPlaying(false);
+    send('pause');
     moveTo(indexRef.current + 1, false);
-  }, [moveTo]);
+  }, [moveTo, send]);
   const stepBack = useCallback(() => {
-    setPlaying(false);
+    send('pause');
     moveTo(indexRef.current - 1, false);
-  }, [moveTo]);
+  }, [moveTo, send]);
   const seek = useCallback((next: number) => {
-    setPlaying(false);
+    send('pause');
     moveTo(next, true);
-  }, [moveTo]);
+  }, [moveTo, send]);
   const reset = useCallback(() => {
-    setPlaying(false);
+    send('pause');
     moveTo(0, true);
-  }, [moveTo]);
+  }, [moveTo, send]);
   const toEnd = useCallback(() => {
-    setPlaying(false);
+    send('pause');
     moveTo(frames.length - 1, true);
-  }, [frames.length, moveTo]);
+  }, [frames.length, moveTo, send]);
   const setSpeed = useCallback((next: number) => {
     setSpeedState(clamp(next, MIN_SPEED, MAX_SPEED));
   }, []);
@@ -145,7 +156,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
         setIndexState(cursor);
         setJumped(advance > 1);
         if (cursor >= lastFrameIndex) {
-          setPlaying(false);
+          send('end');
           return;
         }
       }
@@ -154,7 +165,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [playing, speed, frames]);
+  }, [playing, speed, frames, send]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -211,6 +222,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
       frame: frames[index] ?? null,
       index,
       count: frames.length,
+      mode,
       playing,
       speed,
       atStart: index <= 0,
@@ -232,6 +244,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
       index,
       jumped,
       lastIndex,
+      mode,
       pause,
       play,
       playing,
