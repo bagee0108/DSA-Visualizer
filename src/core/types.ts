@@ -53,11 +53,14 @@ export interface TreeNodeSnapshot {
   readonly terminal?: boolean;
 }
 
-export interface TreeStrip {
+/** A row of chips under the structure: a queue, a stack, a priority queue, the output order. */
+export interface Strip {
   readonly label: string;
-  readonly kind: 'queue' | 'stack' | 'output';
+  readonly kind: 'queue' | 'stack' | 'pq' | 'output';
   readonly items: readonly { readonly id: string; readonly label: string }[];
 }
+
+export type TreeStrip = Strip;
 
 export interface TreeSnapshot {
   readonly kind: 'tree';
@@ -67,7 +70,42 @@ export interface TreeSnapshot {
   readonly strips: readonly TreeStrip[];
 }
 
-export type StructureSnapshot = ArraySnapshot | TreeSnapshot;
+export interface GraphNode {
+  readonly id: string;
+  readonly label: string;
+  /** Unit coordinates, fixed for the run; the renderer scales them. */
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface GraphEdge {
+  readonly id: string;
+  readonly from: string;
+  readonly to: string;
+  readonly weight?: number;
+}
+
+/** Topology plus layout. Immutable for a whole run and shared by reference across its frames. */
+export interface Graph {
+  readonly directed: boolean;
+  readonly weighted: boolean;
+  readonly nodes: readonly GraphNode[];
+  readonly edges: readonly GraphEdge[];
+}
+
+export interface GraphSnapshot {
+  readonly kind: 'graph';
+  /** The same object in every frame of a run; never mutated. */
+  readonly graph: Graph;
+  readonly visited: readonly string[];
+  /** Edge ids that currently form the search tree (the `prev` pointers). */
+  readonly treeEdges: readonly string[];
+  /** Text beside each node: a distance, a discovery time, a set representative. */
+  readonly labels: Readonly<Record<string, string>>;
+  readonly strips: readonly Strip[];
+}
+
+export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot;
 
 export type HighlightRole =
   | 'comparing'
