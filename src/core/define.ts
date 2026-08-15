@@ -45,7 +45,7 @@ export interface AlgorithmMeta {
   readonly inPlace?: boolean;
 }
 
-export type FieldKind = 'numbers' | 'number' | 'text' | 'select';
+export type FieldKind = 'numbers' | 'number' | 'text' | 'select' | 'edges';
 
 export interface SelectOption {
   readonly value: string;
@@ -78,6 +78,8 @@ export interface AlgorithmDefinition<TInput> {
   readonly run: (input: TInput) => FrameGenerator;
   readonly presets?: readonly PresetSpec[];
   readonly sizeRange?: { readonly min: number; readonly max: number; readonly step: number };
+  /** How big the current input is, for the preset size slider. Defaults to counting `input`. */
+  readonly sizeOf?: (params: ParamMap) => number;
 }
 
 export type BuildResult =
@@ -89,12 +91,18 @@ export interface RegisteredAlgorithm {
   readonly fields: readonly FieldSpec[];
   readonly presets: readonly PresetSpec[];
   readonly sizeRange: { readonly min: number; readonly max: number; readonly step: number };
+  readonly sizeOf: (params: ParamMap) => number;
   readonly defaults: ParamMap;
   readonly build: (params: ParamMap) => BuildResult;
   readonly codeLines: readonly string[];
 }
 
 export const MAX_FRAMES = 120000;
+
+export function countTokens(value: string | undefined): number {
+  if (value === undefined) return 0;
+  return value.split(/[\s,;]+/).filter((token) => token.length > 0).length;
+}
 
 export function defineAlgorithm<TInput>(def: AlgorithmDefinition<TInput>): RegisteredAlgorithm {
   const defaults: Record<string, string> = {};
@@ -105,6 +113,7 @@ export function defineAlgorithm<TInput>(def: AlgorithmDefinition<TInput>): Regis
     fields: def.fields,
     presets: def.presets ?? [],
     sizeRange: def.sizeRange ?? { min: 4, max: 200, step: 1 },
+    sizeOf: def.sizeOf ?? ((params) => countTokens(params.input)),
     defaults,
     codeLines: def.meta.code.replace(/\s+$/, '').split('\n'),
     build(params: ParamMap): BuildResult {

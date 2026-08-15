@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 
-import type { FieldSpec, ParamMap, RegisteredAlgorithm } from '../core/define';
+import { countTokens, type FieldSpec, type ParamMap, type RegisteredAlgorithm } from '../core/define';
 import { makeRng, randomSeed } from '../core/random';
 
 export interface InputPanelProps {
@@ -12,18 +12,13 @@ export interface InputPanelProps {
   readonly onApply: (params: ParamMap) => void;
 }
 
-function countElements(value: string | undefined): number {
-  if (value === undefined) return 0;
-  return value.split(/[\s,;]+/).filter((token) => token.length > 0).length;
-}
-
 export function InputPanel({ algorithm, params, error, onApply }: InputPanelProps): ReactNode {
   const [draft, setDraft] = useState<Record<string, string>>(() => ({ ...algorithm.defaults, ...params }));
-  const [size, setSize] = useState(() => Math.max(4, countElements(params.input)));
+  const [size, setSize] = useState(() => Math.max(algorithm.sizeRange.min, algorithm.sizeOf(params)));
 
   useEffect(() => {
     setDraft({ ...algorithm.defaults, ...params });
-    const next = countElements(params.input);
+    const next = algorithm.sizeOf(params);
     if (next > 0) setSize(next);
   }, [algorithm, params]);
 
@@ -48,11 +43,14 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
             {field.label}
           </label>
           {field.kind === 'numbers' && (
-            <span className="font-mono text-[10px] text-slate-400">{countElements(value)} elements</span>
+            <span className="font-mono text-[10px] text-slate-400">{countTokens(value)} elements</span>
+          )}
+          {field.kind === 'edges' && (
+            <span className="font-mono text-[10px] text-slate-400">{countTokens(value)} edges</span>
           )}
         </div>
 
-        {field.kind === 'numbers' ? (
+        {field.kind === 'numbers' || field.kind === 'edges' ? (
           <textarea
             id={`field-${field.key}`}
             value={value}
