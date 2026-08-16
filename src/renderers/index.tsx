@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from 'react';
 
 import type { Frame } from '../core/types';
 import { ArrayRenderer } from './ArrayRenderer';
+import { GraphRenderer } from './GraphRenderer';
 import { TreeRenderer, treeRunBound } from './TreeRenderer';
 
 export interface StructureCanvasProps {
@@ -38,6 +39,16 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           durationMs={durationMs}
         />
       );
+    case 'graph':
+      return (
+        <GraphRenderer
+          snapshot={frame.structure}
+          highlights={frame.highlights}
+          pointers={frame.pointers}
+          animate={animate}
+          durationMs={durationMs}
+        />
+      );
     default:
       return (
         <div className="flex h-full items-center justify-center text-sm text-slate-500">
@@ -48,4 +59,5 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
 }
 
 export { ArrayRenderer } from './ArrayRenderer';
+export { GraphRenderer } from './GraphRenderer';
 export { TreeRenderer } from './TreeRenderer';

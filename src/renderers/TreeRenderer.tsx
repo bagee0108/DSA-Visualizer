@@ -8,47 +8,15 @@
 
 import { memo, useMemo, type ReactNode } from 'react';
 
-import type {
-  EntityId,
-  Frame,
-  Highlights,
-  HighlightRole,
-  Pointers,
-  TreeNodeSnapshot,
-  TreeSnapshot,
-  TreeStrip,
-} from '../core/types';
+import type { Frame, Highlights, Pointers, TreeNodeSnapshot, TreeSnapshot } from '../core/types';
+import { ROLE_COLOR, resolveRoles } from './roles';
+import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
 
-const VIEW_W = 1000;
 const VIEW_H = 400;
-const PAD_X = 16;
 const TREE_TOP = 28;
-const STRIP_HEIGHT = 46;
 const MAX_SLOT = 88;
 const MAX_LEVEL_HEIGHT = 66;
 const BADGE_MIN_SLOT = 36;
-
-const ROLE_COLOR: Record<HighlightRole, string> = {
-  comparing: 'var(--viz-comparing)',
-  swapped: 'var(--viz-swapped)',
-  pivot: 'var(--viz-pivot)',
-  candidate: 'var(--viz-candidate)',
-  sorted: 'var(--viz-sorted)',
-  visited: 'var(--viz-visited)',
-  active: 'var(--viz-active)',
-  excluded: 'var(--viz-excluded)',
-};
-
-const ROLE_PRIORITY: readonly HighlightRole[] = [
-  'swapped',
-  'comparing',
-  'pivot',
-  'candidate',
-  'active',
-  'sorted',
-  'visited',
-  'excluded',
-];
 
 export interface TreeRunBound {
   readonly columns: number;
@@ -113,16 +81,6 @@ export function treeRunBound(frames: readonly Frame[]): TreeRunBound {
     if (size.depth > depth) depth = size.depth;
   }
   return { columns, depth, strips };
-}
-
-function resolveRoles(highlights: Highlights): ReadonlyMap<EntityId, HighlightRole> {
-  const roles = new Map<EntityId, HighlightRole>();
-  for (let p = ROLE_PRIORITY.length - 1; p >= 0; p--) {
-    const role = ROLE_PRIORITY[p];
-    if (role === undefined) continue;
-    for (const id of highlights[role] ?? []) roles.set(id, role);
-  }
-  return roles;
 }
 
 interface Scale {
@@ -355,58 +313,6 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
         />
       ))}
     </svg>
-  );
-}
-
-interface StripRowProps {
-  readonly strip: TreeStrip;
-  readonly y: number;
-  readonly roles: ReadonlyMap<EntityId, HighlightRole>;
-  readonly transition: string;
-}
-
-function StripRow({ strip, y, roles, transition }: StripRowProps): ReactNode {
-  const labelWidth = 92;
-  const available = VIEW_W - PAD_X * 2 - labelWidth;
-  const chip = Math.min(44, available / Math.max(1, strip.items.length));
-  const chipW = chip - 4;
-  const hint = strip.kind === 'queue' ? 'front -> back' : strip.kind === 'stack' ? 'bottom -> top' : 'in order';
-
-  return (
-    <g>
-      <text x={PAD_X} y={y + 16} fontSize={11} fill="var(--viz-text-dim)" className="font-mono">
-        {strip.label}
-      </text>
-      <text x={PAD_X} y={y + 29} fontSize={8.5} fill="var(--viz-text-dim)" opacity={0.7} className="font-mono">
-        {hint}
-      </text>
-      {strip.items.length === 0 && (
-        <text x={PAD_X + labelWidth} y={y + 20} fontSize={10} fill="var(--viz-text-dim)" opacity={0.6}>
-          empty
-        </text>
-      )}
-      {strip.items.map((item, index) => {
-        const x = PAD_X + labelWidth + index * chip;
-        const role = roles.get(`${strip.kind}:${item.id}`) ?? roles.get(item.id);
-        const fill = role === undefined ? 'var(--viz-excluded)' : ROLE_COLOR[role];
-        return (
-          <g key={`${strip.kind}-${item.id}`} style={{ transform: `translate(${x}px, ${y}px)`, transition }}>
-            <rect width={chipW} height={28} rx={5} fill={fill} opacity={role === undefined ? 0.7 : 1} />
-            <text
-              x={chipW / 2}
-              y={18}
-              textAnchor="middle"
-              fontSize={11}
-              fontWeight={600}
-              fill={role === undefined ? 'var(--viz-text)' : '#fff'}
-              className="font-mono"
-            >
-              {item.label}
-            </text>
-          </g>
-        );
-      })}
-    </g>
   );
 }
 
