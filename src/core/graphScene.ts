@@ -169,6 +169,12 @@ export class GraphScene {
     };
   }
 
+  /* ---------------- strips ---------------- */
+
+  strip(kind: Strip['kind'], label: string, ids: readonly string[]): Strip {
+    return { label, kind, items: ids.map((id) => ({ id, label: this.label(id) })) };
+  }
+
   /* ---------------- frames ---------------- */
 
   private visitedSnapshot(): readonly string[] {

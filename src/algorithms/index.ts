@@ -14,6 +14,7 @@ import { redBlack } from './trees/redBlack';
 import { binaryHeap } from './trees/binaryHeap';
 import { trie } from './trees/trie';
 import { treeTraversals } from './trees/traversals';
+import { bfs } from './graphs/bfs';
 
 register(quicksort);
 register(mergesort);
@@ -29,5 +30,8 @@ register(redBlack);
 register(binaryHeap);
 register(trie);
 register(treeTraversals);
+
+// Phase 3 - graphs
+register(bfs);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
