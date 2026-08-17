@@ -15,7 +15,7 @@ const PAD = 0.04;
 const ITERATIONS = 260;
 
 export function gridColumns(nodeCount: number): number {
-  return Math.max(1, Math.ceil(Math.sqrt(nodeCount * 2)));
+  return Math.max(1, Math.ceil(Math.sqrt(nodeCount * LAYOUT_ASPECT)));
 }
 
 function ring(nodeCount: number): Point[] {
@@ -64,9 +64,10 @@ function fit(points: readonly Point[]): Point[] {
 function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
   if (nodeCount <= 2) return ring(nodeCount);
   const height = 1 / LAYOUT_ASPECT;
-  const k = Math.sqrt((1 * height) / nodeCount);
+  const k = 1.1 * Math.sqrt((1 * height) / nodeCount);
   const xs = ring(nodeCount).map((p) => p.x);
   const ys = ring(nodeCount).map((p) => p.y);
+  const clamp = (value: number, high: number): number => (value < PAD ? PAD : value > high - PAD ? high - PAD : value);
   const dx = new Float64Array(nodeCount);
   const dy = new Float64Array(nodeCount);
 
@@ -114,13 +115,14 @@ function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
       // Gravity keeps disconnected components in the frame.
       const gx = 0.5 - (xs[i] ?? 0);
       const gy = height / 2 - (ys[i] ?? 0);
-      const vx = (dx[i] ?? 0) + gx * 0.08;
-      const vy = (dy[i] ?? 0) + gy * 0.08;
+      const vx = (dx[i] ?? 0) + gx * 0.02;
+      const vy = (dy[i] ?? 0) + gy * 0.02;
       const speed = Math.hypot(vx, vy);
       if (speed < 1e-12) continue;
       const step = Math.min(speed, temperature);
-      xs[i] = (xs[i] ?? 0) + (vx / speed) * step;
-      ys[i] = (ys[i] ?? 0) + (vy / speed) * step;
+      // Stay inside the box, so disconnected components settle at its edges instead of flying off.
+      xs[i] = clamp((xs[i] ?? 0) + (vx / speed) * step, 1);
+      ys[i] = clamp((ys[i] ?? 0) + (vy / speed) * step, height);
     }
   }
 
