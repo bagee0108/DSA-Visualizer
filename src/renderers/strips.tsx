@@ -8,6 +8,8 @@ import { ROLE_COLOR } from './roles';
 export const STRIP_HEIGHT = 46;
 export const VIEW_W = 1000;
 export const PAD_X = 16;
+/** Past this many chips a strip shows only the end that matters and a +n marker. */
+const MAX_CHIPS = 24;
 
 const HINT: Record<Strip['kind'], string> = {
   queue: 'front -> back',
@@ -26,8 +28,15 @@ export interface StripRowProps {
 export function StripRow({ strip, y, roles, transition }: StripRowProps): ReactNode {
   const labelWidth = 92;
   const available = VIEW_W - PAD_X * 2 - labelWidth;
-  const chip = Math.min(44, available / Math.max(1, strip.items.length));
+  const overflow = Math.max(0, strip.items.length - MAX_CHIPS);
+  // Queues and priority queues matter at the front; stacks and output at the end.
+  const tailSide = strip.kind === 'stack' || strip.kind === 'output';
+  const items = overflow === 0 ? strip.items : tailSide ? strip.items.slice(overflow) : strip.items.slice(0, MAX_CHIPS);
+  const slots = items.length + (overflow > 0 ? 1 : 0);
+  const chip = Math.min(44, available / Math.max(1, slots));
   const chipW = chip - 4;
+  const markerIndex = tailSide ? 0 : items.length;
+  const offset = tailSide && overflow > 0 ? 1 : 0;
 
   return (
     <g>
@@ -42,8 +51,20 @@ export function StripRow({ strip, y, roles, transition }: StripRowProps): ReactN
           empty
         </text>
       )}
-      {strip.items.map((item, index) => {
-        const x = PAD_X + labelWidth + index * chip;
+      {overflow > 0 && (
+        <text
+          x={PAD_X + labelWidth + markerIndex * chip + chipW / 2}
+          y={y + 18}
+          textAnchor="middle"
+          fontSize={10}
+          fill="var(--viz-text-dim)"
+          className="font-mono"
+        >
+          +{overflow}
+        </text>
+      )}
+      {items.map((item, index) => {
+        const x = PAD_X + labelWidth + (index + offset) * chip;
         const role = roles.get(`${strip.kind}:${item.id}`) ?? roles.get(item.id);
         const fill = role === undefined ? 'var(--viz-excluded)' : ROLE_COLOR[role];
         return (
