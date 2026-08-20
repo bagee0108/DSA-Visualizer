@@ -290,15 +290,15 @@ g=0-1,0-2,1-3:5,2-3:2,7
   literal (it also keeps `:`), so the URL is readable and the same length as
   the field.
 
-**Cap: 4,000 characters for the encoded `g` value.** Every current browser
-and host accepts URLs far longer than that; the cap keeps the whole link
-under the 8 KB request-line limit of common proxies with room to spare, and
-it fits every built-in preset at the 150-node target (a 12x13 lattice is
-about 2.2 KB). Past the cap the run still works, but the page holds the graph
-in memory instead of the URL: the header shows **custom graph - not
-shareable**, Copy link is disabled, and a reload or back navigation returns
-to the defaults. A link is never produced that would fail to reproduce its
-run.
+**Cap: 4,000 characters for the query string** (`MAX_QUERY_LENGTH` in
+`VisualizePage`). Every current browser and host accepts URLs far longer than
+that; the cap keeps the whole link under the 8 KB request-line limit of
+common proxies with room to spare, and it fits every built-in preset at the
+150-node target (a 19x8 lattice is about 1.8 KB). Past the cap the run still
+works, but the page holds the params in memory instead of the URL: the header
+shows **custom graph - not shareable**, Copy link is disabled, and a reload
+or any navigation returns to the URL's run. A link is never produced that
+would fail to reproduce its run.
 
 # House rules
 

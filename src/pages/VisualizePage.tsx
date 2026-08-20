@@ -21,6 +21,12 @@ import { CATEGORY_LABEL } from '../catalog';
 
 const NO_FRAMES: readonly Frame[] = [];
 
+/**
+ * Longest query string that is written into the URL. Past it the run is held
+ * in memory and marked not shareable; see CONTRIBUTING "Graphs".
+ */
+export const MAX_QUERY_LENGTH = 4000;
+
 function searchToParams(search: string): ParamMap {
   const params: Record<string, string> = {};
   for (const [key, value] of new URLSearchParams(search)) params[key] = value;
@@ -69,7 +75,11 @@ export function VisualizePage({ algorithmId }: VisualizePageProps): ReactNode {
 function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {
   const { search, navigate } = useRouter();
 
-  const params = useMemo(() => searchToParams(search), [search]);
+  // Params too long for the URL live here instead; any navigation drops them.
+  const [unshareable, setUnshareable] = useState<ParamMap | null>(null);
+  useEffect(() => setUnshareable(null), [search, algorithm]);
+
+  const params = useMemo(() => unshareable ?? searchToParams(search), [search, unshareable]);
   const merged = useMemo<ParamMap>(() => ({ ...algorithm.defaults, ...params }), [algorithm, params]);
 
   const result = useMemo(() => algorithm.build(params), [algorithm, params]);
@@ -82,7 +92,13 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
 
   const onApply = useCallback(
     (next: ParamMap) => {
-      navigate(`/visualize/${algorithm.meta.id}${paramsToSearch(next, algorithm.defaults)}`);
+      const query = paramsToSearch(next, algorithm.defaults);
+      if (query.length > MAX_QUERY_LENGTH) {
+        setUnshareable(next);
+        return;
+      }
+      setUnshareable(null);
+      navigate(`/visualize/${algorithm.meta.id}${query}`);
     },
     [algorithm.defaults, algorithm.meta.id, navigate],
   );
@@ -90,7 +106,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   return (
     <PlaybackProvider frames={frames}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2 lg:p-3">
-        <AlgorithmHeader algorithm={algorithm} />
+        <AlgorithmHeader algorithm={algorithm} shareable={unshareable === null} />
 
         <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
           <div className="flex min-h-0 flex-col gap-2">
@@ -112,8 +128,9 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   );
 }
 
-function AlgorithmHeader({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {
+function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgorithm; shareable: boolean }): ReactNode {
   const [copied, setCopied] = useState(false);
+  const what = algorithm.meta.structureKind === 'graph' ? 'graph' : 'input';
 
   const copyLink = (): void => {
     void navigator.clipboard.writeText(window.location.href).then(
@@ -136,11 +153,20 @@ function AlgorithmHeader({ algorithm }: { algorithm: RegisteredAlgorithm }): Rea
       <p className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">
         {algorithm.meta.blurb}
       </p>
+      {!shareable && (
+        <span
+          className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+          title={`The ${what} is longer than a URL can safely carry, so this run lives only in this tab.`}
+        >
+          custom {what} - not shareable
+        </span>
+      )}
       <button
         type="button"
         onClick={copyLink}
-        className="ml-auto rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-        title="Copy a link that reproduces this exact run"
+        disabled={!shareable}
+        className={`${shareable ? 'ml-auto' : ''} rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100`}
+        title={shareable ? 'Copy a link that reproduces this exact run' : `This ${what} does not fit in a URL`}
       >
         {copied ? 'Link copied' : 'Copy link'}
       </button>
