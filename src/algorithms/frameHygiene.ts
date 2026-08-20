@@ -51,6 +51,8 @@ export function indexPointer(frame: Frame, name: string): number | undefined {
 export interface HygieneOptions {
   readonly allowNonEmptyFinalStack?: boolean;
   readonly allowSizeChange?: boolean;
+  /** Recursion bound; a DFS legitimately goes as deep as the node count. */
+  readonly maxStackDepth?: number;
 }
 
 export function expectFrameHygiene(
@@ -71,7 +73,7 @@ export function expectFrameHygiene(
 
     expect(frame.explanation.trim().length, `${where}: explanation`).toBeGreaterThan(0);
 
-    expect(frame.callStack.length, `${where}: stack depth`).toBeLessThan(64);
+    expect(frame.callStack.length, `${where}: stack depth`).toBeLessThan(options.maxStackDepth ?? 64);
 
     if (previous !== null) {
       for (const key of ['comparisons', 'swaps', 'reads', 'writes', 'recursiveCalls'] as const) {
