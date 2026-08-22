@@ -16,6 +16,7 @@ import { trie } from './trees/trie';
 import { treeTraversals } from './trees/traversals';
 import { bfs } from './graphs/bfs';
 import { dfs } from './graphs/dfs';
+import { dijkstra } from './graphs/dijkstra';
 
 register(quicksort);
 register(mergesort);
@@ -35,5 +36,6 @@ register(treeTraversals);
 // Phase 3 - graphs
 register(bfs);
 register(dfs);
+register(dijkstra);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';

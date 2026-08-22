@@ -30,8 +30,14 @@ export function edgeRef(edge: GraphEdge): string {
   return `edge:${edge.id}`;
 }
 
+export interface GraphSceneOptions {
+  /** Counter name for visit(); "nodes settled" reads better for Dijkstra. */
+  readonly visitedCounter?: string;
+}
+
 export class GraphScene {
   readonly graph: Graph;
+  private readonly visitedCounter: string;
   private readonly nodesById = new Map<string, GraphNode>();
   private readonly adjacency = new Map<string, Neighbour[]>();
 
@@ -48,8 +54,9 @@ export class GraphScene {
   private recursiveCalls = 0;
   private readonly extra: Record<string, number> = {};
 
-  constructor(graph: Graph) {
+  constructor(graph: Graph, options: GraphSceneOptions = {}) {
     this.graph = graph;
+    this.visitedCounter = options.visitedCounter ?? 'nodes visited';
     for (const node of graph.nodes) {
       this.nodesById.set(node.id, node);
       this.adjacency.set(node.id, []);
@@ -97,7 +104,7 @@ export class GraphScene {
     if (this.visitedSet.has(id)) return;
     this.visitedSet.add(id);
     this.visitedCache = null;
-    this.bump('nodes visited');
+    this.bump(this.visitedCounter);
   }
 
   isVisited(id: string): boolean {
@@ -173,6 +180,11 @@ export class GraphScene {
 
   strip(kind: Strip['kind'], label: string, ids: readonly string[]): Strip {
     return { label, kind, items: ids.map((id) => ({ id, label: this.label(id) })) };
+  }
+
+  /** A strip whose chips are not nodes: priority-queue entries, set representatives. */
+  chips(kind: Strip['kind'], label: string, items: readonly { readonly id: string; readonly label: string }[]): Strip {
+    return { label, kind, items: [...items] };
   }
 
   /* ---------------- frames ---------------- */
