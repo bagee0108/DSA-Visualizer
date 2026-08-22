@@ -10,9 +10,10 @@ export interface Point {
 export type EdgePair = readonly [number, number];
 
 /** Width : height of the box positions are laid out in; the canvas is about this wide. */
-export const LAYOUT_ASPECT = 2.4;
+export const LAYOUT_ASPECT = 3.2;
 const PAD = 0.04;
 const ITERATIONS = 260;
+const GRAVITY = 0.3;
 
 export function gridColumns(nodeCount: number): number {
   return Math.max(1, Math.ceil(Math.sqrt(nodeCount * LAYOUT_ASPECT)));
@@ -65,6 +66,9 @@ function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
   if (nodeCount <= 2) return ring(nodeCount);
   const height = 1 / LAYOUT_ASPECT;
   const k = 1.1 * Math.sqrt((1 * height) / nodeCount);
+  // Repulsion is short range (the grid variant of Fruchterman-Reingold): beyond
+  // a few k it is zero, so a big graph does not push itself onto the frame.
+  const cutoff = 2.5 * k;
   const xs = ring(nodeCount).map((p) => p.x);
   const ys = ring(nodeCount).map((p) => p.y);
   const clamp = (value: number, high: number): number => (value < PAD ? PAD : value > high - PAD ? high - PAD : value);
@@ -81,6 +85,7 @@ function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
         let ex = (xs[i] ?? 0) - (xs[j] ?? 0);
         let ey = (ys[i] ?? 0) - (ys[j] ?? 0);
         let d = Math.hypot(ex, ey);
+        if (d >= cutoff) continue;
         if (d < 1e-6) {
           ex = 1e-4 * (i + 1);
           ey = 1e-4 * (j + 1);
@@ -115,8 +120,8 @@ function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
       // Gravity keeps disconnected components in the frame.
       const gx = 0.5 - (xs[i] ?? 0);
       const gy = height / 2 - (ys[i] ?? 0);
-      const vx = (dx[i] ?? 0) + gx * 0.02;
-      const vy = (dy[i] ?? 0) + gy * 0.02;
+      const vx = (dx[i] ?? 0) + gx * GRAVITY;
+      const vy = (dy[i] ?? 0) + gy * GRAVITY;
       const speed = Math.hypot(vx, vy);
       if (speed < 1e-12) continue;
       const step = Math.min(speed, temperature);
