@@ -4,13 +4,14 @@
  * snapshotted, each as a frozen value reused until it changes.
  */
 
-import type { CallStackEntry, Counters, Frame, Graph, GraphEdge, GraphNode, GraphSnapshot, Highlights, Pointers, Strip } from './types';
+import type { CallStackEntry, Counters, Frame, Graph, GraphEdge, GraphLink, GraphNode, GraphSnapshot, Highlights, Pointers, Strip } from './types';
 
 const NO_STRIPS: readonly Strip[] = Object.freeze([]);
 const NO_STACK: readonly CallStackEntry[] = Object.freeze([]);
 const NO_POINTERS: Pointers = Object.freeze({});
 const NO_LABELS: Readonly<Record<string, string>> = Object.freeze({});
 const NO_IDS: readonly string[] = Object.freeze([]);
+const NO_LINKS: readonly GraphLink[] = Object.freeze([]);
 
 export interface Neighbour {
   readonly edge: GraphEdge;
@@ -47,6 +48,8 @@ export class GraphScene {
   private treeCache: readonly string[] | null = NO_IDS;
   private readonly labelMap = new Map<string, string>();
   private labelCache: Readonly<Record<string, string>> | null = NO_LABELS;
+  private readonly linkMap = new Map<string, string>();
+  private linkCache: readonly GraphLink[] | null = NO_LINKS;
 
   private readonly stack: CallStackEntry[] = [];
   private stackCache: readonly CallStackEntry[] | null = null;
@@ -139,6 +142,21 @@ export class GraphScene {
     return this.labelMap.get(id);
   }
 
+  /** Point `from` at `to`, or at nothing. One link per source node. */
+  setLink(from: string, to: string | null): void {
+    if (to === null) {
+      if (this.linkMap.delete(from)) this.linkCache = null;
+      return;
+    }
+    if (this.linkMap.get(from) === to) return;
+    this.linkMap.set(from, to);
+    this.linkCache = null;
+  }
+
+  linkOf(from: string): string | undefined {
+    return this.linkMap.get(from);
+  }
+
   countComparison(count = 1): void {
     this.comparisons += count;
   }
@@ -204,6 +222,13 @@ export class GraphScene {
     return this.labelCache;
   }
 
+  private linkSnapshot(): readonly GraphLink[] {
+    if (this.linkCache === null) {
+      this.linkCache = Object.freeze([...this.linkMap].map(([from, to]) => Object.freeze({ from, to })));
+    }
+    return this.linkCache;
+  }
+
   private stackSnapshot(): readonly CallStackEntry[] {
     if (this.stack.length === 0) return NO_STACK;
     if (this.stackCache === null) this.stackCache = Object.freeze([...this.stack]);
@@ -217,6 +242,7 @@ export class GraphScene {
       visited: this.visitedSnapshot(),
       treeEdges: this.treeSnapshot(),
       labels: this.labelSnapshot(),
+      links: this.linkSnapshot(),
       strips: input.strips ?? NO_STRIPS,
     };
     return {

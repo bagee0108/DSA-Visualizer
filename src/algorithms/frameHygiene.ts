@@ -3,7 +3,7 @@
 import { expect } from 'vitest';
 
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
-import type { ArraySnapshot, Frame, Graph, GraphSnapshot, TreeSnapshot } from '../core/types';
+import type { ArraySnapshot, EntityId, Frame, Graph, GraphSnapshot, TreeSnapshot } from '../core/types';
 
 export function runFrames(algorithm: RegisteredAlgorithm, params: ParamMap): readonly Frame[] {
   const result = algorithm.build(params);
@@ -237,41 +237,69 @@ function expectWellFormedGraph(graph: Graph, where: string): void {
   }
 }
 
+interface GraphIds {
+  readonly nodes: ReadonlySet<string>;
+  readonly edges: ReadonlySet<string>;
+}
+
+/** Id sets depend only on the topology, which every frame shares, so build them once. */
+const graphIdCache = new WeakMap<Graph, GraphIds>();
+
+function graphIdsOf(topology: Graph): GraphIds {
+  let ids = graphIdCache.get(topology);
+  if (ids === undefined) {
+    ids = { nodes: new Set(topology.nodes.map((node) => node.id)), edges: new Set(topology.edges.map((edge) => edge.id)) };
+    graphIdCache.set(topology, ids);
+  }
+  return ids;
+}
+
+/** First offending item in a list, or null. A single expect per list keeps big runs fast. */
+function firstBad<T>(items: readonly T[], ok: (item: T) => boolean): T | null {
+  for (const item of items) if (!ok(item)) return item;
+  return null;
+}
+
 function expectGraphFrame(structure: GraphSnapshot, frame: Frame, where: string, topology: Graph): void {
   // Topology is shared by reference: the same object in every frame, never a copy.
   expect(structure.graph, `${where}: topology identity`).toBe(topology);
   expect(Object.isFrozen(structure.visited), `${where}: visited frozen`).toBe(true);
   expect(Object.isFrozen(structure.treeEdges), `${where}: treeEdges frozen`).toBe(true);
   expect(Object.isFrozen(structure.labels), `${where}: labels frozen`).toBe(true);
+  expect(Object.isFrozen(structure.links), `${where}: links frozen`).toBe(true);
 
-  const nodeIds = new Set(topology.nodes.map((node) => node.id));
-  const edgeIds = new Set(topology.edges.map((edge) => edge.id));
+  const ids = graphIdsOf(topology);
+  const nodeIds = ids.nodes;
+  const edgeIds = ids.edges;
 
   expect(new Set(structure.visited).size, `${where}: visited duplicates`).toBe(structure.visited.length);
-  for (const id of structure.visited) expect(nodeIds.has(id), `${where}: visited ${id}`).toBe(true);
+  expect(firstBad(structure.visited, (id) => nodeIds.has(id)), `${where}: visited unknown node`).toBeNull();
   expect(new Set(structure.treeEdges).size, `${where}: treeEdges duplicates`).toBe(structure.treeEdges.length);
-  for (const id of structure.treeEdges) expect(edgeIds.has(id), `${where}: tree edge ${id}`).toBe(true);
-  for (const id of Object.keys(structure.labels)) expect(nodeIds.has(id), `${where}: label on ${id}`).toBe(true);
+  expect(firstBad(structure.treeEdges, (id) => edgeIds.has(id)), `${where}: unknown tree edge`).toBeNull();
+  expect(firstBad(Object.keys(structure.labels), (id) => nodeIds.has(id)), `${where}: label on unknown node`).toBeNull();
+  expect(new Set(structure.links.map((link) => link.from)).size, `${where}: one link per node`).toBe(structure.links.length);
+  expect(firstBad(structure.links, (link) => nodeIds.has(link.from) && nodeIds.has(link.to)), `${where}: link off the graph`).toBeNull();
 
-  for (const [label, target] of Object.entries(frame.pointers)) {
-    expect(typeof target, `${where}: pointer ${label} must be a node id`).toBe('string');
-    if (typeof target === 'string') expect(nodeIds.has(target), `${where}: pointer ${label} -> ${target}`).toBe(true);
-  }
+  expect(
+    firstBad(Object.entries(frame.pointers), ([, target]) => typeof target === 'string' && nodeIds.has(target)),
+    `${where}: pointer to unknown node`,
+  ).toBeNull();
+
+  const validTarget = (target: EntityId): boolean => {
+    if (typeof target !== 'string') return false;
+    const edge = /^edge:(.+)$/.exec(target);
+    if (edge !== null) return edgeIds.has(edge[1] ?? '');
+    const link = /^link:(.+)$/.exec(target);
+    if (link !== null) return nodeIds.has(link[1] ?? '');
+    return /^(queue|stack|pq|output):/.test(target) || nodeIds.has(target);
+  };
   for (const [role, targets] of Object.entries(frame.highlights)) {
-    for (const target of targets ?? []) {
-      expect(typeof target, `${where}: highlight ${role} must be a string`).toBe('string');
-      if (typeof target !== 'string') continue;
-      const edge = /^edge:(.+)$/.exec(target);
-      const chip = /^(queue|stack|pq|output):/.test(target);
-      const ok = edge !== null ? edgeIds.has(edge[1] ?? '') : chip || nodeIds.has(target);
-      expect(ok, `${where}: highlight ${role} -> ${target}`).toBe(true);
-    }
+    expect(firstBad(targets ?? [], validTarget), `${where}: highlight ${role} off the graph`).toBeNull();
   }
 
   for (const strip of structure.strips) {
     expect(strip.label.length, `${where}: strip label`).toBeGreaterThan(0);
-    const chipIds = new Set(strip.items.map((item) => item.id));
-    expect(chipIds.size, `${where}: strip ${strip.label} duplicate chips`).toBe(strip.items.length);
+    expect(new Set(strip.items.map((item) => item.id)).size, `${where}: strip ${strip.label} duplicate chips`).toBe(strip.items.length);
   }
 }
 

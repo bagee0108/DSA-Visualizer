@@ -126,6 +126,9 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
         <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
         </marker>
+        <marker id="link-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+        </marker>
       </defs>
 
       {geometry.edges.map((edge) => {
@@ -162,6 +165,38 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
               </text>
             )}
           </g>
+        );
+      })}
+
+      {/* algorithm-owned pointers, bowed so they never hide under an edge */}
+      {snapshot.links.map((link) => {
+        const a = geometry.positions.get(link.from);
+        const b = geometry.positions.get(link.to);
+        if (a === undefined || b === undefined) return null;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const length = Math.hypot(dx, dy) || 1;
+        const ux = dx / length;
+        const uy = dy / length;
+        const x1 = a.x + ux * (radius + 1);
+        const y1 = a.y + uy * (radius + 1);
+        const x2 = b.x - ux * (radius + 5);
+        const y2 = b.y - uy * (radius + 5);
+        const bow = Math.min(18, length * 0.18);
+        const cx = (x1 + x2) / 2 - uy * bow;
+        const cy = (y1 + y2) / 2 + ux * bow;
+        const role = roles.get(`link:${link.from}`);
+        return (
+          <path
+            key={`link-${link.from}`}
+            d={`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`}
+            fill="none"
+            stroke={role === undefined ? 'var(--viz-pivot)' : ROLE_COLOR[role]}
+            strokeWidth={role === undefined ? 2 : 3.5}
+            strokeOpacity={role === undefined ? 0.85 : 1}
+            markerEnd="url(#link-arrow)"
+            style={{ transition: animate ? `d ${ms}ms ease-in-out, ${paint}` : 'none' }}
+          />
         );
       })}
 

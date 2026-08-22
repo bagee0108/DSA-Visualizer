@@ -93,6 +93,12 @@ export interface Graph {
   readonly edges: readonly GraphEdge[];
 }
 
+/** A pointer from one node to another that is not an edge of the graph: a union-find parent. */
+export interface GraphLink {
+  readonly from: string;
+  readonly to: string;
+}
+
 export interface GraphSnapshot {
   readonly kind: 'graph';
   /** The same object in every frame of a run; never mutated. */
@@ -100,6 +106,8 @@ export interface GraphSnapshot {
   readonly visited: readonly string[];
   /** Edge ids that currently form the search tree (the `prev` pointers). */
   readonly treeEdges: readonly string[];
+  /** Algorithm-owned pointers drawn as arrows; empty for algorithms that have none. */
+  readonly links: readonly GraphLink[];
   /** Text beside each node: a distance, a discovery time, a set representative. */
   readonly labels: Readonly<Record<string, string>>;
   readonly strips: readonly Strip[];
