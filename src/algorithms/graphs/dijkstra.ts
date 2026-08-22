@@ -70,12 +70,12 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
     structureKind: 'graph',
     blurb: 'Greedy shortest paths with the priority queue laid out live.',
     complexity: {
-      time: { best: 'O((V + E) log V)', average: 'O((V + E) log V)', worst: 'O((V + E) log V)' },
+      time: { best: 'O(E log V)', average: 'O(E log V)', worst: 'O(E log V)' },
       space: 'O(V + E)',
       notes: [
         'Greedy and correct because weights are non-negative: when a node leaves the queue with the smallest tentative distance, no path through anything still queued can be shorter.',
         'The queue is a binary heap drawn in array order, minimum first. Entries are never updated in place; an improved node is pushed again and the older entry is skipped as stale when it surfaces, which is why the queue can hold more entries than there are nodes.',
-        'Each relaxation is one push, so the log V comes from the heap: E pushes and pops at log(size) each, on top of examining every edge once per endpoint.',
+        'Each relaxation is one push, so the log V comes from the heap: up to E pushes and pops at log(size) each, on top of examining every edge once per endpoint. With V pushes at most it would read (V + E) log V; E dominates on any connected graph.',
       ],
     },
     code: CODE,
