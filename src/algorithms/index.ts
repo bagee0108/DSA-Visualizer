@@ -17,6 +17,7 @@ import { treeTraversals } from './trees/traversals';
 import { bfs } from './graphs/bfs';
 import { dfs } from './graphs/dfs';
 import { dijkstra } from './graphs/dijkstra';
+import { unionFind } from './graphs/unionFind';
 
 register(quicksort);
 register(mergesort);
@@ -37,5 +38,6 @@ register(treeTraversals);
 register(bfs);
 register(dfs);
 register(dijkstra);
+register(unionFind);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
