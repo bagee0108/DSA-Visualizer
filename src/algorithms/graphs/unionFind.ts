@@ -99,7 +99,7 @@ function binomial(size: number): EdgeListEdge[] {
 const deepPreset: PresetSpec = {
   id: 'binomial',
   label: 'Deepest tree',
-  build: (size) => ({ g: formatEdgeList(binomial(size)), layout: 'grid', finds: String(size - 1), rank: '1', compress: '1' }),
+  build: (size) => ({ g: formatEdgeList(binomial(size)), layout: 'auto', finds: String(size - 1), rank: '1', compress: '1' }),
 };
 
 type Gen = Generator<Frame, void, undefined>;
@@ -261,7 +261,7 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
       scene.visit(b);
       sets -= 1;
       scene.bump('merges');
-      history.push(`${scene.label(a)}-${scene.label(b)} merged`);
+      history.push(`${scene.label(a)}-${scene.label(b)} join`);
       yield scene.frame({
         codeLine: line,
         explanation: `${why} ${sets} set${sets === 1 ? '' : 's'} left.`,
@@ -292,7 +292,7 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
         phase: 'find',
       });
       const root = yield* find(x, 'find');
-      history.push(`find ${scene.label(x)} = ${scene.label(root)}`);
+      history.push(`f(${scene.label(x)})=${scene.label(root)}`);
       yield scene.frame({
         codeLine: LINE.findReturn,
         explanation: `find(${scene.label(x)}) = ${scene.label(root)}.`,
