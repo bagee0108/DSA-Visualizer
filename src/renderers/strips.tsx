@@ -28,12 +28,16 @@ export interface StripRowProps {
 export function StripRow({ strip, y, roles, transition }: StripRowProps): ReactNode {
   const labelWidth = 92;
   const available = VIEW_W - PAD_X * 2 - labelWidth;
-  const overflow = Math.max(0, strip.items.length - MAX_CHIPS);
+  // Chips are as wide as their longest label needs, so fewer fit when labels are words.
+  const longest = strip.items.reduce((max, item) => Math.max(max, item.label.length), 1);
+  const needed = Math.max(44, 12 + longest * 6.8);
+  const limit = Math.min(MAX_CHIPS, Math.max(3, Math.floor(available / needed)));
+  const overflow = Math.max(0, strip.items.length - limit);
   // Queues and priority queues matter at the front; stacks and output at the end.
   const tailSide = strip.kind === 'stack' || strip.kind === 'output';
-  const items = overflow === 0 ? strip.items : tailSide ? strip.items.slice(overflow) : strip.items.slice(0, MAX_CHIPS);
+  const items = overflow === 0 ? strip.items : tailSide ? strip.items.slice(overflow) : strip.items.slice(0, limit);
   const slots = items.length + (overflow > 0 ? 1 : 0);
-  const chip = Math.min(44, available / Math.max(1, slots));
+  const chip = Math.min(needed, available / Math.max(1, slots));
   const chipW = chip - 4;
   const markerIndex = tailSide ? 0 : items.length;
   const offset = tailSide && overflow > 0 ? 1 : 0;
