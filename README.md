@@ -15,7 +15,7 @@ frame.
 | --- | --- | --- |
 | 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 7 algorithms, 133 tests |
 | 2 | Trees: BST, AVL, red-black, heap, trie, traversals | **Complete** — 6 algorithms, 88 tests |
-| 3 | Graphs: BFS/DFS, Dijkstra, A*, Bellman-Ford, toposort, DSU, Kruskal, Prim, Tarjan | Planned |
+| 3 | Graphs: BFS, DFS, Dijkstra, Union-Find | **First slice complete** — 4 algorithms, 49 tests. A*, Bellman-Ford, toposort, Kruskal, Prim, Tarjan and the graph editor are deferred |
 | 4 | Segment tree, Fenwick, DP tables, KMP, backtracking | Planned |
 
 ## Quick start
@@ -94,9 +94,13 @@ src/
     define.ts      defineAlgorithm(), type erasure, frame ceiling
     scene.ts       ArrayScene: backing store + automatic counters
     treeScene.ts   TreeScene: node table + rotations + counters
+    graphScene.ts  GraphScene: topology by reference + mutable state
+    graphInput.ts  edge-list language, presets, URL cap
+    graphLayout.ts force-directed / ring / lattice positions, once per run
     registry.ts    id -> algorithm
   algorithms/      one file per algorithm, pure generators
   playback/        PlaybackProvider: the single cursor into a run
+    mode.ts        the idle / precomputing / paused / playing / editing machine
   renderers/       one renderer per structure family, frame in -> SVG out
   components/      player, code panel, counters, call stack, input
   pages/           home (searchable catalog) and visualize
@@ -121,6 +125,12 @@ reproduces exactly that run, back/forward buttons replay your history, and
 **Copy link** in the header hands you a bookmark. Only non-default values are
 written, so links stay short.
 
+Graphs travel as a compact edge list, `g=0-1,0-2,1-3:5,7` (`a-b`, `a-b:weight`,
+a lone id for an isolated node), which is also exactly what the Edges field
+shows. A query string longer than 4,000 characters is not written to the URL:
+the run still plays, the header says **custom graph - not shareable**, and Copy
+link is disabled rather than handing out a link that would not reproduce it.
+
 ## Performance notes
 
 - Frames are materialised once, up front, capped at 120k per run.
@@ -131,7 +141,14 @@ written, so links stay short.
   frames instead of queueing up.
 - Bars are keyed by a stable element id, so a swap is one CSS transform
   transition rather than a re-layout.
-- Targets: 200 elements for sorting, ~150 nodes for graphs.
+- Graph topology (nodes, positions, edges) is held by reference and shared by
+  every frame of a run; a frame carries only what changed - visited set,
+  labels, tree edges, queue contents - each frozen and reused until it moves.
+  Layout runs once at parse time.
+- Targets: 200 elements for sorting, ~150 nodes for graphs. Measured: a
+  150-node, 300-edge Dijkstra run renders in about 17 ms per frame (~1,100
+  SVG elements) in headless Chrome, so playback keeps pace with a 60 Hz
+  animation frame at every speed.
 
 ## Known limitations
 
@@ -141,6 +158,12 @@ written, so links stay short.
   rejects `delete` for this algorithm explicitly (`"delete" is not supported by
   this algorithm.`) instead of silently ignoring it, so a URL that asks for one
   fails loudly.
+- **No graph editor yet.** Graphs come from presets and the edge-list field.
+  The playback mode machine already has the `editing` state and the rule that
+  any structural change discards the run, so the editor lands without a
+  rewrite; nothing in the UI enters that state today.
+- **Very large custom graphs are not shareable.** Past 4,000 characters of
+  query string the run lives only in the current tab (see URL state above).
 
 ## Deploying
 
