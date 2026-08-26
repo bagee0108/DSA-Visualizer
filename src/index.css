@@ -2,36 +2,82 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --viz-bg: #f8fafc;
-  --viz-grid: #e2e8f0;
-  --viz-text: #0f172a;
-  --viz-text-dim: #64748b;
-
-  --viz-default: #94a3b8;
-  --viz-comparing: #f59e0b;
-  --viz-swapped: #f43f5e;
-  --viz-pivot: #8b5cf6;
-  --viz-sorted: #10b981;
-  --viz-active: #0ea5e9;
-  --viz-candidate: #06b6d4;
-  --viz-excluded: #cbd5e1;
-  --viz-visited: #a5b4fc;
-  --viz-rb-red: #dc2626;
-  --viz-rb-black: #1e293b;
-
-  --viz-region-active: rgba(99, 102, 241, 0.12);
-  --viz-region-left: rgba(16, 185, 129, 0.14);
-  --viz-region-right: rgba(14, 165, 233, 0.12);
-  --viz-region-excluded: rgba(100, 116, 139, 0.08);
-  --viz-region-sorted: rgba(16, 185, 129, 0.16);
+/* Self-hosted variable subsets. No runtime request, no npm dependency. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
 }
 
-.dark {
-  --viz-bg: #0b1120;
-  --viz-grid: #1e293b;
-  --viz-text: #e2e8f0;
-  --viz-text-dim: #94a3b8;
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+}
+
+/* The design tokens. Dark is the primary theme, so its values live here and
+   light overrides them below. See CONTRIBUTING "Design tokens". */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+
+  --spacing: 0.25rem;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.0625rem;
+  --text-ui: 0.8125rem;
+  --text-ui--line-height: 1.125rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-title: 1.0625rem;
+  --text-title--line-height: 1.5rem;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+
+  --color-ground: #0e1013;
+  --color-panel: #15181c;
+  --color-raised: #1d2126;
+  --color-line: #24282e;
+  --color-edge: #333940;
+  --color-fg: #e7eaed;
+  --color-fg-dim: #a0a8b0;
+  --color-fg-mute: #79828b;
+  --color-accent: #8fb3d9;
+  --color-danger: #ef9aa6;
+
+  /* Motion is semantic. ease-slide is order-preserving lateral movement,
+     ease-drop is a decisive arrival, ease-swap is a direct exchange. The
+     distinction is the point; do not collapse these into one curve. */
+  --ease-slide: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-drop: cubic-bezier(0, 0, 0.2, 1);
+  --ease-paint: cubic-bezier(0, 0, 0.2, 1);
+  --ease-swap: linear;
+  --ease-ui: cubic-bezier(0.2, 0, 0.3, 1);
+
+  /* Chrome transitions get these by default, so no component names a
+     duration or a curve; only the canvas, which builds its own strings. */
+  --duration-fast: 90ms;
+  --duration-ui: 140ms;
+  --default-transition-duration: var(--duration-fast);
+  --default-transition-timing-function: var(--ease-ui);
+}
+
+/* Canvas chrome tracks the surfaces so SVG knockout strokes always match the
+   background they sit on. The eight highlight roles below are semantic and
+   documented; they are the only saturated colour in the app. */
+:root {
+  --viz-bg: var(--color-ground);
+  --viz-text: var(--color-fg);
+  --viz-text-dim: var(--color-fg-dim);
+  --viz-grid: #30373f;
 
   --viz-default: #64748b;
   --viz-comparing: #fbbf24;
@@ -52,6 +98,39 @@
   --viz-region-sorted: rgba(52, 211, 153, 0.18);
 }
 
+:root:not(.dark) {
+  --color-ground: #f7f8f9;
+  --color-panel: #ffffff;
+  --color-raised: #f0f2f4;
+  --color-line: #e3e6e9;
+  --color-edge: #cdd2d7;
+  --color-fg: #14181c;
+  --color-fg-dim: #5a636c;
+  --color-fg-mute: #677079;
+  --color-accent: #2d6098;
+  --color-danger: #be1b38;
+
+  --viz-grid: #d3d8dd;
+
+  --viz-default: #94a3b8;
+  --viz-comparing: #f59e0b;
+  --viz-swapped: #f43f5e;
+  --viz-pivot: #8b5cf6;
+  --viz-sorted: #10b981;
+  --viz-active: #0ea5e9;
+  --viz-candidate: #06b6d4;
+  --viz-excluded: #cbd5e1;
+  --viz-visited: #a5b4fc;
+  --viz-rb-red: #dc2626;
+  --viz-rb-black: #1e293b;
+
+  --viz-region-active: rgba(99, 102, 241, 0.12);
+  --viz-region-left: rgba(16, 185, 129, 0.14);
+  --viz-region-right: rgba(14, 165, 233, 0.12);
+  --viz-region-excluded: rgba(100, 116, 139, 0.08);
+  --viz-region-sorted: rgba(16, 185, 129, 0.16);
+}
+
 html,
 body,
 #root {
@@ -60,13 +139,17 @@ body,
 
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--color-ground);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  line-height: var(--text-ui--line-height);
   -webkit-font-smoothing: antialiased;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--viz-grid) transparent;
+  scrollbar-color: var(--color-edge) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -75,16 +158,85 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: var(--viz-grid);
-  border-radius: 9999px;
+  background-color: var(--color-edge);
+  border-radius: var(--radius-xs);
 }
 
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 
-input[type="range"] {
-  accent-color: #6366f1;
+/* Range inputs. The track and thumb live in shadow DOM that utility classes
+   cannot reach, so both sliders are styled once here. --viz-range-progress is
+   the filled fraction, set inline by the component. */
+.viz-range {
+  --viz-range-fill: var(--color-accent);
+  appearance: none;
+  -webkit-appearance: none;
+  height: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.viz-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(
+    to right,
+    var(--viz-range-fill) var(--viz-range-progress, 0%),
+    var(--color-raised) var(--viz-range-progress, 0%)
+  );
+}
+
+.viz-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 13px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--color-fg-dim);
+  transition: background-color var(--duration-fast) var(--ease-ui);
+}
+
+.viz-range:hover::-webkit-slider-thumb {
+  background: var(--color-fg);
+}
+
+.viz-range::-moz-range-track {
+  height: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+}
+
+.viz-range::-moz-range-progress {
+  height: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--viz-range-fill);
+}
+
+.viz-range::-moz-range-thumb {
+  width: 8px;
+  height: 13px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--color-fg-dim);
+}
+
+.viz-range:hover::-moz-range-thumb {
+  background: var(--color-fg);
+}
+
+.viz-range:focus-visible {
+  outline: none;
+}
+
+.viz-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-accent);
+}
+
+.viz-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-accent);
 }
 
 @keyframes viz-node-mount {

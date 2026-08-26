@@ -18,13 +18,13 @@ function Routes(): ReactNode {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-      <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Page not found</h1>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        <code className="font-mono">{path}</code> does not match a route.
+      <h1 className="text-title font-semibold text-fg">Page not found</h1>
+      <p className="text-meta text-fg-dim">
+        <code className="font-mono text-fg">{path}</code> does not match a route.
       </p>
       <Link
         to="/"
-        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+        className="rounded-sm border border-edge bg-raised px-3 py-1 text-meta font-medium text-fg transition-colors hover:border-fg-mute"
       >
         Back to all algorithms
       </Link>
@@ -34,20 +34,20 @@ function Routes(): ReactNode {
 
 function Shell(): ReactNode {
   return (
-    <div className="flex h-full flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-3 py-1.5 dark:border-slate-800">
+    <div className="flex h-full flex-col bg-ground text-fg">
+      <header className="flex shrink-0 items-center gap-3 border-b border-line bg-panel px-3 py-1">
         <Link
           to="/"
-          className="flex items-center gap-2 text-sm font-semibold text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+          className="flex items-center gap-2 text-meta font-semibold text-fg-dim transition-colors hover:text-fg"
         >
-          <svg viewBox="0 0 20 20" className="h-4 w-4 text-indigo-500" fill="currentColor" aria-hidden="true">
+          <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
             <rect x="2" y="11" width="3" height="7" rx="1" />
             <rect x="7" y="7" width="3" height="11" rx="1" />
             <rect x="12" y="2" width="3" height="16" rx="1" />
           </svg>
           DSA Visualizer
         </Link>
-        <span className="hidden text-[11px] text-slate-400 sm:inline">
+        <span className="hidden font-mono text-micro text-fg-mute sm:inline">
           step, scrub and count every operation
         </span>
         <div className="ml-auto">

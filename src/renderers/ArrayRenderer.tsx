@@ -167,7 +167,7 @@ function ArrayRendererImpl({
   const showValues = geometry.slot >= 26;
   const showIndices = geometry.slot >= 20;
   const transition = animate
-    ? `transform ${Math.min(160, Math.max(40, durationMs * 0.7))}ms linear`
+    ? `transform ${Math.min(160, Math.max(40, durationMs * 0.7))}ms var(--ease-swap)`
     : 'none';
 
   const drawBar = (

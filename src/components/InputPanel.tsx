@@ -1,6 +1,6 @@
 /** Custom input, driven entirely by the algorithm's declared `fields`. */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { countTokens, type FieldSpec, type ParamMap, type RegisteredAlgorithm } from '../core/define';
 import { makeRng, randomSeed } from '../core/random';
@@ -11,6 +11,9 @@ export interface InputPanelProps {
   readonly error: string | null;
   readonly onApply: (params: ParamMap) => void;
 }
+
+const FIELD_CLASS =
+  'w-full rounded-sm border border-edge bg-ground px-2 py-1 font-mono text-meta text-fg outline-none placeholder:text-fg-mute focus:border-accent';
 
 export function InputPanel({ algorithm, params, error, onApply }: InputPanelProps): ReactNode {
   const [draft, setDraft] = useState<Record<string, string>>(() => ({ ...algorithm.defaults, ...params }));
@@ -23,6 +26,8 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
   }, [algorithm, params]);
 
   const dirty = algorithm.fields.some((field) => (draft[field.key] ?? '') !== (params[field.key] ?? ''));
+  const { min, max, step } = algorithm.sizeRange;
+  const sizeProgress = max === min ? 0 : ((size - min) / (max - min)) * 100;
 
   const applyPreset = (presetId: string): void => {
     const preset = algorithm.presets.find((candidate) => candidate.id === presetId);
@@ -33,20 +38,17 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
   const renderField = (field: FieldSpec): ReactNode => {
     const value = draft[field.key] ?? '';
     const update = (next: string): void => setDraft((current) => ({ ...current, [field.key]: next }));
-    const inputClass =
-      'w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-xs text-slate-800 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-100';
 
     return (
       <div key={field.key} className="space-y-1">
         <div className="flex items-baseline justify-between">
-          <label htmlFor={`field-${field.key}`} className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+          <label htmlFor={`field-${field.key}`} className="text-micro font-medium text-fg-dim">
             {field.label}
           </label>
-          {field.kind === 'numbers' && (
-            <span className="font-mono text-[10px] text-slate-400">{countTokens(value)} elements</span>
-          )}
-          {field.kind === 'edges' && (
-            <span className="font-mono text-[10px] text-slate-400">{countTokens(value)} edges</span>
+          {(field.kind === 'numbers' || field.kind === 'edges') && (
+            <span className="font-mono text-micro tabular-nums text-fg-mute">
+              {countTokens(value)} {field.kind === 'edges' ? 'edges' : 'elements'}
+            </span>
           )}
         </div>
 
@@ -58,14 +60,14 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
             placeholder={field.placeholder}
             rows={3}
             spellCheck={false}
-            className={`${inputClass} resize-y leading-relaxed`}
+            className={`${FIELD_CLASS} resize-y leading-relaxed`}
           />
         ) : field.kind === 'select' ? (
           <select
             id={`field-${field.key}`}
             value={value}
             onChange={(event) => update(event.target.value)}
-            className={inputClass}
+            className={FIELD_CLASS}
           >
             {(field.options ?? []).map((option) => (
               <option key={option.value} value={option.value}>
@@ -82,26 +84,24 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
             max={field.max}
             onChange={(event) => update(event.target.value)}
             placeholder={field.placeholder}
-            className={inputClass}
+            className={FIELD_CLASS}
           />
         )}
 
         {field.help !== undefined && (
-          <p className="text-[10px] leading-snug text-slate-400">{field.help}</p>
+          <p className="text-micro leading-snug text-fg-mute">{field.help}</p>
         )}
       </div>
     );
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-900/60">
-      <header className="border-b border-slate-200 px-3 py-1.5 dark:border-slate-800">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Input
-        </h2>
+    <section className="shrink-0 border-t border-line">
+      <header className="border-b border-line px-3 py-1.5">
+        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">Input</h2>
       </header>
 
-      <div className="space-y-3 px-3 py-2.5">
+      <div className="space-y-3 px-3 py-2">
         {algorithm.presets.length > 0 && (
           <div className="space-y-1.5">
             <div className="flex flex-wrap gap-1">
@@ -110,25 +110,26 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset.id)}
-                  className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="rounded-xs border border-line px-1.5 py-0.5 text-micro text-fg-dim transition-colors hover:border-edge hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   {preset.label}
                 </button>
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">n</span>
+              <span className="font-mono text-micro text-fg-mute">n</span>
               <input
                 type="range"
-                min={algorithm.sizeRange.min}
-                max={algorithm.sizeRange.max}
-                step={algorithm.sizeRange.step}
+                min={min}
+                max={max}
+                step={step}
                 value={size}
                 onChange={(event) => setSize(Number(event.target.value))}
-                className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-slate-800"
+                className="viz-range flex-1"
+                style={{ '--viz-range-progress': `${sizeProgress}%` } as CSSProperties}
                 aria-label="Generated input size"
               />
-              <span className="w-8 text-right font-mono text-[11px] tabular-nums text-slate-600 dark:text-slate-300">
+              <span className="w-7 shrink-0 text-right font-mono text-micro tabular-nums text-fg">
                 {size}
               </span>
             </div>
@@ -138,24 +139,22 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
         {algorithm.fields.map(renderField)}
 
         {error !== null && (
-          <p className="rounded-lg bg-rose-50 px-2 py-1.5 text-[11px] leading-snug text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-            {error}
-          </p>
+          <p className="border-l-2 border-danger pl-2 text-micro leading-snug text-danger">{error}</p>
         )}
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           <button
             type="button"
             onClick={() => onApply(draft)}
             disabled={!dirty}
-            className="flex-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 rounded-sm bg-fg px-3 py-1 text-meta font-medium text-ground transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-25"
           >
             {dirty ? 'Run this input' : 'Running'}
           </button>
           <button
             type="button"
             onClick={() => onApply({ ...algorithm.defaults })}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded-sm border border-edge px-3 py-1 text-meta font-medium text-fg-dim transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Defaults
           </button>

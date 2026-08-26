@@ -301,6 +301,91 @@ shows **custom graph - not shareable**, Copy link is disabled, and a reload
 or any navigation returns to the URL's run. A link is never produced that
 would fail to reproduce its run.
 
+# Design tokens
+
+The reference class is developer tooling, not a dashboard template: dense,
+information-first, restrained chrome, content dominant.
+
+### The chrome is monochrome so the algorithm is not
+
+The eight highlight roles in `src/renderers/roles.ts` are the only saturated
+colour in the app. Every coloured button, badge or accent competes with the
+visualization for the eye, so the chrome is greys plus one accent hue used
+only for focus rings, the active source line and the scrub fill. This is why
+the source panel marks keywords with weight instead of colour, and why phase
+chips and status badges are grey.
+
+`roles.ts` and the `--viz-*` role variables are semantic and documented. Do not
+restyle them to suit a theme.
+
+### Where the tokens live
+
+All of them are in `src/index.css`. Dark is the primary theme, so `@theme`
+holds its values and `:root:not(.dark)` overrides them for light. Because
+utilities compile to `var(--color-…)`, a component never needs a `dark:`
+variant for colour: the token flips underneath it.
+
+| group | tokens |
+| --- | --- |
+| surfaces | `ground` (page and canvas), `panel` (docked panels), `raised` (insets, chips, selected states) |
+| lines | `line` (hairline), `edge` (input borders, stronger separators) |
+| text | `fg`, `fg-dim`, `fg-mute` |
+| accent | `accent`, and `danger` for failure states only |
+
+Three background levels, no more. Hierarchy comes from those levels and 1px
+hairlines — **never** from a shadow, and never from a translucent panel.
+
+### Type
+
+Inter for UI, JetBrains Mono for the source panel, strips, node labels and
+every numeric readout. Both are self-hosted variable subsets in `public/fonts`,
+so there is no webfont request and no dependency. Numbers live in the mono
+face, which makes them tabular by construction and stops them jittering as
+playback advances.
+
+Five sizes, and only five: `text-micro` (11px), `text-meta` (12px), `text-ui`
+(13px, the body default), `text-body` (14px, explanation prose) and
+`text-title` (17px). Tailwind's own `text-sm`/`text-lg`/… still exist until the
+rollout finishes; they are not part of the scale and nothing new should use
+them.
+
+### Spacing, radius, motion
+
+Spacing is Tailwind's 4px scale (`--spacing`), used through the numeric
+utilities. No arbitrary values: `px-[13px]` is a bug, `px-3` is the rule. The
+exceptions are viewport-relative sizes, which the scale does not cover.
+
+Radii are small and there are three: `rounded-xs` (2px), `rounded-sm` (3px),
+`rounded-md` (4px).
+
+Motion is semantic, and the distinction is the point:
+
+| token | curve | means |
+| --- | --- | --- |
+| `--ease-slide` | ease-in-out | order-preserving lateral movement: in-order rank slides, strip reflow |
+| `--ease-drop` | ease-out | a decisive arrival: depth changes from a rotation, a node mounting |
+| `--ease-paint` | ease-out | a recolour |
+| `--ease-swap` | linear | a direct exchange of two array elements |
+
+Do not collapse these into one curve. A rotation reads as a rotation partly
+because its vertical motion eases out while a rank slide eases in and out; that
+correspondence is described under the tree layout rule above.
+
+Chrome hovers and presses need no token at the call site: the theme sets
+`--default-transition-duration` and `--default-transition-timing-function`, so
+a bare `transition-colors` is already 90ms on the UI curve. Canvas transitions
+are built as strings in the renderers because their duration is derived from
+the frame dwell.
+
+### The one hand-written rule set
+
+`.viz-range` in `src/index.css` styles the transport and size sliders. Range
+inputs keep their track and thumb in shadow DOM that utility classes cannot
+reach, so they are styled once there and driven by a `--viz-range-progress`
+percentage set inline. It is the only component-shaped CSS in the project.
+
+---
+
 # House rules
 
 - **Strict TypeScript, no `any`.** `noUncheckedIndexedAccess` is on, which is

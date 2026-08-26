@@ -38,43 +38,33 @@ function counterValue(key: CounterKey, counters: Counters): number {
 
 function Stat({ label, value }: { label: string; value: string }): ReactNode {
   return (
-    <div className="rounded-lg bg-slate-100 px-2 py-1.5 dark:bg-slate-800/60">
-      <dt className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="font-mono text-sm tabular-nums text-slate-800 dark:text-slate-100">{value}</dd>
+    <div className="rounded-xs bg-raised px-2 py-1">
+      <dt className="truncate text-micro uppercase tracking-wider text-fg-mute" title={label}>
+        {label}
+      </dt>
+      <dd className="font-mono text-ui tabular-nums text-fg">{value}</dd>
     </div>
   );
 }
+
+const TAG = 'rounded-xs border border-line px-1.5 py-0.5 font-mono text-micro text-fg-dim';
 
 export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): ReactNode {
   const { time, space, notes } = meta.complexity;
   const extras = Object.entries(counters.extra);
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-900/60">
-      <header className="flex items-center justify-between border-b border-slate-200 px-3 py-1.5 dark:border-slate-800">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Complexity
-        </h2>
+    <section className="shrink-0 border-t border-line">
+      <header className="flex items-center justify-between border-b border-line px-3 py-1.5">
+        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">Complexity</h2>
         <div className="flex gap-1">
-          {meta.inPlace === true && (
-            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-              in place
-            </span>
-          )}
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              meta.stable === true
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-            }`}
-          >
-            {meta.stable === true ? 'stable' : 'unstable'}
-          </span>
+          {meta.inPlace === true && <span className={TAG}>in place</span>}
+          {meta.stable !== undefined && <span className={TAG}>{meta.stable ? 'stable' : 'unstable'}</span>}
         </div>
       </header>
 
-      <div className="space-y-2.5 px-3 py-2.5">
-        <dl className="grid grid-cols-4 gap-1.5">
+      <div className="space-y-2 px-3 py-2">
+        <dl className="grid grid-cols-4 gap-1">
           <Stat label="Best" value={time.best} />
           <Stat label="Average" value={time.average} />
           <Stat label="Worst" value={time.worst} />
@@ -82,10 +72,8 @@ export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): React
         </dl>
 
         <div>
-          <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-            This run
-          </h3>
-          <dl className="grid grid-cols-2 gap-1.5">
+          <h3 className="mb-1 text-micro uppercase tracking-wider text-fg-mute">This run</h3>
+          <dl className="grid grid-cols-2 gap-1">
             {meta.trackedCounters.map((key) => (
               <Stat
                 key={key}
@@ -100,10 +88,10 @@ export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): React
         </div>
 
         {notes !== undefined && notes.length > 0 && (
-          <ul className="space-y-1 border-t border-slate-200 pt-2 dark:border-slate-800">
+          <ul className="space-y-1 border-t border-line pt-2">
             {notes.map((note) => (
-              <li key={note} className="flex gap-1.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
-                <span className="text-slate-300 dark:text-slate-600">-</span>
+              <li key={note} className="flex gap-1.5 text-micro leading-snug text-fg-dim">
+                <span className="text-fg-mute">-</span>
                 <span>{note}</span>
               </li>
             ))}

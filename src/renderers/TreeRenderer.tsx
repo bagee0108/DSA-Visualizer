@@ -182,9 +182,9 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
 
   const moveMs = Math.min(220, Math.max(60, durationMs * 0.6));
-  const slide = animate ? `transform ${moveMs}ms ease-in-out` : 'none';
-  const drop = animate ? `transform ${moveMs}ms ease-out` : 'none';
-  const mount = animate ? `viz-node-mount ${Math.min(320, moveMs + 120)}ms ease-out` : 'none';
+  const slide = animate ? `transform ${moveMs}ms var(--ease-slide)` : 'none';
+  const drop = animate ? `transform ${moveMs}ms var(--ease-drop)` : 'none';
+  const mount = animate ? `viz-node-mount ${Math.min(320, moveMs + 120)}ms var(--ease-drop)` : 'none';
   const { radius, slot, treeBottom } = scale;
   const showText = radius >= 7;
   const allBadges = slot >= BADGE_MIN_SLOT;

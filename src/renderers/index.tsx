@@ -51,7 +51,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
       );
     default:
       return (
-        <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        <div className="flex h-full items-center justify-center text-body text-fg-mute">
           No renderer registered for this structure yet.
         </div>
       );

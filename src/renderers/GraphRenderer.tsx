@@ -109,7 +109,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
   const treeEdges = useMemo(() => new Set(snapshot.treeEdges), [snapshot.treeEdges]);
 
   const ms = Math.min(220, Math.max(60, durationMs * 0.6));
-  const paint = animate ? `fill ${ms}ms ease-out, stroke ${ms}ms ease-out, stroke-width ${ms}ms ease-out` : 'none';
+  const paint = animate ? `fill ${ms}ms var(--ease-paint), stroke ${ms}ms var(--ease-paint), stroke-width ${ms}ms var(--ease-paint)` : 'none';
   const { radius } = geometry;
   const showText = radius >= 7;
   const showWeights = graph.weighted && graph.edges.length <= 220;
@@ -195,7 +195,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
             strokeWidth={role === undefined ? 2 : 3.5}
             strokeOpacity={role === undefined ? 0.85 : 1}
             markerEnd="url(#link-arrow)"
-            style={{ transition: animate ? `d ${ms}ms ease-in-out, ${paint}` : 'none' }}
+            style={{ transition: animate ? `d ${ms}ms var(--ease-slide), ${paint}` : 'none' }}
           />
         );
       })}
@@ -257,7 +257,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
       })}
 
       {snapshot.strips.map((strip, row) => (
-        <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms ease-in-out` : 'none'} />
+        <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms var(--ease-slide)` : 'none'} />
       ))}
     </svg>
   );

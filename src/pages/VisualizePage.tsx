@@ -1,6 +1,7 @@
 /**
  * One visualization screen: canvas, explanation, transport, code, call stack,
- * complexity readout and custom input.
+ * complexity readout and custom input. The canvas is the product, so every
+ * other surface docks around it with a hairline and no gap.
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -53,15 +54,15 @@ export function VisualizePage({ algorithmId }: VisualizePageProps): ReactNode {
   if (algorithm === undefined) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+        <h1 className="text-title font-semibold text-fg">
           No algorithm registered as &quot;{algorithmId}&quot;
         </h1>
-        <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
+        <p className="max-w-md text-meta text-fg-dim">
           It is probably still on the roadmap. The home page marks which phase it belongs to.
         </p>
         <Link
           to="/"
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+          className="rounded-sm border border-edge bg-raised px-3 py-1 text-meta font-medium text-fg transition-colors hover:border-fg-mute"
         >
           Back to all algorithms
         </Link>
@@ -105,18 +106,18 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
 
   return (
     <PlaybackProvider frames={frames}>
-      <div className="flex h-full min-h-0 flex-col gap-2 p-2 lg:p-3">
+      <div className="flex h-full min-h-0 flex-col">
         <AlgorithmHeader algorithm={algorithm} shareable={unshareable === null} />
 
-        <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="flex min-h-0 flex-col gap-2">
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
+          <div className="flex min-h-0 flex-col lg:border-r lg:border-line">
             <Canvas error={error} />
             <Commentary />
             <Player />
-            <ShortcutHints />
+            <StatusLine />
           </div>
 
-          <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto pr-0.5">
+          <aside className="flex min-h-0 flex-col overflow-y-auto border-t border-line bg-panel lg:border-t-0">
             <SourceView algorithm={algorithm} />
             <StackView />
             <CountersView algorithm={algorithm} />
@@ -143,19 +144,15 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
   };
 
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-        {algorithm.meta.name}
-      </h1>
-      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+    <header className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line bg-panel px-3 py-1.5">
+      <h1 className="text-title font-semibold tracking-tight text-fg">{algorithm.meta.name}</h1>
+      <span className="rounded-xs bg-raised px-1.5 py-0.5 font-mono text-micro uppercase tracking-wider text-fg-mute">
         {CATEGORY_LABEL[algorithm.meta.category]}
       </span>
-      <p className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">
-        {algorithm.meta.blurb}
-      </p>
+      <p className="hidden text-meta text-fg-dim md:block">{algorithm.meta.blurb}</p>
       {!shareable && (
         <span
-          className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+          className="ml-auto rounded-xs border border-edge px-1.5 py-0.5 font-mono text-micro text-fg-dim"
           title={`The ${what} is longer than a URL can safely carry, so this run lives only in this tab.`}
         >
           custom {what} - not shareable
@@ -165,12 +162,12 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
         type="button"
         onClick={copyLink}
         disabled={!shareable}
-        className={`${shareable ? 'ml-auto' : ''} rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100`}
+        className={`${shareable ? 'ml-auto' : ''} rounded-xs px-1.5 py-0.5 font-mono text-micro text-fg-mute transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
         title={shareable ? 'Copy a link that reproduces this exact run' : `This ${what} does not fit in a URL`}
       >
-        {copied ? 'Link copied' : 'Copy link'}
+        {copied ? 'link copied' : 'copy link'}
       </button>
-    </div>
+    </header>
   );
 }
 
@@ -178,17 +175,14 @@ function Canvas({ error }: { error: string | null }): ReactNode {
   const { frame, frames, jumped, frameDurationMs } = usePlayback();
 
   return (
-    <div
-      className="min-h-0 flex-1 rounded-xl border border-slate-200 p-1"
-      style={{ backgroundColor: 'var(--viz-bg)', borderColor: 'var(--viz-grid)' }}
-    >
+    <div className="min-h-0 flex-1 bg-ground p-1">
       {error !== null ? (
-        <div className="flex h-full flex-col items-center justify-center gap-1.5 px-6 text-center">
-          <p className="text-sm font-medium text-rose-600 dark:text-rose-400">Could not run this input</p>
-          <p className="max-w-md text-xs text-slate-500 dark:text-slate-400">{error}</p>
+        <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
+          <p className="text-meta font-medium text-danger">Could not run this input</p>
+          <p className="max-w-md text-meta text-fg-dim">{error}</p>
         </div>
       ) : frame === null ? (
-        <div className="flex h-full items-center justify-center text-sm text-slate-400">
+        <div className="flex h-full items-center justify-center text-meta text-fg-mute">
           Nothing to draw.
         </div>
       ) : (
@@ -211,7 +205,7 @@ function Commentary(): ReactNode {
 function SourceView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {
   const { frame } = usePlayback();
   return (
-    <div className="flex max-h-[40vh] min-h-[14rem] flex-col">
+    <div className="flex max-h-[40vh] min-h-56 flex-col">
       <CodePanel lines={algorithm.codeLines} activeLine={frame?.codeLine ?? 0} />
     </div>
   );
@@ -234,17 +228,20 @@ const SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
   ['R', 'reset'],
 ];
 
-function ShortcutHints(): ReactNode {
+function StatusLine(): ReactNode {
+  const { frameDurationMs } = usePlayback();
+
   return (
-    <div className="hidden flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[10px] text-slate-400 sm:flex">
+    <div className="hidden shrink-0 items-center gap-3 border-t border-line bg-panel px-3 py-1 font-mono text-micro text-fg-mute sm:flex">
       {SHORTCUTS.map(([keys, action]) => (
         <span key={keys} className="flex items-center gap-1">
-          <kbd className="rounded border border-slate-300 px-1 py-px font-mono text-[9px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            {keys}
-          </kbd>
+          <kbd className="rounded-xs border border-line px-1 text-fg-dim">{keys}</kbd>
           {action}
         </span>
       ))}
+      <span className="ml-auto tabular-nums" title="How long the current frame stays on screen">
+        {(frameDurationMs / 1000).toFixed(1)}s per frame
+      </span>
     </div>
   );
 }

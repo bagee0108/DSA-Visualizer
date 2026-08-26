@@ -5,12 +5,12 @@ import { useEffect, useRef, type ReactNode } from 'react';
 const TOKEN_PATTERN =
   /(\/\/.*$)|(\b(?:function|const|let|var|return|if|else|for|while|do|switch|case|break|continue|new|of|in|typeof)\b)|(\b(?:number|string|boolean|void|null|undefined|true|false)\b)|(\b\d+(?:\.\d+)?\b)/g;
 
-const TOKEN_CLASS = [
-  'text-slate-400 dark:text-slate-500 italic',
-  'text-violet-600 dark:text-violet-400',
-  'text-sky-600 dark:text-sky-400',
-  'text-amber-600 dark:text-amber-400',
-] as const;
+/**
+ * Syntax emphasis is monochrome on purpose: the code panel sits beside the
+ * canvas, and saturated tokens would compete with the highlight roles. Weight
+ * marks keywords, dimming marks comments.
+ */
+const TOKEN_CLASS = ['italic text-fg-mute', 'font-medium text-fg', '', ''] as const;
 
 interface Token {
   readonly text: string;
@@ -51,12 +51,10 @@ export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProp
   }, [activeLine]);
 
   return (
-    <section className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-slate-900/60">
-      <header className="flex items-center justify-between border-b border-slate-200 px-3 py-1.5 dark:border-slate-800">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {title}
-        </h2>
-        <span className="font-mono text-[11px] text-slate-400">
+    <section className="flex min-h-0 flex-col">
+      <header className="flex shrink-0 items-center justify-between border-b border-line px-3 py-1.5">
+        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">{title}</h2>
+        <span className="font-mono text-micro tabular-nums text-fg-mute">
           {activeLine > 0 ? `line ${activeLine}` : 'idle'}
         </span>
       </header>
@@ -69,20 +67,18 @@ export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProp
             <div
               key={lineNumber}
               ref={isActive ? activeRef : null}
-              className={`flex items-start gap-2 border-l-2 px-2 font-mono text-xs leading-5 ${
-                isActive
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
-                  : 'border-transparent'
+              className={`flex items-start gap-2 border-l-2 px-2 font-mono text-micro ${
+                isActive ? 'border-accent bg-raised' : 'border-transparent'
               }`}
             >
               <span
                 className={`w-6 shrink-0 select-none text-right tabular-nums ${
-                  isActive ? 'text-indigo-500' : 'text-slate-300 dark:text-slate-600'
+                  isActive ? 'text-accent' : 'text-fg-mute'
                 }`}
               >
                 {lineNumber}
               </span>
-              <code className="whitespace-pre text-slate-700 dark:text-slate-200">
+              <code className={`whitespace-pre ${isActive ? 'text-fg' : 'text-fg-dim'}`}>
                 {line.length === 0
                   ? ' '
                   : tokenize(line).map((token, tokenIndex) => (

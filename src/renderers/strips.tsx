@@ -73,7 +73,7 @@ export function StripRow({ strip, y, roles, transition }: StripRowProps): ReactN
         const fill = role === undefined ? 'var(--viz-excluded)' : ROLE_COLOR[role];
         return (
           <g key={`${strip.kind}-${item.id}`} style={{ transform: `translate(${x}px, ${y}px)`, transition }}>
-            <rect width={chipW} height={28} rx={5} fill={fill} opacity={role === undefined ? 0.7 : 1} />
+            <rect width={chipW} height={28} rx={3} fill={fill} opacity={role === undefined ? 0.7 : 1} />
             <text
               x={chipW / 2}
               y={18}

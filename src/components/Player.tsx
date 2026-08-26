@@ -1,6 +1,6 @@
 /** The transport bar. */
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { MAX_SPEED, MIN_SPEED, usePlayback } from '../playback/PlaybackProvider';
 
@@ -74,10 +74,10 @@ function ControlButton({
   children,
 }: ControlButtonProps): ReactNode {
   const base =
-    'inline-flex items-center justify-center rounded-lg transition-colors disabled:opacity-35 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500';
+    'inline-flex items-center justify-center rounded-sm border transition-colors disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent';
   const tone = primary
-    ? 'h-10 w-10 bg-indigo-600 text-white hover:bg-indigo-500'
-    : 'h-9 w-9 bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+    ? 'h-8 w-8 border-edge bg-raised text-fg hover:border-fg-mute'
+    : 'h-8 w-8 border-transparent text-fg-dim hover:bg-raised hover:text-fg';
 
   return (
     <button
@@ -113,6 +113,11 @@ function formatSpeed(speed: number): string {
   return speed >= 10 ? `${speed.toFixed(1)}x` : `${speed.toFixed(2)}x`;
 }
 
+/** Filled fraction of a range track; read by .viz-range in index.css. */
+function fill(percent: number, colour?: string): CSSProperties {
+  return { '--viz-range-progress': `${percent}%`, ...(colour === undefined ? {} : { '--viz-range-fill': colour }) } as CSSProperties;
+}
+
 export function Player(): ReactNode {
   const {
     index,
@@ -121,7 +126,6 @@ export function Player(): ReactNode {
     speed,
     atStart,
     atEnd,
-    frameDurationMs,
     play,
     pause,
     stepBack,
@@ -134,9 +138,10 @@ export function Player(): ReactNode {
 
   const lastIndex = Math.max(0, count - 1);
   const progress = lastIndex === 0 ? 0 : (index / lastIndex) * 100;
+  const speedPosition = speedToSlider(speed);
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+    <div className="flex shrink-0 flex-col gap-1.5 border-t border-line bg-panel px-3 py-2">
       <div className="flex items-center gap-3">
         <input
           type="range"
@@ -145,18 +150,16 @@ export function Player(): ReactNode {
           step={1}
           value={index}
           onChange={(event) => seek(Number(event.target.value))}
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-slate-800"
-          style={{
-            background: `linear-gradient(to right, #6366f1 ${progress}%, transparent ${progress}%)`,
-          }}
+          className="viz-range w-full"
+          style={fill(progress)}
           aria-label="Scrub through frames"
         />
-        <span className="shrink-0 font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="shrink-0 font-mono text-micro tabular-nums text-fg-dim">
           {(index + 1).toLocaleString()} / {count.toLocaleString()}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1">
         <ControlButton label="Reset" shortcut="R" onClick={reset} disabled={atStart}>
           <IconReset />
         </ControlButton>
@@ -183,29 +186,24 @@ export function Player(): ReactNode {
           <IconEnd />
         </ControlButton>
 
-        <div className="mx-1 h-6 w-px bg-slate-200 dark:bg-slate-800" />
+        <div className="mx-2 h-5 w-px bg-line" />
 
-        <div className="flex min-w-[190px] flex-1 items-center gap-2">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Speed</span>
+        <div className="flex min-w-48 flex-1 items-center gap-2">
+          <span className="font-mono text-micro uppercase tracking-wider text-fg-mute">speed</span>
           <input
             type="range"
             min={0}
             max={SLIDER_STEPS}
             step={1}
-            value={speedToSlider(speed)}
+            value={speedPosition}
             onChange={(event) => setSpeed(sliderToSpeed(Number(event.target.value)))}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-slate-800"
+            className="viz-range flex-1"
+            style={fill((speedPosition / SLIDER_STEPS) * 100, 'var(--color-fg-mute)')}
             aria-label="Playback speed"
             aria-valuetext={formatSpeed(speed)}
           />
-          <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
+          <span className="w-12 shrink-0 font-mono text-micro tabular-nums text-fg">
             {formatSpeed(speed)}
-          </span>
-          <span
-            className="hidden w-16 shrink-0 font-mono text-[11px] tabular-nums text-slate-400 xl:inline"
-            title="How long the current frame stays on screen"
-          >
-            {(frameDurationMs / 1000).toFixed(1)}s/f
           </span>
         </div>
 
@@ -216,10 +214,10 @@ export function Player(): ReactNode {
               type="button"
               onClick={() => setSpeed(mark)}
               title={mark > 4 ? 'Visuals only - the explanation goes by too fast to read' : undefined}
-              className={`rounded px-1 py-0.5 font-mono text-[11px] transition-colors ${
+              className={`rounded-xs border px-1.5 py-0.5 font-mono text-micro tabular-nums transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 Math.abs(speed - mark) < 0.01
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'
+                  ? 'border-edge bg-raised text-fg'
+                  : 'border-transparent text-fg-mute hover:text-fg'
               }`}
             >
               {mark}x
