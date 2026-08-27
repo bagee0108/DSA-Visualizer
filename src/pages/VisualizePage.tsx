@@ -198,8 +198,9 @@ function Canvas({ error }: { error: string | null }): ReactNode {
 }
 
 function Commentary(): ReactNode {
-  const { frame } = usePlayback();
-  return <ExplanationBar frame={frame} />;
+  const { frame, frameDurationMs, jumped } = usePlayback();
+  // Below a quarter of a second the fade never finishes and reads as flicker.
+  return <ExplanationBar frame={frame} animate={!jumped && frameDurationMs >= 250} />;
 }
 
 function SourceView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {

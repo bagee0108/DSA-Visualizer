@@ -310,6 +310,7 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
           y={treeBottom + 12 + row * STRIP_HEIGHT}
           roles={roles}
           transition={slide}
+          animate={animate}
         />
       ))}
     </svg>

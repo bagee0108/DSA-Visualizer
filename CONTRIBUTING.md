@@ -358,7 +358,18 @@ exceptions are viewport-relative sizes, which the scale does not cover.
 Radii are small and there are three: `rounded-xs` (2px), `rounded-sm` (3px),
 `rounded-md` (4px).
 
-Motion is semantic, and the distinction is the point:
+Durations are `--duration-fast` (120ms, hovers and presses),
+`--duration-base` (200ms, anything that travels) and `--duration-slow` (320ms,
+a card crossing the grid). Nothing names a raw millisecond value.
+
+### Motion means something, so nothing may move for decoration
+
+Inside the canvas, movement *is* the explanation: vertical means a rotation
+changed a node's depth, horizontal means a rank shifted, a mount means a node
+was created, and the curve tells the two apart. Anything that moves for looks
+in that field will be read as an algorithmic event. **No pulses, glows,
+shimmers, particles or ambient motion on nodes, edges, cells, bars or strips.**
+Polish belongs in the chrome, where there is no vocabulary to corrupt.
 
 | token | curve | means |
 | --- | --- | --- |
@@ -366,16 +377,45 @@ Motion is semantic, and the distinction is the point:
 | `--ease-drop` | ease-out | a decisive arrival: depth changes from a rotation, a node mounting |
 | `--ease-paint` | ease-out | a recolour |
 | `--ease-swap` | linear | a direct exchange of two array elements |
+| `--ease-ui` | ease-in-out-ish | chrome hovers, presses, the code line following along |
+| `--ease-enter` | ease-out | something chrome-side arriving |
+| `--ease-exit` | ease-in | something chrome-side leaving |
 
-Do not collapse these into one curve. A rotation reads as a rotation partly
-because its vertical motion eases out while a rank slide eases in and out; that
-correspondence is described under the tree layout rule above.
+The first four are load-bearing: do not collapse them into one curve. A
+rotation reads as a rotation partly because its vertical motion eases out while
+a rank slide eases in and out; that correspondence is described under the tree
+layout rule above. The last three are deliberately separate names so chrome
+polish can never borrow the canvas vocabulary.
+
+The one animation in the drawing that is not a structural event is a strip
+chip arriving or leaving, and it earns its place by being *informative*: a
+queue loses its front, a stack loses its top, so chips leave by the side they
+actually leave from. `StripRow` derives that from consecutive item lists rather
+than from playback direction, which is why stepping backwards reads correctly -
+a dequeued chip coming back is an arrival at the front, and that is what it
+looks like.
 
 Chrome hovers and presses need no token at the call site: the theme sets
 `--default-transition-duration` and `--default-transition-timing-function`, so
-a bare `transition-colors` is already 90ms on the UI curve. Canvas transitions
+a bare `transition-colors` is already 120ms on the UI curve. Canvas transitions
 are built as strings in the renderers because their duration is derived from
 the frame dwell.
+
+### Motion off
+
+`prefers-reduced-motion: reduce` sets all three duration tokens to `0ms` and
+collapses every animation and transition. Every state change still happens and
+still lands in the right place - the app has to be completely usable with
+motion off, so nothing may depend on an animation having run. Code that
+animates in JavaScript (the counter roll, the home page grid) checks
+`usePrefersReducedMotion()` and jumps straight to the final value.
+
+All motion is CSS transitions or `requestAnimationFrame`. Never `setInterval`,
+and no animation library.
+
+**A token nothing references is not emitted.** Tailwind tree-shakes unused
+theme variables, so a `var(--duration-slow)` added before anything uses it
+resolves to nothing. Check the built CSS if a token appears to do nothing.
 
 ### The one hand-written rule set
 

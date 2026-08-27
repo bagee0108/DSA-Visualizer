@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 
+import { useCountUp } from '../hooks/useMotion';
 import type { AlgorithmMeta, CounterKey } from '../core/define';
 import type { Counters } from '../core/types';
 
@@ -47,6 +48,12 @@ function Stat({ label, value }: { label: string; value: string }): ReactNode {
   );
 }
 
+/** Counts roll to their new value instead of snapping; figures are tabular so
+ *  nothing shifts while they do. */
+function CountStat({ label, value }: { label: string; value: number }): ReactNode {
+  return <Stat label={label} value={useCountUp(value).toLocaleString()} />;
+}
+
 const TAG = 'rounded-xs border border-line px-1.5 py-0.5 font-mono text-micro text-fg-dim';
 
 export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): ReactNode {
@@ -75,14 +82,10 @@ export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): React
           <h3 className="mb-1 text-micro uppercase tracking-wider text-fg-mute">This run</h3>
           <dl className="grid grid-cols-2 gap-1">
             {meta.trackedCounters.map((key) => (
-              <Stat
-                key={key}
-                label={COUNTER_LABEL[key]}
-                value={counterValue(key, counters).toLocaleString()}
-              />
+              <CountStat key={key} label={COUNTER_LABEL[key]} value={counterValue(key, counters)} />
             ))}
             {extras.map(([key, value]) => (
-              <Stat key={key} label={key} value={value.toLocaleString()} />
+              <CountStat key={key} label={key} value={value} />
             ))}
           </dl>
         </div>

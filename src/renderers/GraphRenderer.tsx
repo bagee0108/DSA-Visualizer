@@ -257,7 +257,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
       })}
 
       {snapshot.strips.map((strip, row) => (
-        <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms var(--ease-slide)` : 'none'} />
+        <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms var(--ease-slide)` : 'none'} animate={animate} />
       ))}
     </svg>
   );

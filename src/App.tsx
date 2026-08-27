@@ -33,6 +33,9 @@ function Routes(): ReactNode {
 }
 
 function Shell(): ReactNode {
+  const { path } = useRouter();
+  const route = path === '/' || path === '' ? 'home' : 'visualize';
+
   return (
     <div className="flex h-full flex-col bg-ground text-fg">
       <header className="flex shrink-0 items-center gap-3 border-b border-line bg-panel px-3 py-1">
@@ -56,7 +59,13 @@ function Shell(): ReactNode {
       </header>
 
       <main className="min-h-0 flex-1">
-        <Routes />
+        <div
+          key={route}
+          className="h-full"
+          style={{ animation: 'viz-route-in var(--duration-base) var(--ease-enter) backwards' }}
+        >
+          <Routes />
+        </div>
       </main>
     </div>
   );

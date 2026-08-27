@@ -60,6 +60,8 @@ export interface Strip {
   readonly items: readonly { readonly id: string; readonly label: string }[];
 }
 
+export type StripItem = Strip['items'][number];
+
 export type TreeStrip = Strip;
 
 export interface TreeSnapshot {

@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 
+import { usePrefersReducedMotion } from '../hooks/useMotion';
+
+/** Row height in px. The sliding highlight is positioned off it, so the row
+ *  and this constant have to agree; `text-micro` carries a 16px line box. */
+const LINE_H = 16;
+
 const TOKEN_PATTERN =
   /(\/\/.*$)|(\b(?:function|const|let|var|return|if|else|for|while|do|switch|case|break|continue|new|of|in|typeof)\b)|(\b(?:number|string|boolean|void|null|undefined|true|false)\b)|(\b\d+(?:\.\d+)?\b)/g;
 
@@ -44,11 +50,31 @@ export interface CodePanelProps {
 }
 
 export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProps): ReactNode {
-  const activeRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const userScrolledAt = useRef(0);
+  const reduced = usePrefersReducedMotion();
+
+  // A scroll the reader started wins for a while; following the active line
+  // must never yank the panel out from under them.
+  const markUserScroll = (): void => {
+    userScrolledAt.current = performance.now();
+  };
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest' });
-  }, [activeLine]);
+    const box = scrollRef.current;
+    if (box === null || activeLine <= 0) return;
+    if (performance.now() - userScrolledAt.current < 1500) return;
+
+    const top = (activeLine - 1) * LINE_H;
+    const viewTop = box.scrollTop;
+    const viewBottom = viewTop + box.clientHeight;
+    if (top >= viewTop + LINE_H && top + LINE_H <= viewBottom - LINE_H) return;
+
+    box.scrollTo({
+      top: Math.max(0, top - box.clientHeight / 2 + LINE_H / 2),
+      behavior: reduced ? 'auto' : 'smooth',
+    });
+  }, [activeLine, reduced]);
 
   return (
     <section className="flex min-h-0 flex-col">
@@ -59,37 +85,52 @@ export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProp
         </span>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto py-1">
-        {lines.map((line, position) => {
-          const lineNumber = position + 1;
-          const isActive = lineNumber === activeLine;
-          return (
-            <div
-              key={lineNumber}
-              ref={isActive ? activeRef : null}
-              className={`flex items-start gap-2 border-l-2 px-2 font-mono text-micro ${
-                isActive ? 'border-accent bg-raised' : 'border-transparent'
-              }`}
-            >
-              <span
-                className={`w-6 shrink-0 select-none text-right tabular-nums ${
-                  isActive ? 'text-accent' : 'text-fg-mute'
-                }`}
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-auto"
+        onWheel={markUserScroll}
+        onTouchStart={markUserScroll}
+        onPointerDown={markUserScroll}
+      >
+        <div className="relative">
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 border-l-2 border-accent bg-raised"
+            style={{
+              height: `${LINE_H}px`,
+              transform: `translateY(${Math.max(0, activeLine - 1) * LINE_H}px)`,
+              opacity: activeLine > 0 ? 1 : 0,
+              transition: 'transform var(--duration-base) var(--ease-slide), opacity var(--duration-fast) var(--ease-ui)',
+            }}
+          />
+          {lines.map((line, position) => {
+            const lineNumber = position + 1;
+            const isActive = lineNumber === activeLine;
+            return (
+              <div
+                key={lineNumber}
+                className="relative flex items-start gap-2 border-l-2 border-transparent px-2 font-mono text-micro"
+                style={{ height: `${LINE_H}px` }}
               >
-                {lineNumber}
-              </span>
-              <code className={`whitespace-pre ${isActive ? 'text-fg' : 'text-fg-dim'}`}>
-                {line.length === 0
-                  ? ' '
-                  : tokenize(line).map((token, tokenIndex) => (
-                      <span key={tokenIndex} className={token.className}>
-                        {token.text}
-                      </span>
-                    ))}
-              </code>
-            </div>
-          );
-        })}
+                <span
+                  className={`w-6 shrink-0 select-none text-right tabular-nums transition-colors ${
+                    isActive ? 'text-accent' : 'text-fg-mute'
+                  }`}
+                >
+                  {lineNumber}
+                </span>
+                <code className={`whitespace-pre transition-colors ${isActive ? 'text-fg' : 'text-fg-dim'}`}>
+                  {line.length === 0
+                    ? ' '
+                    : tokenize(line).map((token, tokenIndex) => (
+                        <span key={tokenIndex} className={token.className}>
+                          {token.text}
+                        </span>
+                      ))}
+                </code>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

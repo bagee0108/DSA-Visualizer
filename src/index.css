@@ -53,19 +53,23 @@
   --color-accent: #8fb3d9;
   --color-danger: #ef9aa6;
 
-  /* Motion is semantic. ease-slide is order-preserving lateral movement,
-     ease-drop is a decisive arrival, ease-swap is a direct exchange. The
-     distinction is the point; do not collapse these into one curve. */
+  /* Canvas motion is semantic and these four are load-bearing: a lateral
+     slide is an order-preserving rank shift, a drop is a rotation changing
+     depth, linear is a direct exchange. Nothing decorative may borrow them,
+     and nothing decorative belongs in the canvas at all. */
   --ease-slide: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-drop: cubic-bezier(0, 0, 0.2, 1);
   --ease-paint: cubic-bezier(0, 0, 0.2, 1);
   --ease-swap: linear;
-  --ease-ui: cubic-bezier(0.2, 0, 0.3, 1);
 
-  /* Chrome transitions get these by default, so no component names a
-     duration or a curve; only the canvas, which builds its own strings. */
-  --duration-fast: 90ms;
-  --duration-ui: 140ms;
+  /* Chrome motion. Separate names so polish can never read as an event. */
+  --ease-ui: cubic-bezier(0.2, 0, 0.3, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
   --default-transition-duration: var(--duration-fast);
   --default-transition-timing-function: var(--ease-ui);
 }
@@ -196,11 +200,18 @@ body {
   border: 0;
   border-radius: var(--radius-xs);
   background: var(--color-fg-dim);
-  transition: background-color var(--duration-fast) var(--ease-ui);
+  transition:
+    background-color var(--duration-fast) var(--ease-ui),
+    width var(--duration-fast) var(--ease-ui);
 }
 
 .viz-range:hover::-webkit-slider-thumb {
   background: var(--color-fg);
+}
+
+.viz-range:active::-webkit-slider-thumb {
+  width: 10px;
+  background: var(--color-accent);
 }
 
 .viz-range::-moz-range-track {
@@ -227,6 +238,11 @@ body {
   background: var(--color-fg);
 }
 
+.viz-range:active::-moz-range-thumb {
+  width: 10px;
+  background: var(--color-accent);
+}
+
 .viz-range:focus-visible {
   outline: none;
 }
@@ -250,9 +266,73 @@ body {
   }
 }
 
+/* Chips arriving in and leaving a strip. Direction is informative, not
+   decorative: a queue loses its front, a stack loses its top. */
+@keyframes viz-chip-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+@keyframes viz-chip-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+
+@keyframes viz-chip-out-right {
+  to {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+@keyframes viz-chip-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+
+@keyframes viz-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+@keyframes viz-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes viz-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Motion off: every duration collapses and the animations are skipped, but
+   every state change still lands. The app must be fully usable here. */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

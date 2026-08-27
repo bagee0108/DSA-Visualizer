@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
   type ReactNode,
+  type Ref,
 } from 'react';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/+$/, '');
@@ -82,13 +83,15 @@ export interface LinkProps {
   readonly to: string;
   readonly className?: string;
   readonly title?: string;
+  readonly ref?: Ref<HTMLAnchorElement>;
   readonly children: ReactNode;
 }
 
-export function Link({ to, className, title, children }: LinkProps): ReactNode {
+export function Link({ to, className, title, ref, children }: LinkProps): ReactNode {
   const { navigate } = useRouter();
   return (
     <a
+      ref={ref}
       href={toHref(to)}
       className={className}
       title={title}
