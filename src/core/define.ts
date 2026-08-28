@@ -86,6 +86,18 @@ export type BuildResult =
   | { readonly ok: true; readonly frames: readonly Frame[] }
   | { readonly ok: false; readonly error: string };
 
+export interface BuildStep {
+  readonly done: boolean;
+  readonly drained: number;
+  /** Present exactly when done. */
+  readonly result: BuildResult | null;
+}
+
+export interface IncrementalBuild {
+  /** Drain until the budget is spent. `Infinity` drains to the end. */
+  readonly step: (budgetMs: number) => BuildStep;
+}
+
 export interface RegisteredAlgorithm {
   readonly meta: AlgorithmMeta;
   readonly fields: readonly FieldSpec[];
@@ -94,10 +106,16 @@ export interface RegisteredAlgorithm {
   readonly sizeOf: (params: ParamMap) => number;
   readonly defaults: ParamMap;
   readonly build: (params: ParamMap) => BuildResult;
+  /** The same build, drained a slice at a time. `build` is this run to the end. */
+  readonly startBuild: (params: ParamMap) => IncrementalBuild;
   readonly codeLines: readonly string[];
 }
 
 export const MAX_FRAMES = 120000;
+
+/** Frames drained between clock checks. Reading the clock per frame would cost
+ *  more than the slice it is protecting. */
+const CLOCK_EVERY = 16;
 
 export function countTokens(value: string | undefined): number {
   if (value === undefined) return 0;
@@ -117,28 +135,62 @@ export function defineAlgorithm<TInput>(def: AlgorithmDefinition<TInput>): Regis
     defaults,
     codeLines: def.meta.code.replace(/\s+$/, '').split('\n'),
     build(params: ParamMap): BuildResult {
-      const merged: Record<string, string> = { ...defaults, ...params };
-
-      const parsed = def.parse(merged);
-      if (!parsed.ok) return parsed;
-
-      try {
-        const frames: Frame[] = [];
-        for (const frame of def.run(parsed.value)) {
-          frames.push(frame);
-          if (frames.length > MAX_FRAMES) {
-            return {
-              ok: false,
-              error: `Run exceeded ${MAX_FRAMES.toLocaleString()} frames - try a smaller input.`,
-            };
-          }
-        }
-        if (frames.length === 0) return { ok: false, error: 'Algorithm produced no frames.' };
-        return { ok: true, frames };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return { ok: false, error: `Generator threw: ${message}` };
-      }
+      // One code path, so a chunked build and a synchronous one cannot drift.
+      const step = startBuild(params).step(Number.POSITIVE_INFINITY);
+      return step.result ?? { ok: false, error: 'Build did not finish.' };
     },
+    startBuild,
   };
+
+  function startBuild(params: ParamMap): IncrementalBuild {
+    const merged: Record<string, string> = { ...defaults, ...params };
+    const parsed = def.parse(merged);
+
+    const frames: Frame[] = [];
+    let iterator: Iterator<Frame> | null = null;
+    let finished: BuildResult | null = parsed.ok ? null : parsed;
+    if (parsed.ok) iterator = def.run(parsed.value)[Symbol.iterator]();
+
+    const settle = (result: BuildResult): BuildStep => {
+      finished = result;
+      iterator?.return?.();
+      iterator = null;
+      return { done: true, drained: frames.length, result };
+    };
+
+    return {
+      step(budgetMs: number): BuildStep {
+        if (finished !== null) return { done: true, drained: frames.length, result: finished };
+
+        const start = performance.now();
+        try {
+          for (;;) {
+            const next = iterator?.next();
+            if (next === undefined || next.done === true) {
+              return settle(
+                frames.length === 0
+                  ? { ok: false, error: 'Algorithm produced no frames.' }
+                  : { ok: true, frames },
+              );
+            }
+
+            frames.push(next.value);
+            if (frames.length > MAX_FRAMES) {
+              return settle({
+                ok: false,
+                error: `Run exceeded ${MAX_FRAMES.toLocaleString()} frames - try a smaller input.`,
+              });
+            }
+
+            if (frames.length % CLOCK_EVERY === 0 && performance.now() - start >= budgetMs) {
+              return { done: false, drained: frames.length, result: null };
+            }
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return settle({ ok: false, error: `Generator threw: ${message}` });
+        }
+      },
+    };
+  }
 }

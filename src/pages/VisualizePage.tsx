@@ -12,15 +12,15 @@ import { ComplexityPanel } from '../components/ComplexityPanel';
 import { ExplanationBar } from '../components/ExplanationBar';
 import { InputPanel } from '../components/InputPanel';
 import { Player } from '../components/Player';
+import { PrecomputeBar } from '../components/PrecomputeBar';
 import { getAlgorithm } from '../core/registry';
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
-import { ZERO_COUNTERS, type Frame } from '../core/types';
+import { ZERO_COUNTERS } from '../core/types';
 import { PlaybackProvider, usePlayback } from '../playback/PlaybackProvider';
+import { useChunkedBuild } from '../playback/useChunkedBuild';
 import { StructureCanvas } from '../renderers';
 import { Link, useRouter } from '../router/router';
 import { CATEGORY_LABEL } from '../catalog';
-
-const NO_FRAMES: readonly Frame[] = [];
 
 /**
  * Longest query string that is written into the URL. Past it the run is held
@@ -83,9 +83,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   const params = useMemo(() => unshareable ?? searchToParams(search), [search, unshareable]);
   const merged = useMemo<ParamMap>(() => ({ ...algorithm.defaults, ...params }), [algorithm, params]);
 
-  const result = useMemo(() => algorithm.build(params), [algorithm, params]);
-  const frames = result.ok ? result.frames : NO_FRAMES;
-  const error = result.ok ? null : result.error;
+  const { frames, error, building, progress } = useChunkedBuild(algorithm, params);
 
   useEffect(() => {
     document.title = `${algorithm.meta.name} - DSA Visualizer`;
@@ -105,7 +103,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   );
 
   return (
-    <PlaybackProvider frames={frames}>
+    <PlaybackProvider frames={frames} building={building} progress={progress}>
       <div className="flex h-full min-h-0 flex-col">
         <AlgorithmHeader algorithm={algorithm} shareable={unshareable === null} />
 
@@ -182,9 +180,7 @@ function Canvas({ error }: { error: string | null }): ReactNode {
           <p className="max-w-md text-meta text-fg-dim">{error}</p>
         </div>
       ) : frame === null ? (
-        <div className="flex h-full items-center justify-center text-meta text-fg-mute">
-          Nothing to draw.
-        </div>
+        <PrecomputeBar />
       ) : (
         <StructureCanvas
           frame={frame}

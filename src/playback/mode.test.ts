@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { accepts, canEdit, hasFrames, transition, type Mode, type ModeEvent } from './mode';
+import { accepts, canEdit, hasFrames, INITIAL_STATE, step, transition, withProgress, type Mode, type ModeEvent } from './mode';
 
 const MODES: readonly Mode[] = ['idle', 'precomputing', 'paused', 'playing', 'editing'];
 const EVENTS: readonly ModeEvent[] = ['invalidate', 'precompute', 'ready', 'play', 'pause', 'end', 'edit', 'commit'];
@@ -59,5 +59,34 @@ describe('playback mode machine', () => {
     for (const event of EVENTS) {
       expect(transition('editing', event)).toBe(event === 'commit' ? 'idle' : 'editing');
     }
+  });
+});
+
+describe('precompute progress', () => {
+  it('carries progress only while precomputing, and zeroes it everywhere else', () => {
+    const building = step(INITIAL_STATE, 'precompute', 0.4);
+    expect(building).toEqual({ mode: 'precomputing', progress: 0.4 });
+    expect(step(building, 'ready')).toEqual({ mode: 'paused', progress: 0 });
+    expect(step(step(building, 'ready'), 'play').progress).toBe(0);
+    expect(step(building, 'invalidate')).toEqual({ mode: 'idle', progress: 0 });
+  });
+
+  it('updates progress in place without leaving precomputing', () => {
+    const building = step(INITIAL_STATE, 'precompute', 0.1);
+    const later = withProgress(building, 0.7);
+    expect(later).toEqual({ mode: 'precomputing', progress: 0.7 });
+    expect(withProgress(later, 0.7)).toBe(later);
+  });
+
+  it('refuses to attach progress to a mode that is not precomputing', () => {
+    const paused = step(step(INITIAL_STATE, 'precompute'), 'ready');
+    expect(withProgress(paused, 0.5)).toBe(paused);
+    expect(step(paused, 'play', 0.9).progress).toBe(0);
+  });
+
+  it('returns the same object when nothing moved, so React can bail out', () => {
+    const paused = step(step(INITIAL_STATE, 'precompute'), 'ready');
+    expect(step(paused, 'ready')).toBe(paused);
+    expect(step(INITIAL_STATE, 'play')).toBe(INITIAL_STATE);
   });
 });

@@ -17,7 +17,7 @@ import {
 
 import type { Frame } from '../core/types';
 import { frameDwellMs } from './dwell';
-import { transition, type Mode, type ModeEvent } from './mode';
+import { INITIAL_STATE, step, withProgress, type Mode, type ModeEvent } from './mode';
 
 export const MIN_SPEED = 0.25;
 export const MAX_SPEED = 16;
@@ -28,6 +28,8 @@ export interface PlaybackValue {
   readonly index: number;
   readonly count: number;
   readonly mode: Mode;
+  /** Fraction of the build drained; only meaningful while precomputing. */
+  readonly progress: number;
   /** Derived: `mode === 'playing'`. */
   readonly playing: boolean;
   readonly speed: number;
@@ -60,12 +62,22 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export interface PlaybackProviderProps {
   readonly frames: readonly Frame[];
+  /** A build is in flight; frames are not final yet. */
+  readonly building?: boolean;
+  /** Fraction of that build drained so far. */
+  readonly progress?: number;
   readonly children: ReactNode;
 }
 
-export function PlaybackProvider({ frames, children }: PlaybackProviderProps): ReactNode {
+export function PlaybackProvider({
+  frames,
+  building = false,
+  progress = 0,
+  children,
+}: PlaybackProviderProps): ReactNode {
   const [index, setIndexState] = useState(0);
-  const [mode, setMode] = useState<Mode>('idle');
+  const [state, setState] = useState(INITIAL_STATE);
+  const { mode } = state;
   const [speed, setSpeedState] = useState(1);
   const [jumped, setJumped] = useState(false);
 
@@ -74,18 +86,29 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
   const playing = mode === 'playing';
 
   const send = useCallback((...events: readonly ModeEvent[]) => {
-    setMode((current) => events.reduce(transition, current));
+    setState((current) => events.reduce((carried, event) => step(carried, event), current));
   }, []);
 
-  // A new frame array is a structural change: the old run is discarded and,
-  // because the build already happened upstream, rebuilt in the same effect.
+  // A new frame array is a structural change: the cursor goes back to the top.
   useEffect(() => {
     indexRef.current = 0;
     setIndexState(0);
     setJumped(true);
-    if (frames.length === 0) send('invalidate');
-    else send('invalidate', 'precompute', 'ready');
-  }, [frames, send]);
+  }, [frames]);
+
+  // The build drives the machine. Every route walks the legal path, so a run
+  // still only ever reaches `paused` through `precomputing`.
+  useEffect(() => {
+    setState((current) => {
+      if (building) {
+        if (current.mode === 'precomputing') return withProgress(current, progress);
+        return step(step(current, 'invalidate'), 'precompute', progress);
+      }
+      if (frames.length === 0) return step(current, 'invalidate');
+      if (current.mode === 'precomputing') return step(current, 'ready');
+      return step(step(step(current, 'invalidate'), 'precompute'), 'ready');
+    });
+  }, [building, progress, frames]);
 
   const moveTo = useCallback(
     (next: number, viaJump: boolean) => {
@@ -223,6 +246,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
       index,
       count: frames.length,
       mode,
+      progress: state.progress,
       playing,
       speed,
       atStart: index <= 0,
@@ -245,6 +269,7 @@ export function PlaybackProvider({ frames, children }: PlaybackProviderProps): R
       jumped,
       lastIndex,
       mode,
+      state.progress,
       pause,
       play,
       playing,

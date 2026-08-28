@@ -268,10 +268,10 @@ the same and lands in `editing`, from which `commit` returns to `idle`. There
 is no path from `playing` or `paused` to a structural change that keeps the
 frames: no structural edits mid-run, ever.
 
-Today the build is synchronous, so `precomputing` is entered and left within
-one effect, and nothing in the UI sends `edit` - the graph editor is deferred.
-Both states exist now so that an asynchronous build and the editor slot in
-without touching the machine.
+`precomputing` is a real state with a real duration: the build is drained a
+slice at a time (see "Precompute" below) and carries a `progress` fraction.
+Nothing in the UI sends `edit` yet - the graph editor is deferred - but the
+state exists so it slots in without touching the machine.
 
 ### 3. Graphs travel in the URL as a compact edge list, with a cap
 
@@ -300,6 +300,49 @@ works, but the page holds the params in memory instead of the URL: the header
 shows **custom graph - not shareable**, Copy link is disabled, and a reload
 or any navigation returns to the URL's run. A link is never produced that
 would fail to reproduce its run.
+
+# Precompute
+
+Building a run means draining a generator, and a 150-node Dijkstra yields
+thousands of frames. Done in one go that blocks the frame, so the run is built
+across animation frames instead.
+
+- `algorithm.startBuild(params)` returns an `IncrementalBuild`; `step(budgetMs)`
+  drains until the budget is spent and reports how many frames it has. The
+  synchronous `algorithm.build(params)` is that same call with an infinite
+  budget, so the two cannot drift - and `src/core/build.test.ts` asserts the
+  frame arrays are deep-equal for an array, a tree and a graph algorithm.
+- The slice is **8ms of wall clock, not a frame count**. A frame of a 12-key
+  BST and a frame of a 150-node Dijkstra differ by more than an order of
+  magnitude, so a fixed count would either stutter or crawl. The clock is read
+  every 16 frames, because reading it per frame costs more than the slice it
+  protects.
+- `runChunked` in `src/playback/buildRunner.ts` drives it. Its scheduler is
+  injectable, which is how cancellation is tested without a browser.
+- **Cancellation is absolute.** `useChunkedBuild` cancels on any change of
+  algorithm or params, and the runner checks its cancelled flag both before a
+  slice and after it. A superseded build can never deliver frames into the run
+  that replaced it; `buildRunner.test.ts` is where that is pinned down.
+
+### Why the bar is honest about not knowing
+
+A generator does not know how many frames it will yield, and asking it would
+mean changing every generator. So the denominator in `buildProgress.ts` is the
+frame count the last completed build of that algorithm at that input size
+produced, defaulting to 1,200 the first time. The fraction is
+`drained / (drained + max(estimate - drained, estimate * 0.08))`, which rises
+towards the estimate and then approaches 1 asymptotically. It is monotone
+whether the estimate was high or low, it never jumps backwards, and it never
+reads 100% before the run exists. If exactness ever matters more than leaving
+generators alone, a generator could declare its own frame count and this
+becomes a real fraction.
+
+The indicator is gated at 200ms: a build that finishes sooner shows nothing,
+because a bar that flashes for 80ms is worse than no bar. Being information
+rather than decoration, it still appears under `prefers-reduced-motion`; only
+the easing on its fill is dropped.
+
+---
 
 # Design tokens
 
