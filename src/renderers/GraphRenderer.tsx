@@ -9,7 +9,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 import { LAYOUT_ASPECT } from '../core/graphLayout';
 import type { Graph, GraphSnapshot, Highlights, Pointers } from '../core/types';
 import type { FillName, InkMap } from './ink';
-import { ROLE_COLOR, resolveRoles } from './roles';
+import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
 
 const VIEW_H = 400;
@@ -207,12 +207,23 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
         if (placed === undefined) return null;
         const role = roles.get(node.id);
         const fillName: FillName = role ?? (visited.has(node.id) ? 'visited' : 'default');
+        const mark = markFor(role);
+        const stroke = mark === null ? null : circleMark(mark, radius);
         const fill = role !== undefined ? ROLE_COLOR[role] : visited.has(node.id) ? 'var(--viz-visited)' : 'var(--viz-default)';
         const tags = labels.get(node.id);
         const label = snapshot.labels[node.id];
         return (
           <g key={node.id} transform={`translate(${placed.x} ${placed.y})`}>
             <circle r={radius} fill={fill} stroke="var(--viz-bg)" strokeWidth={1.5} style={{ transition: paint }} />
+            {stroke !== null && (
+              <circle
+                r={stroke.radius}
+                fill="none"
+                stroke={ink[fillName]}
+                strokeWidth={stroke.width}
+                strokeDasharray={stroke.dash}
+              />
+            )}
             {showText && (
               <text
                 y={radius * 0.36}

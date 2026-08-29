@@ -12,6 +12,7 @@ import type {
   RegionTone,
 } from '../core/types';
 import type { InkMap } from './ink';
+import { circleMark, markFor, rectMark } from './roles';
 
 const VIEW_W = 1000;
 const VIEW_H = 400;
@@ -187,6 +188,8 @@ function ArrayRendererImpl({
     const y = yOf(value);
     const top = Math.min(y, baseline);
     const height = Math.max(1.5, Math.abs(y - baseline));
+    const mark = markFor(role);
+    const stroke = mark === null ? null : rectMark(mark, geometry.barWidth, height);
     const x = geometry.xOf(index) + (geometry.slot - geometry.barWidth) / 2;
 
     return (
@@ -199,6 +202,19 @@ function ArrayRendererImpl({
           rx={Math.min(3, geometry.barWidth / 3)}
           fill={fill}
         />
+        {stroke !== null && (
+          <rect
+            x={stroke.width / 2}
+            y={top + stroke.width / 2}
+            width={geometry.barWidth - stroke.width}
+            height={height - stroke.width}
+            rx={Math.min(2, geometry.barWidth / 4)}
+            fill="none"
+            stroke={ink[role ?? 'default']}
+            strokeWidth={stroke.width}
+            strokeDasharray={stroke.dash}
+          />
+        )}
         {labelled && showValues && (
           <text
             x={geometry.barWidth / 2}
@@ -427,9 +443,22 @@ function HeapTree({ elements, size, roles, band, transition, ink }: HeapTreeProp
         const { x, y } = centreOf(index);
         const role = roles.get(index);
         const fill = role === undefined ? 'var(--viz-default)' : ROLE_COLOR[role];
+        const mark = markFor(role);
+        const stroke = mark === null ? null : circleMark(mark, radius);
         return (
           <g key={`node-${element.id}`} style={{ transition }}>
             <circle cx={x} cy={y} r={radius} fill={fill} />
+            {stroke !== null && (
+              <circle
+                cx={x}
+                cy={y}
+                r={stroke.radius}
+                fill="none"
+                stroke={ink[role ?? 'default']}
+                strokeWidth={stroke.width}
+                strokeDasharray={stroke.dash}
+              />
+            )}
             {showText && (
               <text
                 x={x}

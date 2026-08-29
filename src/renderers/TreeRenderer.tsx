@@ -10,7 +10,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 
 import type { Frame, Highlights, Pointers, TreeNodeSnapshot, TreeSnapshot } from '../core/types';
 import type { FillName, InkMap } from './ink';
-import { ROLE_COLOR, resolveRoles } from './roles';
+import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
 
 const VIEW_H = 400;
@@ -252,6 +252,8 @@ function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
             : ROLE_COLOR[role];
         const ring = painted && role !== undefined ? ROLE_COLOR[role] : null;
         const fillName: FillName = painted ? (node.color === 'red' ? 'rb-red' : 'rb-black') : (role ?? 'default');
+        const mark = markFor(role);
+        const stroke = mark === null ? null : circleMark(mark, radius);
         const tags = labels.get(node.id);
         const mentioned = role !== undefined || tags !== undefined;
         const badges = node.badges === undefined || !(allBadges || mentioned) ? null : Object.entries(node.badges);
@@ -262,6 +264,15 @@ function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
               <g style={{ animation: mount, transformBox: 'fill-box', transformOrigin: 'center' }}>
                 {ring !== null && <circle r={radius + 3.5} fill="none" stroke={ring} strokeWidth={3} />}
                 <circle r={radius} fill={fill} />
+                {stroke !== null && (
+                  <circle
+                    r={stroke.radius}
+                    fill="none"
+                    stroke={ink[fillName]}
+                    strokeWidth={stroke.width}
+                    strokeDasharray={stroke.dash}
+                  />
+                )}
                 {node.terminal === true && (
                   <circle r={Math.max(2, radius - 3.5)} fill="none" stroke="var(--viz-bg)" strokeWidth={1.6} />
                 )}

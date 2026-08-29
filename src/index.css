@@ -85,13 +85,13 @@
 
   --viz-default: #64748b;
   --viz-comparing: #fbbf24;
-  --viz-swapped: #fb7185;
-  --viz-pivot: #a78bfa;
-  --viz-sorted: #34d399;
+  --viz-swapped: #f76f83;
+  --viz-pivot: #8c87f2;
+  --viz-sorted: #44dfab;
   --viz-active: #38bdf8;
-  --viz-candidate: #22d3ee;
+  --viz-candidate: #31d6ea;
   --viz-excluded: #334155;
-  --viz-visited: #6366f1;
+  --viz-visited: #5f65f6;
   --viz-rb-red: #ef4444;
   --viz-rb-black: #cbd5e1;
 

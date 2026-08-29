@@ -5,11 +5,11 @@ import { contrastRatio, DARK_INK, inkFor, LIGHT_INK, relativeLuminance } from '.
 /** Every fill the renderers put a label on, in both themes. */
 const DARK_THEME = {
   comparing: '#fbbf24',
-  swapped: '#fb7185',
-  pivot: '#a78bfa',
-  candidate: '#22d3ee',
-  sorted: '#34d399',
-  visited: '#6366f1',
+  swapped: '#f76f83',
+  pivot: '#8c87f2',
+  candidate: '#31d6ea',
+  sorted: '#44dfab',
+  visited: '#5f65f6',
   active: '#38bdf8',
   excluded: '#334155',
   default: '#64748b',

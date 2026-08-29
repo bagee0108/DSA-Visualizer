@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 
 import type { EntityId, HighlightRole, Strip, StripItem } from '../core/types';
 import type { InkMap } from './ink';
-import { ROLE_COLOR } from './roles';
+import { markFor, rectMark, ROLE_COLOR } from './roles';
 
 export const STRIP_HEIGHT = 46;
 export const VIEW_W = 1000;
@@ -152,6 +152,8 @@ export function StripRow({ strip, y, roles, transition, animate, ink }: StripRow
         // Arrivals come in from the edge they actually entered by.
         const entering = arrived.has(item.id);
         const fromLeft = index === 0;
+        const mark = markFor(role);
+        const stroke = mark === null ? null : rectMark(mark, chipW, 28);
         return (
           <g key={`${strip.kind}-${item.id}`} style={{ transform: `translate(${x}px, ${y}px)`, transition }}>
             <g
@@ -162,6 +164,19 @@ export function StripRow({ strip, y, roles, transition, animate, ink }: StripRow
               }
             >
               <rect width={chipW} height={28} rx={3} fill={fill} opacity={role === undefined ? 0.7 : 1} />
+              {stroke !== null && (
+                <rect
+                  x={stroke.width / 2}
+                  y={stroke.width / 2}
+                  width={chipW - stroke.width}
+                  height={28 - stroke.width}
+                  rx={2}
+                  fill="none"
+                  stroke={ink[role ?? 'excluded']}
+                  strokeWidth={stroke.width}
+                  strokeDasharray={stroke.dash}
+                />
+              )}
               <text
                 x={chipW / 2}
                 y={18}

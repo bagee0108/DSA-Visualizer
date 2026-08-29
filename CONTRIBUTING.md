@@ -361,6 +361,23 @@ chips and status badges are grey.
 `roles.ts` and the `--viz-*` role variables are semantic and documented. Do not
 restyle them to suit a theme.
 
+**Colour is never the only carrier of a role.** The two roles whose colours sit
+closest to a peer that shares the screen with them - `pivot` against `active`,
+`swapped` against `sorted` - each carry a mark as well, so both pairs stay
+separable with the colour removed entirely. `markFor()` in `roles.ts` owns that
+list; solid for `pivot`, which is a fixed reference, dashed for `swapped`,
+which is a momentary event. Exactly one member of each pair is marked, and
+nothing else is, which is what keeps a mark worth noticing.
+
+The mark is an inset stroke in the label ink, drawn *inside* the shape. That is
+deliberate and not cosmetic: an outer ring needs space the dense cases do not
+have, and it would have to be dropped exactly where it is needed most. Both
+marked roles genuinely reach small sizes - Union-Find draws `pivot` on a graph
+of up to 150 nodes at radius 6.5, and a degenerate BST reaches radius 5 - so
+the mark scales with the node instead of having a size threshold. `circleMark`
+and `rectMark` guarantee it never crosses the shape's own edge, and
+`roles.test.ts` holds that at every radius the renderers use.
+
 **Label colour is derived, never chosen.** A label drawn on top of a role fill
 takes its colour from `inkFor()` in `src/renderers/ink.ts`, which measures the
 fill's relative luminance and returns whichever of the two inks contrasts more.
