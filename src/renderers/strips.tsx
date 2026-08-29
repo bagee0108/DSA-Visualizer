@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 
 import type { EntityId, HighlightRole, Strip, StripItem } from '../core/types';
+import type { InkMap } from './ink';
 import { ROLE_COLOR } from './roles';
 
 export const STRIP_HEIGHT = 46;
@@ -73,9 +74,10 @@ export interface StripRowProps {
   readonly roles: ReadonlyMap<EntityId, HighlightRole>;
   readonly transition: string;
   readonly animate: boolean;
+  readonly ink: InkMap;
 }
 
-export function StripRow({ strip, y, roles, transition, animate }: StripRowProps): ReactNode {
+export function StripRow({ strip, y, roles, transition, animate, ink }: StripRowProps): ReactNode {
   const { ghosts, arrived } = useDiff(strip.items, animate);
 
   const labelWidth = 92;
@@ -134,7 +136,7 @@ export function StripRow({ strip, y, roles, transition, animate }: StripRowProps
               textAnchor="middle"
               fontSize={chipW < 30 ? 9 : 11}
               fontWeight={600}
-              fill="var(--viz-text)"
+              fill={ink.excluded}
               className="font-mono"
             >
               {ghost.label}
@@ -166,7 +168,7 @@ export function StripRow({ strip, y, roles, transition, animate }: StripRowProps
                 textAnchor="middle"
                 fontSize={chipW < 30 ? 9 : 11}
                 fontWeight={600}
-                fill={role === undefined ? 'var(--viz-text)' : '#fff'}
+                fill={ink[role ?? 'excluded']}
                 className="font-mono"
               >
                 {item.label}

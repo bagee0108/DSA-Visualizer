@@ -9,6 +9,7 @@
 import { memo, useMemo, type ReactNode } from 'react';
 
 import type { Frame, Highlights, Pointers, TreeNodeSnapshot, TreeSnapshot } from '../core/types';
+import type { FillName, InkMap } from './ink';
 import { ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
 
@@ -27,6 +28,7 @@ export interface TreeRunBound {
 export interface TreeRendererProps {
   readonly snapshot: TreeSnapshot;
   readonly bound: TreeRunBound;
+  readonly ink: InkMap;
   readonly highlights: Highlights;
   readonly pointers: Pointers;
   readonly animate: boolean;
@@ -175,7 +177,7 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
-function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
+function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
   const scale = useMemo(() => scaleFor(bound), [bound]);
   const positions = useMemo(() => layoutTree(snapshot, scale), [snapshot, scale]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
@@ -249,6 +251,7 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
             ? 'var(--viz-default)'
             : ROLE_COLOR[role];
         const ring = painted && role !== undefined ? ROLE_COLOR[role] : null;
+        const fillName: FillName = painted ? (node.color === 'red' ? 'rb-red' : 'rb-black') : (role ?? 'default');
         const tags = labels.get(node.id);
         const mentioned = role !== undefined || tags !== undefined;
         const badges = node.badges === undefined || !(allBadges || mentioned) ? null : Object.entries(node.badges);
@@ -268,7 +271,7 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
                     textAnchor="middle"
                     fontSize={Math.min(12, radius * 0.95)}
                     fontWeight={600}
-                    fill={painted || role !== undefined ? '#fff' : 'var(--viz-text)'}
+                    fill={ink[fillName]}
                     className="font-mono"
                   >
                     {node.label}
@@ -311,6 +314,7 @@ function TreeRendererImpl({ snapshot, bound, highlights, pointers, animate, dura
           roles={roles}
           transition={slide}
           animate={animate}
+          ink={ink}
         />
       ))}
     </svg>

@@ -11,6 +11,7 @@ import type {
   Pointers,
   RegionTone,
 } from '../core/types';
+import type { InkMap } from './ink';
 
 const VIEW_W = 1000;
 const VIEW_H = 400;
@@ -51,6 +52,7 @@ const REGION_FILL: Record<RegionTone, string> = {
 
 export interface ArrayRendererProps {
   readonly snapshot: ArraySnapshot;
+  readonly ink: InkMap;
   readonly highlights: Highlights;
   readonly pointers: Pointers;
   readonly animate: boolean;
@@ -108,6 +110,7 @@ function layoutFor(snapshot: ArraySnapshot): {
 
 function ArrayRendererImpl({
   snapshot,
+  ink,
   highlights,
   pointers,
   animate,
@@ -279,6 +282,7 @@ function ArrayRendererImpl({
           roles={roles}
           band={bands.tree}
           transition={transition}
+          ink={ink}
         />
       )}
 
@@ -370,9 +374,10 @@ interface HeapTreeProps {
   readonly roles: ReadonlyMap<EntityId, HighlightRole>;
   readonly band: Band;
   readonly transition: string;
+  readonly ink: InkMap;
 }
 
-function HeapTree({ elements, size, roles, band, transition }: HeapTreeProps): ReactNode {
+function HeapTree({ elements, size, roles, band, transition, ink }: HeapTreeProps): ReactNode {
   const count = Math.max(0, Math.min(size, elements.length));
   if (count === 0) return null;
 
@@ -431,7 +436,7 @@ function HeapTree({ elements, size, roles, band, transition }: HeapTreeProps): R
                 y={y + 3.5}
                 textAnchor="middle"
                 fontSize={Math.min(11, radius)}
-                fill="var(--viz-bg)"
+                fill={ink[role ?? 'default']}
                 fontWeight={600}
                 className="font-mono"
               >

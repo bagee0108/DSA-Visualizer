@@ -361,6 +361,16 @@ chips and status badges are grey.
 `roles.ts` and the `--viz-*` role variables are semantic and documented. Do not
 restyle them to suit a theme.
 
+**Label colour is derived, never chosen.** A label drawn on top of a role fill
+takes its colour from `inkFor()` in `src/renderers/ink.ts`, which measures the
+fill's relative luminance and returns whichever of the two inks contrasts more.
+Because the worse of the two is still the better choice at the crossover, the
+contrast floor holds for *any* fill - the measured worst case over the whole
+RGB cube is 4.3:1, and `ink.test.ts` pins that down. Never hardcode a label
+colour per role: a future palette change would silently break the floor, and
+this way it cannot. The palette itself stays defined once, in CSS; `readInk()`
+resolves it and re-resolves when the theme class changes.
+
 ### Where the tokens live
 
 All of them are in `src/index.css`. Dark is the primary theme, so `@theme`

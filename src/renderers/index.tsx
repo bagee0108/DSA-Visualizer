@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from 'react';
 
 import type { Frame } from '../core/types';
 import { ArrayRenderer } from './ArrayRenderer';
+import { useInk } from './ink';
 import { GraphRenderer } from './GraphRenderer';
 import { TreeRenderer, treeRunBound } from './TreeRenderer';
 
@@ -16,12 +17,14 @@ export interface StructureCanvasProps {
 
 export function StructureCanvas({ frame, frames, animate, durationMs }: StructureCanvasProps): ReactNode {
   const treeBound = useMemo(() => treeRunBound(frames), [frames]);
+  const ink = useInk();
 
   switch (frame.structure.kind) {
     case 'array':
       return (
         <ArrayRenderer
           snapshot={frame.structure}
+          ink={ink}
           highlights={frame.highlights}
           pointers={frame.pointers}
           animate={animate}
@@ -32,6 +35,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
       return (
         <TreeRenderer
           snapshot={frame.structure}
+          ink={ink}
           bound={treeBound}
           highlights={frame.highlights}
           pointers={frame.pointers}
@@ -43,6 +47,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
       return (
         <GraphRenderer
           snapshot={frame.structure}
+          ink={ink}
           highlights={frame.highlights}
           pointers={frame.pointers}
           animate={animate}

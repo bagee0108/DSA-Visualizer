@@ -8,6 +8,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 
 import { LAYOUT_ASPECT } from '../core/graphLayout';
 import type { Graph, GraphSnapshot, Highlights, Pointers } from '../core/types';
+import type { FillName, InkMap } from './ink';
 import { ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
 
@@ -16,6 +17,7 @@ const TOP = 12;
 
 export interface GraphRendererProps {
   readonly snapshot: GraphSnapshot;
+  readonly ink: InkMap;
   readonly highlights: Highlights;
   readonly pointers: Pointers;
   readonly animate: boolean;
@@ -99,7 +101,7 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
-function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs }: GraphRendererProps): ReactNode {
+function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: GraphRendererProps): ReactNode {
   const { graph } = snapshot;
   const bottom = VIEW_H - snapshot.strips.length * STRIP_HEIGHT - 10;
   const geometry = useMemo(() => geometryFor(graph, bottom), [graph, bottom]);
@@ -204,6 +206,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
         const placed = geometry.positions.get(node.id);
         if (placed === undefined) return null;
         const role = roles.get(node.id);
+        const fillName: FillName = role ?? (visited.has(node.id) ? 'visited' : 'default');
         const fill = role !== undefined ? ROLE_COLOR[role] : visited.has(node.id) ? 'var(--viz-visited)' : 'var(--viz-default)';
         const tags = labels.get(node.id);
         const label = snapshot.labels[node.id];
@@ -216,7 +219,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
                 textAnchor="middle"
                 fontSize={Math.min(11, radius * 0.95)}
                 fontWeight={600}
-                fill={role !== undefined || visited.has(node.id) ? '#fff' : 'var(--viz-text)'}
+                fill={ink[fillName]}
                 className="font-mono"
               >
                 {node.label}
@@ -257,7 +260,7 @@ function GraphRendererImpl({ snapshot, highlights, pointers, animate, durationMs
       })}
 
       {snapshot.strips.map((strip, row) => (
-        <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms var(--ease-slide)` : 'none'} animate={animate} />
+        <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms var(--ease-slide)` : 'none'} animate={animate} ink={ink} />
       ))}
     </svg>
   );
