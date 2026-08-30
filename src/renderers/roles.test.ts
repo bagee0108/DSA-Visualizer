@@ -45,16 +45,30 @@ describe('role marks', () => {
     expect(circleMark('dashed', 12).dash).toBeDefined();
   });
 
-  it('never draws outside the node, at any radius the renderers use', () => {
-    // 2.5 is the smallest heap node, 6.5 a 150-node graph, 17 the cap.
+  it('leaves a rim of fill outside itself, at every radius the renderers use', () => {
+    // 2.5 is the smallest heap node, 6.5 a 150-node graph, 17 the cap. Without
+    // the rim the gaps in a dashed ring read as bites out of the node.
     for (let radius = 2.5; radius <= 17; radius += 0.25) {
       for (const mark of ['solid', 'dashed'] as const) {
         const stroke = circleMark(mark, radius);
         const outerEdge = stroke.radius + stroke.width / 2;
-        expect(outerEdge, `radius ${radius}`).toBeLessThanOrEqual(radius + 0.001);
-        expect(stroke.radius, `radius ${radius}`).toBeGreaterThan(0);
+        expect(outerEdge, `radius ${radius}`).toBeLessThanOrEqual(radius - stroke.width * 0.4);
+        expect(stroke.radius - stroke.width / 2, `radius ${radius}`).toBeGreaterThan(0);
         expect(stroke.width).toBeGreaterThanOrEqual(0.9);
       }
+    }
+  });
+
+  it('divides the circle into a whole number of dashes, so the ring closes', () => {
+    for (let radius = 2.5; radius <= 17; radius += 0.25) {
+      const stroke = circleMark('dashed', radius);
+      const [dash, gap] = (stroke.dash ?? '').split(' ').map(Number);
+      const period = (dash ?? 0) + (gap ?? 0);
+      const count = (2 * Math.PI * stroke.radius) / period;
+      expect(count, `radius ${radius}`).toBeCloseTo(Math.round(count), 6);
+      expect(Math.round(count), `radius ${radius}`).toBeGreaterThanOrEqual(4);
+      expect(Math.round(count), `radius ${radius}`).toBeLessThanOrEqual(8);
+      expect(gap, `radius ${radius} has a real gap`).toBeGreaterThan(0.8);
     }
   });
 

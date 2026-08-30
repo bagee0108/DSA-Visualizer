@@ -374,9 +374,17 @@ deliberate and not cosmetic: an outer ring needs space the dense cases do not
 have, and it would have to be dropped exactly where it is needed most. Both
 marked roles genuinely reach small sizes - Union-Find draws `pivot` on a graph
 of up to 150 nodes at radius 6.5, and a degenerate BST reaches radius 5 - so
-the mark scales with the node instead of having a size threshold. `circleMark`
-and `rectMark` guarantee it never crosses the shape's own edge, and
-`roles.test.ts` holds that at every radius the renderers use.
+the mark scales with the node instead of having a size threshold.
+
+Two details are what make it survive at that size, and both are tested. It sits
+far enough inside that a rim of fill remains outside it: draw it flush with the
+edge and the gaps in a dashed ring read as bites out of the node rather than as
+dashes. And the dash count is derived from the circumference and then clamped
+to four through eight, so the pattern divides the circle exactly - a fixed dash
+length gives six and a half dashes at every size, leaving a ragged seam where
+the last one is cut. Below radius 4 the two marks converge; at that size the
+node is eight pixels across and its label is already hidden, so colour is
+carrying the distinction anyway.
 
 **Label colour is derived, never chosen.** A label drawn on top of a role fill
 takes its colour from `inkFor()` in `src/renderers/ink.ts`, which measures the

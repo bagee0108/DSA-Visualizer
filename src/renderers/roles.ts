@@ -61,15 +61,30 @@ export interface MarkStroke {
   readonly dash: string | undefined;
 }
 
-/** Inset stroke for a circular node of this radius. */
+/** Target arc per dash, in px. The count is derived from it, then clamped. */
+const DASH_ARC = 9;
+const MIN_DASHES = 4;
+const MAX_DASHES = 8;
+
+/**
+ * Inset stroke for a circular node of this radius.
+ *
+ * Two things matter at small radii. The mark sits far enough inside that a rim
+ * of fill survives outside it, otherwise the gaps in a dashed ring read as
+ * bites taken out of the node rather than as dashes. And the dash count is
+ * derived from the circumference and then clamped, so the pattern divides the
+ * circle exactly - a fixed dash length leaves a ragged seam where the last
+ * dash is truncated, and gives six and a half dashes at every size.
+ */
 export function circleMark(mark: RoleMark, radius: number): MarkStroke {
-  const width = Math.max(0.9, Math.min(2.5, radius * 0.24));
-  const inset = Math.max(0.6, radius - width / 2);
-  return {
-    width,
-    radius: inset,
-    dash: mark === 'dashed' ? `${Math.max(1.8, inset * 0.55)} ${Math.max(1.3, inset * 0.4)}` : undefined,
-  };
+  const width = Math.max(0.9, Math.min(2.5, radius * 0.22));
+  const inset = Math.max(width, radius - width * 1.15);
+  if (mark === 'solid') return { width, radius: inset, dash: undefined };
+
+  const circumference = 2 * Math.PI * inset;
+  const count = Math.min(MAX_DASHES, Math.max(MIN_DASHES, Math.round(circumference / DASH_ARC)));
+  const segment = circumference / count;
+  return { width, radius: inset, dash: `${segment * 0.58} ${segment * 0.42}` };
 }
 
 /** Inset stroke for a rectangular chip or bar. */
