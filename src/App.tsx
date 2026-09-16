@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 import { ThemeToggle } from './components/ThemeToggle';
 import { HomePage } from './pages/HomePage';
@@ -75,6 +76,7 @@ export default function App(): ReactNode {
   return (
     <RouterProvider>
       <Shell />
+      <Analytics />
     </RouterProvider>
   );
 }
