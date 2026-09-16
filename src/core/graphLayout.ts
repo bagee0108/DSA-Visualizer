@@ -9,8 +9,12 @@ export interface Point {
 
 export type EdgePair = readonly [number, number];
 
-/** Width : height of the box positions are laid out in; the canvas is about this wide. */
-export const LAYOUT_ASPECT = 3.2;
+/**
+ * Width : height of the box positions are laid out in. It tracks the canvas band
+ * the renderer fits that box into (about 968 x 452 above one strip row), because
+ * a box wider than the band is letterboxed inside it and the height is wasted.
+ */
+export const LAYOUT_ASPECT = 2.2;
 const PAD = 0.04;
 const ITERATIONS = 260;
 const GRAVITY = 0.3;

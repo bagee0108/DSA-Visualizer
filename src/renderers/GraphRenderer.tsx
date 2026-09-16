@@ -9,11 +9,11 @@ import { memo, useMemo, type ReactNode } from 'react';
 import { LAYOUT_ASPECT } from '../core/graphLayout';
 import type { Graph, GraphSnapshot, Highlights, Pointers } from '../core/types';
 import type { FillName, InkMap } from './ink';
+import { VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
-import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
+import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
-const VIEW_H = 400;
-const TOP = 12;
+export const GRAPH_TOP = 12;
 
 export interface GraphRendererProps {
   readonly snapshot: GraphSnapshot;
@@ -46,13 +46,25 @@ interface Geometry {
   }[];
 }
 
-function geometryFor(graph: Graph, bottom: number): Geometry {
+/**
+ * The layout box is a unit width by 1 / LAYOUT_ASPECT, fitted whole into the
+ * band above the strips. LAYOUT_ASPECT tracks this band, so the fit is bound by
+ * the width and the height is spent rather than letterboxed.
+ */
+export function graphBox(bottom: number): { scale: number; x0: number; y0: number } {
   const innerW = VIEW_W - PAD_X * 2;
-  const innerH = bottom - TOP;
+  const innerH = bottom - GRAPH_TOP;
   const boxH = 1 / LAYOUT_ASPECT;
   const scale = Math.min(innerW, innerH / boxH);
-  const x0 = (VIEW_W - scale) / 2;
-  const y0 = TOP + (innerH - scale * boxH) / 2;
+  return { scale, x0: (VIEW_W - scale) / 2, y0: GRAPH_TOP + (innerH - scale * boxH) / 2 };
+}
+
+export function graphBandBottom(strips: number): number {
+  return VIEW_H - strips * STRIP_HEIGHT - 10;
+}
+
+function geometryFor(graph: Graph, bottom: number): Geometry {
+  const { scale, x0, y0 } = graphBox(bottom);
 
   const n = graph.nodes.length;
   const radius = n <= 12 ? 16 : n <= 30 ? 13 : n <= 60 ? 10 : n <= 100 ? 8 : 6.5;
@@ -103,7 +115,7 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
 
 function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: GraphRendererProps): ReactNode {
   const { graph } = snapshot;
-  const bottom = VIEW_H - snapshot.strips.length * STRIP_HEIGHT - 10;
+  const bottom = graphBandBottom(snapshot.strips.length);
   const geometry = useMemo(() => geometryFor(graph, bottom), [graph, bottom]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);

@@ -11,15 +11,23 @@ import type {
   Pointers,
   RegionTone,
 } from '../core/types';
+import { VIEW_H, VIEW_W } from './canvas';
 import type { InkMap } from './ink';
 import { circleMark, markFor, rectMark } from './roles';
 
-const VIEW_W = 1000;
-const VIEW_H = 400;
 const PAD_X = 10;
-const INDEX_ROW_Y = 334;
-const POINTER_ROW_Y = 352;
-const POINTER_ROW_HEIGHT = 15;
+/** Index row, pointer row and up to three stacked pointer labels live below the chart. */
+const BOTTOM_FURNITURE = 82;
+/** Every band grows with the viewBox and stops here; nothing below is scaled. */
+export const FLOOR = VIEW_H - BOTTOM_FURNITURE;
+export const INDEX_ROW_Y = FLOOR + 16;
+export const POINTER_ROW_Y = INDEX_ROW_Y + 18;
+export const POINTER_ROW_HEIGHT = 15;
+const CHART_TOP = 30;
+const AUX_TOP = 26;
+const AUX_GAP = 26;
+const HEAP_TOP = 14;
+const HEAP_GAP = 28;
 
 const ROLE_COLOR: Record<HighlightRole, string> = {
   comparing: 'var(--viz-comparing)',
@@ -95,18 +103,37 @@ interface Band {
   readonly bottom: number;
 }
 
-function layoutFor(snapshot: ArraySnapshot): {
+export type BandLayout = {
   chart: Band;
   tree: Band | null;
   aux: Band | null;
-} {
-  if (snapshot.heap !== undefined) {
-    return { tree: { top: 14, bottom: 200 }, chart: { top: 228, bottom: 318 }, aux: null };
+};
+
+export type BandVariant = 'plain' | 'heap' | 'aux';
+
+/** Bands are a share of the height down to FLOOR, so a taller viewBox is spent on the drawing. */
+export function arrayBands(variant: BandVariant): BandLayout {
+  if (variant === 'heap') {
+    const body = FLOOR - HEAP_TOP - HEAP_GAP;
+    const treeBottom = HEAP_TOP + (body * 2) / 3;
+    return { tree: { top: HEAP_TOP, bottom: treeBottom }, chart: { top: treeBottom + HEAP_GAP, bottom: FLOOR }, aux: null };
   }
-  if (snapshot.auxiliary !== undefined) {
-    return { tree: null, chart: { top: 26, bottom: 224 }, aux: { top: 250, bottom: 316 } };
+  if (variant === 'aux') {
+    const floor = FLOOR - 2;
+    const body = floor - AUX_TOP - AUX_GAP;
+    return {
+      tree: null,
+      chart: { top: AUX_TOP, bottom: AUX_TOP + body * 0.75 },
+      aux: { top: floor - body * 0.25, bottom: floor },
+    };
   }
-  return { tree: null, chart: { top: 30, bottom: 318 }, aux: null };
+  return { tree: null, chart: { top: CHART_TOP, bottom: FLOOR }, aux: null };
+}
+
+function layoutFor(snapshot: ArraySnapshot): BandLayout {
+  if (snapshot.heap !== undefined) return arrayBands('heap');
+  if (snapshot.auxiliary !== undefined) return arrayBands('aux');
+  return arrayBands('plain');
 }
 
 function ArrayRendererImpl({
