@@ -4,10 +4,10 @@ import { useState, type ReactNode } from 'react';
 
 import type { EntityId, HighlightRole, Strip, StripItem } from '../core/types';
 import type { InkMap } from './ink';
+import { VIEW_W } from './canvas';
 import { markFor, rectMark, ROLE_COLOR } from './roles';
 
 export const STRIP_HEIGHT = 46;
-export const VIEW_W = 1000;
 export const PAD_X = 16;
 /** Past this many chips a strip shows only the end that matters and a +n marker. */
 const MAX_CHIPS = 24;

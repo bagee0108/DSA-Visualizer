@@ -10,13 +10,15 @@ import { memo, useMemo, type ReactNode } from 'react';
 
 import type { Frame, Highlights, Pointers, TreeNodeSnapshot, TreeSnapshot } from '../core/types';
 import type { FillName, InkMap } from './ink';
+import { VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
-import { PAD_X, STRIP_HEIGHT, StripRow, VIEW_W } from './strips';
+import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
-const VIEW_H = 400;
-const TREE_TOP = 28;
+export const TREE_TOP = 28;
 const MAX_SLOT = 88;
-const MAX_LEVEL_HEIGHT = 66;
+const MAX_RADIUS = 17;
+/** Room under the deepest level for its own radius and the rim of the level above. */
+const DEEPEST_LEVEL_ROOM = 40;
 const BADGE_MIN_SLOT = 36;
 
 export interface TreeRunBound {
@@ -85,23 +87,33 @@ export function treeRunBound(frames: readonly Frame[]): TreeRunBound {
   return { columns, depth, strips };
 }
 
-interface Scale {
+export interface Scale {
   readonly slot: number;
   readonly levelHeight: number;
   readonly radius: number;
   readonly x0: number;
+  readonly rootY: number;
   readonly treeBottom: number;
 }
 
-function scaleFor(bound: TreeRunBound): Scale {
+/**
+ * Pinned for a whole run from the bound over its frames, never from the frame
+ * on screen: fitting per frame would rescale the tree on every insert and bury
+ * the rotation motion in it. Levels spread across the whole band - a cap here
+ * is what letterboxed the canvas - and only the radius is capped, so a shallow
+ * tree gains air rather than balloons.
+ */
+export function treeScale(bound: TreeRunBound): Scale {
   const innerWidth = VIEW_W - PAD_X * 2;
   const treeBottom = VIEW_H - bound.strips * STRIP_HEIGHT - 10;
   const treeHeight = treeBottom - TREE_TOP;
   const columns = Math.max(1, bound.columns);
   const slot = Math.min(MAX_SLOT, innerWidth / columns);
-  const levelHeight = bound.depth === 0 ? 0 : Math.min(MAX_LEVEL_HEIGHT, (treeHeight - 40) / bound.depth);
-  const radius = Math.max(5, Math.min(17, slot * 0.42, bound.depth === 0 ? 17 : levelHeight * 0.4));
-  return { slot, levelHeight, radius, x0: (VIEW_W - slot * columns) / 2, treeBottom };
+  const levelHeight = bound.depth === 0 ? 0 : (treeHeight - DEEPEST_LEVEL_ROOM) / bound.depth;
+  const radius = Math.max(5, Math.min(MAX_RADIUS, slot * 0.42));
+  // A lone node has no levels to spread, so it sits in the middle of the band.
+  const rootY = bound.depth === 0 ? TREE_TOP + treeHeight / 2 : TREE_TOP + radius + 6;
+  return { slot, levelHeight, radius, x0: (VIEW_W - slot * columns) / 2, rootY, treeBottom };
 }
 
 function layoutTree(snapshot: TreeSnapshot, scale: Scale): ReadonlyMap<string, Placed> {
@@ -160,7 +172,7 @@ function layoutTree(snapshot: TreeSnapshot, scale: Scale): ReadonlyMap<string, P
   for (const [id, col] of column) {
     positions.set(id, {
       x: scale.x0 + col * scale.slot,
-      y: TREE_TOP + scale.radius + 6 + (depthOf.get(id) ?? 0) * scale.levelHeight,
+      y: scale.rootY + (depthOf.get(id) ?? 0) * scale.levelHeight,
     });
   }
   return positions;
@@ -178,7 +190,7 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
 }
 
 function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
-  const scale = useMemo(() => scaleFor(bound), [bound]);
+  const scale = useMemo(() => treeScale(bound), [bound]);
   const positions = useMemo(() => layoutTree(snapshot, scale), [snapshot, scale]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
