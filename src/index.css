@@ -107,6 +107,8 @@
   --duration-slow: 320ms;
   /* The one orchestrated chrome moment per page: the route drawing itself. */
   --duration-reveal: 1400ms;
+  /* The home ticker's loop. Ambient chrome, so it may be slow and constant. */
+  --duration-ticker: 70s;
   --default-transition-duration: var(--duration-fast);
   --default-transition-timing-function: var(--ease-ui);
 }
@@ -356,6 +358,13 @@ body {
     border-color: var(--color-edge);
     background-color: var(--color-ground);
     box-shadow: none;
+  }
+}
+
+/* The ticker slides by exactly one of its two identical runs, then loops. */
+@keyframes viz-ticker {
+  to {
+    transform: translateX(-50%);
   }
 }
 

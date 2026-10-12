@@ -532,8 +532,12 @@ Durations are `--duration-fast` (120ms, hovers and presses),
 a card crossing the grid). `--duration-reveal` (1400ms) is reserved for a
 page's single orchestrated moment, which today is the home route drawing
 itself; it is keyframes whose resting state is the finished drawing, so the
-page is complete whether or not it plays. Nothing names a raw millisecond
-value.
+page is complete whether or not it plays. `--duration-ticker` (70s) is the
+home ticker's loop. Nothing names a raw millisecond value.
+
+Anything in the chrome that moves on its own for more than five seconds (the
+ticker, the hero's run) has a pause control, and does not move at all under
+reduced motion.
 
 ### Motion means something, so nothing may move for decoration
 

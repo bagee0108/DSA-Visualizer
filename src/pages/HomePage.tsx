@@ -6,6 +6,7 @@
 import { useEffect, type ReactNode } from 'react';
 
 import { HeroStage } from '../components/HeroStage';
+import { Marquee } from '../components/Marquee';
 import { Route } from '../components/Route';
 import { ButtonLink } from '../components/ui';
 import { firstOpenLevel, LEVELS } from '../core/levels';
@@ -75,6 +76,7 @@ export function HomePage(): ReactNode {
   return (
     <div className="h-full overflow-y-auto">
       <Hero />
+      <Marquee />
 
       <section className="mx-auto max-w-6xl px-6 pt-8 pb-16" aria-labelledby="path-title">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
