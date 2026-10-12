@@ -469,17 +469,29 @@ spatial as well as chromatic: the floor is the backstop, not the mitigation.
 
 ### Type
 
-Inter for UI, JetBrains Mono for the source panel, strips, node labels and
-every numeric readout. Both are self-hosted variable subsets in `public/fonts`,
-so there is no webfont request and no dependency. Numbers live in the mono
-face, which makes them tabular by construction and stops them jittering as
-playback advances.
+Three faces, one job each. All are self-hosted variable subsets in
+`public/fonts`, so there is no webfont request and no dependency.
 
-Five sizes, and only five: `text-micro` (11px), `text-meta` (12px), `text-ui`
-(13px, the body default), `text-body` (14px, explanation prose) and
-`text-title` (17px). Tailwind's own `text-sm`/`text-lg`/… still exist until the
-rollout finishes; they are not part of the scale and nothing new should use
-them.
+| face | token | used for |
+| --- | --- | --- |
+| Martian Mono | `font-display` | headings, level names, buttons, track names, the brand |
+| Atkinson Hyperlegible Next | `font-sans` (the body default) | UI text, blurbs, explanation prose |
+| JetBrains Mono | `font-mono` | the source panel, strips, node labels and every numeric readout |
+
+The display face is where the terminal identity lives, so it stays out of
+running text. Its width axis does the work a second family would: headlines
+set at normal width, small labels and buttons at `font-stretch-semi-condensed`.
+The reading face was drawn so Il1 and 0O never collide, which matters in
+prose full of indices. Numbers live in the mono face, which makes them tabular
+by construction and stops them jittering as playback advances.
+
+The body scale is five sizes: `text-micro` (11px), `text-meta` (12px),
+`text-ui` (13px, the body default), `text-body` (14px, explanation prose) and
+`text-title` (17px). Three display sizes sit above it and are set in the
+display face only: `text-page` (22px, a screen's title), `text-section` (26px,
+a home page section) and `text-display` (44px, the hero line, once). Tailwind's
+own `text-sm`/`text-lg`/... still exist; they are not part of the scale and
+nothing new should use them.
 
 ### Spacing, radius, motion
 
