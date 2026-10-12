@@ -56,7 +56,7 @@ function IconEnd(): ReactNode {
 }
 
 const BUTTON_BASE =
-  'inline-flex h-8 w-8 items-center justify-center rounded-sm border transition-colors disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  'inline-flex h-8 w-8 items-center justify-center rounded-sm border transition-colors disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 interface ControlButtonProps {
   readonly label: string;
@@ -76,7 +76,7 @@ function ControlButton({
   children,
 }: ControlButtonProps): ReactNode {
   const tone = primary
-    ? 'border-edge bg-raised text-fg hover:border-fg-mute active:bg-edge'
+    ? 'border-accent bg-accent text-on-accent hover:border-accent-hover hover:bg-accent-hover active:border-accent-press active:bg-accent-press'
     : 'border-transparent text-fg-dim hover:bg-raised hover:text-fg active:bg-edge active:text-fg disabled:hover:bg-transparent';
 
   return (
@@ -256,9 +256,9 @@ export function Player(): ReactNode {
               type="button"
               onClick={() => setSpeed(mark)}
               title={mark > 4 ? 'Visuals only - the explanation goes by too fast to read' : undefined}
-              className={`rounded-xs border px-1.5 py-0.5 font-mono text-micro tabular-nums transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              className={`rounded-xs border px-1.5 py-0.5 font-mono text-micro tabular-nums transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                 Math.abs(speed - mark) < 0.01
-                  ? 'border-edge bg-raised text-fg'
+                  ? 'border-accent-line bg-accent-wash text-accent-ink'
                   : 'border-transparent text-fg-mute hover:bg-raised hover:text-fg active:bg-edge'
               }`}
             >

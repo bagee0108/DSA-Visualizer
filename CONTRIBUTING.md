@@ -398,20 +398,74 @@ resolves it and re-resolves when the theme class changes.
 
 ### Where the tokens live
 
-All of them are in `src/index.css`. Dark is the primary theme, so `@theme`
-holds its values and `:root:not(.dark)` overrides them for light. Because
-utilities compile to `var(--color-…)`, a component never needs a `dark:`
-variant for colour: the token flips underneath it.
+Chrome colours live in **`src/theme/themes.ts`** and nowhere else. Everything
+else - type sizes, spacing, radii, motion, and the role palette - is in
+`src/index.css`.
+
+`@theme` in `index.css` declares the colour *names* Tailwind turns into
+utilities, each pointing at a `--theme-*` variable. `vite.config.ts` writes the
+active preset into `index.html` as a `<style id="theme">` holding those
+variables for both modes (`:root.dark` and `:root:not(.dark)`), so the first
+paint is already themed and the mode toggle needs no script. Because utilities
+compile to `var(--color-…)`, a component never needs a `dark:` variant for
+colour: the token flips underneath it.
 
 | group | tokens |
 | --- | --- |
 | surfaces | `ground` (page and canvas), `panel` (docked panels), `raised` (insets, chips, selected states) |
 | lines | `line` (hairline), `edge` (input borders, stronger separators) |
 | text | `fg`, `fg-dim`, `fg-mute` |
-| accent | `accent`, and `danger` for failure states only |
+| accent | `accent` (fills), `accent-hover`, `accent-press`, `accent-wash` (opaque tint), `accent-line` (quiet accent border), `accent-ink` (accent text and glyphs, 4.5:1), `on-accent` (text on an accent fill), `focus` (focus rings and thin indicator marks, 3:1) |
+| status | `danger`, for failure states only |
+
+**No component contains a hex value or a Tailwind palette utility**
+(`orange-500`, `slate-800`, …). Only these tokens.
 
 Three background levels, no more. Hierarchy comes from those levels and 1px
 hairlines — **never** from a shadow, and never from a translucent panel.
+
+### Themes
+
+A preset in `themes.ts` writes down only what cannot be derived: per mode a
+`ground`, a `line`, `fg` and `fg-mute`, plus **one** `accent` shared by both
+modes. `deriveTokens()` computes the rest: panel and raised steps from the
+ground, `edge` and `fg-dim` by mixing, and every accent shade from the one
+accent. Text on an accent fill is `inkFor()` of that fill, the same derivation
+the canvas labels use, so any accent keeps legible button text.
+
+In dark mode the accent fills as written. On a pale ground a saturated accent
+is usually under 3:1, so light mode fills with the nearest shade of the same
+hue that clears 4.5:1. The light-mode accent border is that fill itself rather
+than a pastel tint: every tint between a pale page and the accent passes
+through some role colour on the way.
+
+- **Switch theme:** change `ACTIVE_THEME`. That is the only line.
+- **Preview presets:** in `npm run dev`, the switcher in the bottom-left
+  corner rewrites the theme live. It renders behind `import.meta.env.DEV` and
+  is not in the production bundle.
+- **Add a preset:** add an entry to `PRESETS` and run the tests.
+
+**Role colours are deliberately not part of a theme.** The eight highlight
+roles (`roles.ts`, `--viz-*` in `index.css`) carry meaning inside the canvas
+and were tuned for separability, including under colour-vision deficiency. A
+preset may not touch them. `src/theme/themes.test.ts` reads them out of
+`index.css` and checks every shade in each preset's accent family (fill,
+hover, press, wash, border, ink, focus) against every role, in both modes, as CIEDE2000 after
+simulating deuteranopia and protanopia (Machado 2009, full severity). The floor
+is **12**. If a new preset fails, change the preset; do not lower the floor.
+
+That floor rules out most of the hue wheel, because the roles already occupy
+it: green sits on `sorted`, blue and cyan on `active` and `candidate`, violet
+on `pivot` and `visited`, and an achromatic accent's grey wash reads as
+`excluded`. Phosphor (green), Ice (pale blue) and Graphite (white) were tried
+and failed for exactly those reasons. What passes is red-orange (Ember) and
+dark ochre (Brass). Note also that `rb-red`, the red-black tree's node fill,
+is close to any orange; it is not a highlight role and is not tested, and the
+accent's absence from the canvas is what separates them.
+The same test holds every preset to the text contrast floors above.
+
+The accent also never appears inside a visualizer canvas. Separation is
+spatial as well as chromatic: the floor is the backstop, not the mitigation.
 
 ### Type
 

@@ -5,6 +5,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { HomePage } from './pages/HomePage';
 import { VisualizePage } from './pages/VisualizePage';
 import { Link, RouterProvider, useRouter } from './router/router';
+import { DevThemeSwitcher } from './theme/DevThemeSwitcher';
 
 function Routes(): ReactNode {
   const { path } = useRouter();
@@ -44,7 +45,7 @@ function Shell(): ReactNode {
           to="/"
           className="flex items-center gap-2 text-meta font-semibold text-fg-dim transition-colors hover:text-fg"
         >
-          <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+          <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true">
             <rect x="2" y="11" width="3" height="7" rx="1" />
             <rect x="7" y="7" width="3" height="11" rx="1" />
             <rect x="12" y="2" width="3" height="16" rx="1" />
@@ -54,7 +55,8 @@ function Shell(): ReactNode {
         <span className="hidden font-mono text-micro text-fg-mute sm:inline">
           step, scrub and count every operation
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {import.meta.env.DEV && <DevThemeSwitcher />}
           <ThemeToggle />
         </div>
       </header>

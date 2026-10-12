@@ -94,7 +94,7 @@ export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProp
       >
         <div className="relative">
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 border-l-2 border-accent bg-raised"
+            className="pointer-events-none absolute inset-x-0 top-0 border-l-2 border-focus bg-raised"
             style={{
               height: `${LINE_H}px`,
               transform: `translateY(${Math.max(0, activeLine - 1) * LINE_H}px)`,
@@ -113,7 +113,7 @@ export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProp
               >
                 <span
                   className={`w-6 shrink-0 select-none text-right tabular-nums transition-colors ${
-                    isActive ? 'text-accent' : 'text-fg-mute'
+                    isActive ? 'text-accent-ink' : 'text-fg-mute'
                   }`}
                 >
                   {lineNumber}

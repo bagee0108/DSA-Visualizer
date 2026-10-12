@@ -33,7 +33,7 @@ export function PrecomputeBar(): ReactNode {
       </div>
       <div className="h-1 w-64 overflow-hidden rounded-xs bg-raised">
         <div
-          className="h-full bg-accent"
+          className="h-full bg-focus"
           style={{
             width: `${percent}%`,
             // Information, not decoration: with motion off the fill still

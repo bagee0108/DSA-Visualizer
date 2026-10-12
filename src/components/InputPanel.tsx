@@ -13,7 +13,7 @@ export interface InputPanelProps {
 }
 
 const FIELD_CLASS =
-  'w-full rounded-sm border border-edge bg-ground px-2 py-1 font-mono text-meta text-fg outline-none placeholder:text-fg-mute focus:border-accent';
+  'w-full rounded-sm border border-edge bg-ground px-2 py-1 font-mono text-meta text-fg outline-none placeholder:text-fg-mute focus:border-focus';
 
 export function InputPanel({ algorithm, params, error, onApply }: InputPanelProps): ReactNode {
   const [draft, setDraft] = useState<Record<string, string>>(() => ({ ...algorithm.defaults, ...params }));
@@ -110,7 +110,7 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset.id)}
-                  className="rounded-xs border border-line px-1.5 py-0.5 text-micro text-fg-dim transition-colors hover:border-edge hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="rounded-xs border border-line px-1.5 py-0.5 text-micro text-fg-dim transition-colors hover:border-edge hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {preset.label}
                 </button>
@@ -147,14 +147,14 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
             type="button"
             onClick={() => onApply(draft)}
             disabled={!dirty}
-            className="flex-1 rounded-sm bg-fg px-3 py-1 text-meta font-medium text-ground transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-25"
+            className="flex-1 rounded-sm bg-accent px-3 py-1 text-meta font-medium text-on-accent transition-colors hover:bg-accent-hover active:bg-accent-press focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-raised disabled:text-fg-mute"
           >
             {dirty ? 'Run this input' : 'Running'}
           </button>
           <button
             type="button"
             onClick={() => onApply({ ...algorithm.defaults })}
-            className="rounded-sm border border-edge px-3 py-1 text-meta font-medium text-fg-dim transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="rounded-sm border border-edge px-3 py-1 text-meta font-medium text-fg-dim transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             Defaults
           </button>

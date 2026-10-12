@@ -160,7 +160,7 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
         type="button"
         onClick={copyLink}
         disabled={!shareable}
-        className={`${shareable ? 'ml-auto' : ''} rounded-xs px-1.5 py-0.5 font-mono text-micro text-fg-mute transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
+        className={`${shareable ? 'ml-auto' : ''} rounded-xs px-1.5 py-0.5 font-mono text-micro text-fg-mute transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
         title={shareable ? 'Copy a link that reproduces this exact run' : `This ${what} does not fit in a URL`}
       >
         {copied ? 'link copied' : 'copy link'}

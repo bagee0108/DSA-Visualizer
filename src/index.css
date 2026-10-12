@@ -42,16 +42,26 @@
   --radius-sm: 3px;
   --radius-md: 4px;
 
-  --color-ground: #0e1013;
-  --color-panel: #15181c;
-  --color-raised: #1d2126;
-  --color-line: #24282e;
-  --color-edge: #333940;
-  --color-fg: #e7eaed;
-  --color-fg-dim: #a0a8b0;
-  --color-fg-mute: #79828b;
-  --color-accent: #8fb3d9;
-  --color-danger: #ef9aa6;
+  /* Chrome colours. The values live in src/theme/themes.ts, which writes the
+     active preset into index.html as --theme-* for both modes; these names
+     only expose them as utilities. Never put a hex value here. */
+  --color-ground: var(--theme-ground);
+  --color-panel: var(--theme-panel);
+  --color-raised: var(--theme-raised);
+  --color-line: var(--theme-line);
+  --color-edge: var(--theme-edge);
+  --color-fg: var(--theme-fg);
+  --color-fg-dim: var(--theme-fg-dim);
+  --color-fg-mute: var(--theme-fg-mute);
+  --color-accent: var(--theme-accent);
+  --color-accent-hover: var(--theme-accent-hover);
+  --color-accent-press: var(--theme-accent-press);
+  --color-accent-wash: var(--theme-accent-wash);
+  --color-accent-line: var(--theme-accent-line);
+  --color-accent-ink: var(--theme-accent-ink);
+  --color-on-accent: var(--theme-on-accent);
+  --color-focus: var(--theme-focus);
+  --color-danger: var(--theme-danger);
 
   /* Canvas motion is semantic and these four are load-bearing: a lateral
      slide is an order-preserving rank shift, a drop is a rotation changing
@@ -75,13 +85,14 @@
 }
 
 /* Canvas chrome tracks the surfaces so SVG knockout strokes always match the
-   background they sit on. The eight highlight roles below are semantic and
-   documented; they are the only saturated colour in the app. */
+   background they sit on. The highlight roles below are semantic and
+   documented, and they are NOT part of a theme: a preset may not touch them.
+   src/theme/themes.test.ts reads them from this file. */
 :root {
   --viz-bg: var(--color-ground);
   --viz-text: var(--color-fg);
   --viz-text-dim: var(--color-fg-dim);
-  --viz-grid: #30373f;
+  --viz-grid: var(--theme-viz-grid);
 
   --viz-default: #64748b;
   --viz-comparing: #fbbf24;
@@ -103,19 +114,6 @@
 }
 
 :root:not(.dark) {
-  --color-ground: #f7f8f9;
-  --color-panel: #ffffff;
-  --color-raised: #f0f2f4;
-  --color-line: #e3e6e9;
-  --color-edge: #cdd2d7;
-  --color-fg: #14181c;
-  --color-fg-dim: #5a636c;
-  --color-fg-mute: #677079;
-  --color-accent: #2d6098;
-  --color-danger: #be1b38;
-
-  --viz-grid: #d3d8dd;
-
   --viz-default: #94a3b8;
   --viz-comparing: #f59e0b;
   --viz-swapped: #f43f5e;
@@ -174,7 +172,7 @@ body {
    cannot reach, so both sliders are styled once here. --viz-range-progress is
    the filled fraction, set inline by the component. */
 .viz-range {
-  --viz-range-fill: var(--color-accent);
+  --viz-range-fill: var(--color-focus);
   appearance: none;
   -webkit-appearance: none;
   height: 14px;
@@ -211,7 +209,7 @@ body {
 
 .viz-range:active::-webkit-slider-thumb {
   width: 10px;
-  background: var(--color-accent);
+  background: var(--color-focus);
 }
 
 .viz-range::-moz-range-track {
@@ -240,7 +238,7 @@ body {
 
 .viz-range:active::-moz-range-thumb {
   width: 10px;
-  background: var(--color-accent);
+  background: var(--color-focus);
 }
 
 .viz-range:focus-visible {
@@ -248,11 +246,11 @@ body {
 }
 
 .viz-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-focus);
 }
 
 .viz-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-focus);
 }
 
 @keyframes viz-node-mount {

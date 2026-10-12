@@ -58,7 +58,7 @@ function AlgorithmCard({ entry, register }: { entry: CatalogEntry; register: Reg
     <Link
       ref={hold}
       to={`/visualize/${entry.id}`}
-      className="rounded-sm border border-line bg-panel px-3 py-2 transition hover:-translate-y-px hover:border-edge hover:bg-raised focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="rounded-sm border border-line bg-panel px-3 py-2 transition hover:-translate-y-px hover:border-accent-line hover:bg-raised focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       {body}
     </Link>
@@ -66,11 +66,11 @@ function AlgorithmCard({ entry, register }: { entry: CatalogEntry; register: Reg
 }
 
 const FILTER_BUTTON =
-  'rounded-xs border px-2 py-0.5 text-meta font-medium transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  'rounded-xs border px-2 py-0.5 text-meta font-medium transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 function filterTone(active: boolean): string {
   return active
-    ? 'border-edge bg-raised text-fg'
+    ? 'border-accent-line bg-accent-wash text-accent-ink'
     : 'border-transparent text-fg-mute hover:bg-raised hover:text-fg active:bg-edge';
 }
 
@@ -166,7 +166,7 @@ export function HomePage(): ReactNode {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search algorithms, techniques, tags..."
-            className="min-w-60 flex-1 rounded-sm border border-edge bg-panel px-2 py-1 text-ui text-fg outline-none placeholder:text-fg-mute focus:border-accent"
+            className="min-w-60 flex-1 rounded-sm border border-edge bg-panel px-2 py-1 text-ui text-fg outline-none placeholder:text-fg-mute focus:border-focus"
             aria-label="Search algorithms"
           />
           <div className="flex gap-1">
