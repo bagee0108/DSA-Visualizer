@@ -4,8 +4,8 @@
  * that by being the product rather than a picture of it: every frame,
  * movement and caption is exactly what the AVL screen shows for this input.
  *
- * It pauses while off-screen, and under reduced motion it does not loop at
- * all: it shows the rotation as a still.
+ * It pauses while off-screen and on request, and under reduced motion it
+ * does not loop at all: it shows the rotation as a still.
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -15,7 +15,7 @@ import type { Frame } from '../core/types';
 import { usePrefersReducedMotion } from '../hooks/useMotion';
 import { frameDwellMs } from '../playback/dwell';
 import { StructureCanvas } from '../renderers';
-import { ButtonLink } from './ui';
+import { ButtonLink, IconButton } from './ui';
 
 /** 30 then 10, then 20 lands between them: a left-right double rotation. */
 const RUN = { id: 'avl', input: '30, 10', ops: 'insert 20' } as const;
@@ -43,6 +43,7 @@ export function HeroStage(): ReactNode {
   const [index, setIndex] = useState(0);
   const [jumped, setJumped] = useState(true);
   const [visible, setVisible] = useState(true);
+  const [paused, setPaused] = useState(false);
   const box = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function HeroStage(): ReactNode {
     return () => observer.disconnect();
   }, []);
 
-  const playing = !reduced && visible && frames.length > 1;
+  const playing = !reduced && !paused && visible && frames.length > 1;
   const shown = reduced ? stillIndex(frames) : index;
   const frame = frames[shown];
   const dwell = frameDwellMs(frame, SPEED);
@@ -94,6 +95,17 @@ export function HeroStage(): ReactNode {
           <span className="font-mono text-micro tabular-nums text-fg-mute" aria-hidden="true">
             frame {shown + 1} / {frames.length}
           </span>
+          {!reduced && (
+            <IconButton
+              size="sm"
+              label={paused ? 'Resume the run' : 'Pause the run'}
+              onClick={() => setPaused((was) => !was)}
+            >
+              <svg viewBox="0 0 20 20" className="h-3 w-3" fill="currentColor" aria-hidden="true">
+                {paused ? <path d="M6 4.5v11l9-5.5-9-5.5z" /> : <path d="M5.5 4.5h3v11h-3zM11.5 4.5h3v11h-3z" />}
+              </svg>
+            </IconButton>
+          )}
           <ButtonLink to={RUN_HREF} variant="ghost" size="sm">
             Open this run
           </ButtonLink>
