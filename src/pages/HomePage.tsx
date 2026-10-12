@@ -5,6 +5,7 @@
 
 import { useEffect, type ReactNode } from 'react';
 
+import { HeroStage } from '../components/HeroStage';
 import { Route } from '../components/Route';
 import { ButtonLink } from '../components/ui';
 import { firstOpenLevel, LEVELS } from '../core/levels';
@@ -13,8 +14,8 @@ function Hero(): ReactNode {
   const start = firstOpenLevel();
 
   return (
-    <header className="mx-auto max-w-6xl px-6 pt-10 pb-9">
-      <div className="max-w-xl">
+    <header className="mx-auto grid max-w-6xl items-center gap-x-10 gap-y-8 px-6 pt-8 pb-10 lg:grid-cols-[minmax(0,1fr)_44rem]">
+      <div className="min-w-0">
         <p className="mb-4 font-mono text-meta text-fg-mute">
           <span className="text-accent-ink">$</span> play avl --insert 30,10,20
         </p>
@@ -35,6 +36,7 @@ function Hero(): ReactNode {
           </ButtonLink>
         </div>
       </div>
+      <HeroStage />
     </header>
   );
 }
