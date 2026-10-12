@@ -84,11 +84,20 @@ export interface LinkProps {
   readonly className?: string;
   readonly title?: string;
   readonly 'aria-label'?: string;
+  readonly 'aria-current'?: 'page' | undefined;
   readonly ref?: Ref<HTMLAnchorElement>;
   readonly children: ReactNode;
 }
 
-export function Link({ to, className, title, 'aria-label': ariaLabel, ref, children }: LinkProps): ReactNode {
+export function Link({
+  to,
+  className,
+  title,
+  'aria-label': ariaLabel,
+  'aria-current': ariaCurrent,
+  ref,
+  children,
+}: LinkProps): ReactNode {
   const { navigate } = useRouter();
   return (
     <a
@@ -97,6 +106,7 @@ export function Link({ to, className, title, 'aria-label': ariaLabel, ref, child
       className={className}
       title={title}
       aria-label={ariaLabel}
+      aria-current={ariaCurrent}
       onClick={(event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
         event.preventDefault();

@@ -13,14 +13,16 @@ import { ExplanationBar } from '../components/ExplanationBar';
 import { InputPanel } from '../components/InputPanel';
 import { Player } from '../components/Player';
 import { PrecomputeBar } from '../components/PrecomputeBar';
-import { Kbd } from '../components/ui';
+import { ProgressStars, TierLabel } from '../components/level';
+import { Button, ButtonLink, Kbd } from '../components/ui';
+import { levelFor, neighbour, type Level } from '../core/levels';
 import { getAlgorithm } from '../core/registry';
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
 import { ZERO_COUNTERS } from '../core/types';
 import { PlaybackProvider, usePlayback } from '../playback/PlaybackProvider';
 import { useChunkedBuild } from '../playback/useChunkedBuild';
 import { StructureCanvas } from '../renderers';
-import { Link, useRouter } from '../router/router';
+import { useRouter } from '../router/router';
 import { CATEGORY_LABEL } from '../catalog';
 
 /**
@@ -59,14 +61,11 @@ export function VisualizePage({ algorithmId }: VisualizePageProps): ReactNode {
           No algorithm registered as &quot;{algorithmId}&quot;
         </h1>
         <p className="max-w-md text-meta text-fg-dim">
-          It is probably still on the roadmap. The home page marks which phase it belongs to.
+          It is probably still being built. The path on the home page marks every level that is coming.
         </p>
-        <Link
-          to="/"
-          className="rounded-sm border border-edge bg-raised px-3 py-1 text-meta font-medium text-fg transition-colors hover:border-fg-mute"
-        >
-          Back to all algorithms
-        </Link>
+        <ButtonLink to="/" variant="secondary">
+          Back to the path
+        </ButtonLink>
       </div>
     );
   }
@@ -128,9 +127,33 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   );
 }
 
+function Chevron({ direction }: { direction: -1 | 1 }): ReactNode {
+  return (
+    <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <path d={direction < 0 ? 'M7.5 2.5 4 6l3.5 3.5' : 'M4.5 2.5 8 6 4.5 9.5'} />
+    </svg>
+  );
+}
+
+function LevelStep({ level, direction }: { level: Level | undefined; direction: -1 | 1 }): ReactNode {
+  if (level === undefined) return null;
+  return (
+    <ButtonLink to={`/visualize/${level.id}`} variant="ghost" size="sm" className="font-mono font-normal">
+      <span className="sr-only">{direction < 0 ? 'Previous level: ' : 'Next level: '}{level.name}</span>
+      <span aria-hidden="true" className="flex items-center gap-1">
+        {direction < 0 && <Chevron direction={-1} />}
+        lv {String(level.number).padStart(2, '0')}
+        {direction > 0 && <Chevron direction={1} />}
+      </span>
+    </ButtonLink>
+  );
+}
+
 function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgorithm; shareable: boolean }): ReactNode {
   const [copied, setCopied] = useState(false);
   const what = algorithm.meta.structureKind === 'graph' ? 'graph' : 'input';
+  const level = levelFor(algorithm.meta.id);
+  const folder = level?.lane ?? CATEGORY_LABEL[algorithm.meta.category].toLowerCase();
 
   const copyLink = (): void => {
     void navigator.clipboard.writeText(window.location.href).then(
@@ -143,29 +166,53 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
   };
 
   return (
-    <header className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line bg-panel px-3 py-1.5">
-      <h1 className="text-title font-semibold tracking-tight text-fg">{algorithm.meta.name}</h1>
-      <span className="rounded-xs bg-raised px-1.5 py-0.5 font-mono text-micro uppercase tracking-wider text-fg-mute">
-        {CATEGORY_LABEL[algorithm.meta.category]}
-      </span>
-      <p className="hidden text-meta text-fg-dim md:block">{algorithm.meta.blurb}</p>
-      {!shareable && (
-        <span
-          className="ml-auto rounded-xs border border-edge px-1.5 py-0.5 font-mono text-micro text-fg-dim"
-          title={`The ${what} is longer than a URL can safely carry, so this run lives only in this tab.`}
-        >
-          custom {what} - not shareable
+    <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-line bg-panel px-3 py-2">
+      <div className="flex min-w-0 items-baseline gap-2">
+        <span className="font-mono text-meta text-fg-mute" aria-hidden="true">
+          <span className="text-accent-ink">$</span> ~/{folder}/
         </span>
+        <h1 className="font-display text-page font-bold text-fg">{algorithm.meta.name}</h1>
+      </div>
+
+      {level !== undefined && (
+        <div className="flex items-center gap-3 text-micro text-fg-mute">
+          <span className="font-mono tabular-nums">lv {String(level.number).padStart(2, '0')}</span>
+          <span className="h-3.5 w-px bg-line" aria-hidden="true" />
+          <TierLabel tier={level.tier} />
+          <span className="h-3.5 w-px bg-line" aria-hidden="true" />
+          <ProgressStars withLabel />
+        </div>
       )}
-      <button
-        type="button"
-        onClick={copyLink}
-        disabled={!shareable}
-        className={`${shareable ? 'ml-auto' : ''} rounded-xs px-1.5 py-0.5 font-mono text-micro text-fg-mute transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
-        title={shareable ? 'Copy a link that reproduces this exact run' : `This ${what} does not fit in a URL`}
-      >
-        {copied ? 'link copied' : 'copy link'}
-      </button>
+
+      <p className="hidden min-w-0 flex-1 text-meta text-fg-dim xl:block">{algorithm.meta.blurb}</p>
+
+      <div className="ml-auto flex items-center gap-1">
+        {!shareable && (
+          <span
+            className="rounded-xs border border-edge px-1.5 py-0.5 font-mono text-micro text-fg-dim"
+            title={`The ${what} is longer than a URL can safely carry, so this run lives only in this tab.`}
+          >
+            custom {what} - not shareable
+          </span>
+        )}
+        {/* Reserved for the quiz mode switch once quizzes exist. Empty on purpose. */}
+        <div className="hidden w-32 lg:block" aria-hidden="true" />
+        {level !== undefined && (
+          <>
+            <LevelStep level={neighbour(level, -1)} direction={-1} />
+            <LevelStep level={neighbour(level, 1)} direction={1} />
+          </>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={copyLink}
+          disabled={!shareable}
+          title={shareable ? 'Copy a link that reproduces this exact run' : `This ${what} does not fit in a URL`}
+        >
+          {copied ? 'Link copied' : 'Copy link'}
+        </Button>
+      </div>
     </header>
   );
 }

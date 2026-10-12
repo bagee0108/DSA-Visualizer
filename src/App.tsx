@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 
 import { ThemeToggle } from './components/ThemeToggle';
+import { ButtonLink, FOCUS_RING } from './components/ui';
 import { BrowsePage } from './pages/BrowsePage';
 import { HomePage } from './pages/HomePage';
 import { VisualizePage } from './pages/VisualizePage';
@@ -26,13 +27,24 @@ function Routes(): ReactNode {
       <p className="text-meta text-fg-dim">
         <code className="font-mono text-fg">{path}</code> does not match a route.
       </p>
-      <Link
-        to="/"
-        className="rounded-sm border border-edge bg-raised px-3 py-1 text-meta font-medium text-fg transition-colors hover:border-fg-mute"
-      >
-        Back to all algorithms
-      </Link>
+      <ButtonLink to="/" variant="secondary">
+        Back to the path
+      </ButtonLink>
     </div>
+  );
+}
+
+function NavLink({ to, current, children }: { to: string; current: boolean; children: ReactNode }): ReactNode {
+  return (
+    <Link
+      to={to}
+      aria-current={current ? 'page' : undefined}
+      className={`rounded-sm px-2.5 py-1 font-display text-meta font-semibold font-stretch-semi-condensed transition-colors ${
+        current ? 'bg-raised text-fg' : 'text-fg-mute hover:bg-raised hover:text-fg'
+      } ${FOCUS_RING}`}
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -42,23 +54,34 @@ function Shell(): ReactNode {
 
   return (
     <div className="flex h-full flex-col bg-ground text-fg">
-      <header className="flex shrink-0 items-center gap-3 border-b border-line bg-panel px-3 py-1">
+      <header className="flex h-11 shrink-0 items-center gap-5 border-b border-line bg-panel px-3">
         <Link
           to="/"
-          className="flex items-center gap-2 text-meta font-semibold text-fg-dim transition-colors hover:text-fg"
+          aria-label="dsa/visualizer, home"
+          className={`flex items-center gap-2 rounded-xs font-display text-ui font-semibold font-stretch-semi-condensed text-fg ${FOCUS_RING}`}
         >
           <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true">
             <rect x="2" y="11" width="3" height="7" rx="1" />
             <rect x="7" y="7" width="3" height="11" rx="1" />
             <rect x="12" y="2" width="3" height="16" rx="1" />
           </svg>
-          DSA Visualizer
+          <span>
+            dsa<span className="font-normal text-fg-mute">/</span>visualizer
+          </span>
         </Link>
-        <span className="hidden font-mono text-micro text-fg-mute sm:inline">
-          step, scrub and count every operation
-        </span>
+        {/* A leaderboard link joins these once that page exists; never before. */}
+        <nav aria-label="Main" className="flex items-center gap-1">
+          <NavLink to="/" current={route !== 'browse'}>
+            Path
+          </NavLink>
+          <NavLink to="/browse" current={route === 'browse'}>
+            Browse
+          </NavLink>
+        </nav>
         <div className="ml-auto flex items-center gap-2">
           {import.meta.env.DEV && <DevThemeSwitcher />}
+          {/* Reserved for the profile area once accounts exist. Empty on purpose. */}
+          <div className="hidden w-32 sm:block" aria-hidden="true" />
           <ThemeToggle />
         </div>
       </header>

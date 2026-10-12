@@ -13,12 +13,12 @@ export interface ComplexityPanelProps {
 }
 
 const COUNTER_LABEL: Record<CounterKey, string> = {
-  comparisons: 'Comparisons',
-  swaps: 'Swaps',
-  reads: 'Reads',
-  writes: 'Writes',
-  accesses: 'Array accesses',
-  recursiveCalls: 'Recursive calls',
+  comparisons: 'comparisons',
+  swaps: 'swaps',
+  reads: 'reads',
+  writes: 'writes',
+  accesses: 'array accesses',
+  recursiveCalls: 'recursive calls',
 };
 
 function counterValue(key: CounterKey, counters: Counters): number {
@@ -41,7 +41,7 @@ function counterValue(key: CounterKey, counters: Counters): number {
 function Stat({ label, value }: { label: string; value: string }): ReactNode {
   return (
     <div className="rounded-xs bg-raised px-2 py-1">
-      <dt className="truncate text-micro uppercase tracking-wider text-fg-mute" title={label}>
+      <dt className="truncate text-micro text-fg-mute" title={label}>
         {label}
       </dt>
       <dd className="font-mono text-ui tabular-nums text-fg">{value}</dd>
@@ -72,14 +72,14 @@ export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): React
 
       <div className="space-y-2 px-3 py-2">
         <dl className="grid grid-cols-4 gap-1">
-          <Stat label="Best" value={time.best} />
-          <Stat label="Average" value={time.average} />
-          <Stat label="Worst" value={time.worst} />
-          <Stat label="Space" value={space} />
+          <Stat label="best" value={time.best} />
+          <Stat label="average" value={time.average} />
+          <Stat label="worst" value={time.worst} />
+          <Stat label="space" value={space} />
         </dl>
 
         <div>
-          <h3 className="mb-1 text-micro uppercase tracking-wider text-fg-mute">This run</h3>
+          <h3 className="mb-1 font-display text-micro font-semibold font-stretch-semi-condensed text-fg-dim">this run</h3>
           <dl className="grid grid-cols-2 gap-1">
             {meta.trackedCounters.map((key) => (
               <CountStat key={key} label={COUNTER_LABEL[key]} value={counterValue(key, counters)} />
