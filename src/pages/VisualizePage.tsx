@@ -13,6 +13,7 @@ import { ExplanationBar } from '../components/ExplanationBar';
 import { InputPanel } from '../components/InputPanel';
 import { Player } from '../components/Player';
 import { PrecomputeBar } from '../components/PrecomputeBar';
+import { Kbd } from '../components/ui';
 import { getAlgorithm } from '../core/registry';
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
 import { ZERO_COUNTERS } from '../core/types';
@@ -232,7 +233,7 @@ function StatusLine(): ReactNode {
     <div className="hidden shrink-0 items-center gap-3 border-t border-line bg-panel px-3 py-1 font-mono text-micro text-fg-mute sm:flex">
       {SHORTCUTS.map(([keys, action]) => (
         <span key={keys} className="flex items-center gap-1">
-          <kbd className="rounded-xs border border-line px-1 text-fg-dim">{keys}</kbd>
+          <Kbd>{keys}</Kbd>
           {action}
         </span>
       ))}

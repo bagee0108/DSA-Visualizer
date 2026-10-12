@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { CallStackEntry } from '../core/types';
+import { PanelHeader } from './ui';
 
 export interface CallStackPanelProps {
   readonly stack: readonly CallStackEntry[];
@@ -11,10 +12,7 @@ export function CallStackPanel({ stack }: CallStackPanelProps): ReactNode {
 
   return (
     <section className="shrink-0 border-t border-line">
-      <header className="flex items-center justify-between border-b border-line px-3 py-1.5">
-        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">Call stack</h2>
-        <span className="font-mono text-micro tabular-nums text-fg-mute">depth {stack.length}</span>
-      </header>
+      <PanelHeader title="call stack" meta={`depth ${stack.length}`} />
 
       {reversed.length === 0 ? (
         <p className="px-3 py-1.5 font-mono text-micro text-fg-mute">empty</p>

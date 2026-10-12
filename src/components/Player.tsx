@@ -3,6 +3,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { MAX_SPEED, MIN_SPEED, usePlayback } from '../playback/PlaybackProvider';
+import { Chip, ChipGroup, IconButton } from './ui';
 
 /**
  * Play and pause are the same two quadrilaterals in different positions, so
@@ -55,9 +56,6 @@ function IconEnd(): ReactNode {
   );
 }
 
-const BUTTON_BASE =
-  'inline-flex h-8 w-8 items-center justify-center rounded-sm border transition-colors disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus';
-
 interface ControlButtonProps {
   readonly label: string;
   readonly shortcut?: string;
@@ -75,23 +73,18 @@ function ControlButton({
   primary = false,
   children,
 }: ControlButtonProps): ReactNode {
-  const tone = primary
-    ? 'border-accent bg-accent text-on-accent hover:border-accent-hover hover:bg-accent-hover active:border-accent-press active:bg-accent-press'
-    : 'border-transparent text-fg-dim hover:bg-raised hover:text-fg active:bg-edge active:text-fg disabled:hover:bg-transparent';
-
   return (
-    <button
-      type="button"
-      className={`${BUTTON_BASE} ${tone}`}
+    <IconButton
+      label={label}
+      title={shortcut === undefined ? label : `${label} (${shortcut})`}
+      variant={primary ? 'primary' : 'ghost'}
       onClick={onClick}
       disabled={disabled}
-      title={shortcut === undefined ? label : `${label} (${shortcut})`}
-      aria-label={label}
     >
       <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden="true">
         {children}
       </svg>
-    </button>
+    </IconButton>
   );
 }
 
@@ -231,7 +224,7 @@ export function Player(): ReactNode {
         <div className="mx-2 h-5 w-px bg-line" />
 
         <div className="flex min-w-48 flex-1 items-center gap-2">
-          <span className="font-mono text-micro uppercase tracking-wider text-fg-mute">speed</span>
+          <span className="font-display text-micro font-semibold font-stretch-semi-condensed text-fg-mute">speed</span>
           <input
             type="range"
             min={0}
@@ -249,23 +242,19 @@ export function Player(): ReactNode {
           </span>
         </div>
 
-        <div className="hidden items-center gap-0.5 lg:flex">
+        <ChipGroup label="Speed presets" className="hidden lg:flex">
           {SPEED_MARKS.map((mark) => (
-            <button
+            <Chip
               key={mark}
-              type="button"
+              pressed={Math.abs(speed - mark) < 0.01}
               onClick={() => setSpeed(mark)}
               title={mark > 4 ? 'Visuals only - the explanation goes by too fast to read' : undefined}
-              className={`rounded-xs border px-1.5 py-0.5 font-mono text-micro tabular-nums transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                Math.abs(speed - mark) < 0.01
-                  ? 'border-accent-line bg-accent-wash text-accent-ink'
-                  : 'border-transparent text-fg-mute hover:bg-raised hover:text-fg active:bg-edge'
-              }`}
+              className="font-mono tabular-nums"
             >
               {mark}x
-            </button>
+            </Chip>
           ))}
-        </div>
+        </ChipGroup>
       </div>
     </div>
   );

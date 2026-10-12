@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { usePrefersReducedMotion } from '../hooks/useMotion';
+import { PanelHeader } from './ui';
 
 /** Row height in px. The sliding highlight is positioned off it, so the row
  *  and this constant have to agree; `text-micro` carries a 16px line box. */
@@ -49,7 +50,7 @@ export interface CodePanelProps {
   readonly title?: string;
 }
 
-export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProps): ReactNode {
+export function CodePanel({ lines, activeLine, title = 'source' }: CodePanelProps): ReactNode {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const userScrolledAt = useRef(0);
   const reduced = usePrefersReducedMotion();
@@ -78,12 +79,7 @@ export function CodePanel({ lines, activeLine, title = 'Source' }: CodePanelProp
 
   return (
     <section className="flex min-h-0 flex-col">
-      <header className="flex shrink-0 items-center justify-between border-b border-line px-3 py-1.5">
-        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">{title}</h2>
-        <span className="font-mono text-micro tabular-nums text-fg-mute">
-          {activeLine > 0 ? `line ${activeLine}` : 'idle'}
-        </span>
-      </header>
+      <PanelHeader title={title} meta={activeLine > 0 ? `line ${activeLine}` : 'idle'} />
 
       <div
         ref={scrollRef}

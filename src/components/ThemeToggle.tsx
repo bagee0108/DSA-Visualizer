@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react';
 
 import { useTheme } from '../hooks/useTheme';
+import { IconButton } from './ui';
 
 export function ThemeToggle(): ReactNode {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <button
-      type="button"
+    <IconButton
+      size="sm"
       onClick={toggleTheme}
+      label="Toggle colour theme"
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      aria-label="Toggle colour theme"
-      className="inline-flex h-6 w-6 items-center justify-center rounded-xs text-fg-mute transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
         {theme === 'dark' ? (
@@ -23,6 +23,6 @@ export function ThemeToggle(): ReactNode {
           </>
         )}
       </svg>
-    </button>
+    </IconButton>
   );
 }

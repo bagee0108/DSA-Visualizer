@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { countTokens, type FieldSpec, type ParamMap, type RegisteredAlgorithm } from '../core/define';
 import { makeRng, randomSeed } from '../core/random';
+import { Button, Chip, PanelHeader } from './ui';
 
 export interface InputPanelProps {
   readonly algorithm: RegisteredAlgorithm;
@@ -97,23 +98,16 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
 
   return (
     <section className="shrink-0 border-t border-line">
-      <header className="border-b border-line px-3 py-1.5">
-        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">Input</h2>
-      </header>
+      <PanelHeader title="input" />
 
       <div className="space-y-3 px-3 py-2">
         {algorithm.presets.length > 0 && (
           <div className="space-y-1.5">
             <div className="flex flex-wrap gap-1">
               {algorithm.presets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => applyPreset(preset.id)}
-                  className="rounded-xs border border-line px-1.5 py-0.5 text-micro text-fg-dim transition-colors hover:border-edge hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                >
+                <Chip key={preset.id} onClick={() => applyPreset(preset.id)}>
                   {preset.label}
-                </button>
+                </Chip>
               ))}
             </div>
             <div className="flex items-center gap-2">
@@ -143,21 +137,12 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
         )}
 
         <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => onApply(draft)}
-            disabled={!dirty}
-            className="flex-1 rounded-sm bg-accent px-3 py-1 text-meta font-medium text-on-accent transition-colors hover:bg-accent-hover active:bg-accent-press focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-raised disabled:text-fg-mute"
-          >
+          <Button variant="primary" className="flex-1" onClick={() => onApply(draft)} disabled={!dirty}>
             {dirty ? 'Run this input' : 'Running'}
-          </button>
-          <button
-            type="button"
-            onClick={() => onApply({ ...algorithm.defaults })}
-            className="rounded-sm border border-edge px-3 py-1 text-meta font-medium text-fg-dim transition-colors hover:bg-raised hover:text-fg focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
+          </Button>
+          <Button variant="secondary" onClick={() => onApply({ ...algorithm.defaults })}>
             Defaults
-          </button>
+          </Button>
         </div>
       </div>
     </section>

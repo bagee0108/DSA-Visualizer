@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useCountUp } from '../hooks/useMotion';
 import type { AlgorithmMeta, CounterKey } from '../core/define';
 import type { Counters } from '../core/types';
+import { PanelHeader } from './ui';
 
 export interface ComplexityPanelProps {
   readonly meta: AlgorithmMeta;
@@ -62,13 +63,12 @@ export function ComplexityPanel({ meta, counters }: ComplexityPanelProps): React
 
   return (
     <section className="shrink-0 border-t border-line">
-      <header className="flex items-center justify-between border-b border-line px-3 py-1.5">
-        <h2 className="font-mono text-micro uppercase tracking-wider text-fg-mute">Complexity</h2>
+      <PanelHeader title="complexity">
         <div className="flex gap-1">
           {meta.inPlace === true && <span className={TAG}>in place</span>}
           {meta.stable !== undefined && <span className={TAG}>{meta.stable ? 'stable' : 'unstable'}</span>}
         </div>
-      </header>
+      </PanelHeader>
 
       <div className="space-y-2 px-3 py-2">
         <dl className="grid grid-cols-4 gap-1">

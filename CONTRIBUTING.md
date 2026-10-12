@@ -493,6 +493,31 @@ a home page section) and `text-display` (44px, the hero line, once). Tailwind's
 own `text-sm`/`text-lg`/... still exist; they are not part of the scale and
 nothing new should use them.
 
+### Controls
+
+Every control in the chrome comes from `src/components/ui.tsx`. A new screen
+(the graph editor, the quiz) composes these instead of styling its own, so
+states read the same everywhere.
+
+| control | use it for | states |
+| --- | --- | --- |
+| `Button` / `ButtonLink` `primary` | the one action to take on a surface: Play, Run, Start the path | accent fill; hover lifts, press darkens; disabled goes to `raised` |
+| `Button` `secondary` | an alternative action: Defaults, Browse all | `edge` outline; hover fills `raised` |
+| `Button` `ghost` / `IconButton` | tools that should not compete: step, reset, copy link | text only; hover fills `raised` |
+| `Chip` with `pressed` | a toggle or one-of-many choice: speed marks, filters, and later editor tools and quiz answers | pressed is the accent wash, border and ink; unpressed is muted text |
+| `Chip` without `pressed` | a small action in a dense row: presets | hairline outline |
+| `PanelHeader` | the label row of a docked panel | lowercase label in the display face, readout on the right |
+| `Kbd` | a keyboard key | |
+
+`FOCUS_RING` is the single focus style. The accent has two jobs in this
+vocabulary and no others: a filled `primary` is the action, and a pressed chip
+is the selection. A tool or mode state is a pressed chip; do not invent a
+third orange treatment for it. `ButtonLink` only ever points at a route that
+exists: a feature that is not built gets no link, not a disabled one.
+
+Labels are lowercase and prompt-flavoured (`~/trees/`, `lv 10`, a `$` in the
+accent) rather than tracked capitals.
+
 ### Spacing, radius, motion
 
 Spacing is Tailwind's 4px scale (`--spacing`), used through the numeric
