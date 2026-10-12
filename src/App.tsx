@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 
 import { ThemeToggle } from './components/ThemeToggle';
+import { BrowsePage } from './pages/BrowsePage';
 import { HomePage } from './pages/HomePage';
 import { VisualizePage } from './pages/VisualizePage';
 import { Link, RouterProvider, useRouter } from './router/router';
@@ -11,6 +12,7 @@ function Routes(): ReactNode {
   const { path } = useRouter();
 
   if (path === '/' || path === '') return <HomePage />;
+  if (path === '/browse' || path === '/browse/') return <BrowsePage />;
 
   const visualizeMatch = /^\/visualize\/([^/]+)\/?$/.exec(path);
   if (visualizeMatch !== null) {
@@ -36,7 +38,7 @@ function Routes(): ReactNode {
 
 function Shell(): ReactNode {
   const { path } = useRouter();
-  const route = path === '/' || path === '' ? 'home' : 'visualize';
+  const route = path === '/' || path === '' ? 'home' : path.startsWith('/browse') ? 'browse' : 'visualize';
 
   return (
     <div className="flex h-full flex-col bg-ground text-fg">

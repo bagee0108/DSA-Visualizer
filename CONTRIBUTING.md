@@ -529,7 +529,11 @@ Radii are small and there are three: `rounded-xs` (2px), `rounded-sm` (3px),
 
 Durations are `--duration-fast` (120ms, hovers and presses),
 `--duration-base` (200ms, anything that travels) and `--duration-slow` (320ms,
-a card crossing the grid). Nothing names a raw millisecond value.
+a card crossing the grid). `--duration-reveal` (1400ms) is reserved for a
+page's single orchestrated moment, which today is the home route drawing
+itself; it is keyframes whose resting state is the finished drawing, so the
+page is complete whether or not it plays. Nothing names a raw millisecond
+value.
 
 ### Motion means something, so nothing may move for decoration
 

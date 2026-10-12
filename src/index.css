@@ -105,6 +105,8 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
+  /* The one orchestrated chrome moment per page: the route drawing itself. */
+  --duration-reveal: 1400ms;
   --default-transition-duration: var(--duration-fast);
   --default-transition-timing-function: var(--ease-ui);
 }
@@ -340,6 +342,29 @@ body {
   }
 }
 
+/* The home route's one reveal: the lit line draws, each open node lights as
+   the line reaches it, then the unbuilt stretch fades in. Resting state is
+   the finished drawing. --route-length is set on the path. */
+@keyframes viz-route-draw {
+  from {
+    stroke-dashoffset: var(--route-length);
+  }
+}
+
+@keyframes viz-node-light {
+  from {
+    border-color: var(--color-edge);
+    background-color: var(--color-ground);
+    box-shadow: none;
+  }
+}
+
+@keyframes viz-route-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Motion off: every duration collapses and the animations are skipped, but
    every state change still lands. The app must be fully usable here. */
 @media (prefers-reduced-motion: reduce) {
@@ -347,6 +372,7 @@ body {
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-slow: 0ms;
+    --duration-reveal: 0ms;
   }
 
   *,
