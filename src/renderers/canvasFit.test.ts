@@ -4,6 +4,7 @@ import { LAYOUT_ASPECT } from '../core/graphLayout';
 import { arrayBands, FLOOR, INDEX_ROW_Y, POINTER_ROW_HEIGHT, POINTER_ROW_Y, type BandVariant } from './ArrayRenderer';
 import { VIEW_H, VIEW_W } from './canvas';
 import { graphBandBottom, graphBox, GRAPH_TOP } from './GraphRenderer';
+import { matrixBandBottom, matrixLayout, MATRIX_TOP, MAX_CELL, type MatrixShape } from './MatrixRenderer';
 import { PAD_X, STRIP_HEIGHT } from './strips';
 import { treeScale, TREE_TOP, type TreeRunBound } from './TreeRenderer';
 
@@ -104,6 +105,52 @@ describe('graph box', () => {
   it('leaves room under the strips for every strip count', () => {
     for (const strips of STRIP_COUNTS) {
       expect(VIEW_H - graphBandBottom(strips)).toBeGreaterThanOrEqual(strips * STRIP_HEIGHT);
+    }
+  });
+});
+
+describe('matrix layout', () => {
+  function shapes(): MatrixShape[] {
+    const out: MatrixShape[] = [];
+    for (const strips of STRIP_COUNTS) {
+      for (const rows of [1, 2, 6, 13, 21, 40]) {
+        for (const cols of [1, 2, 7, 13, 16, 30, 60]) {
+          for (const header of ['a', '12', 'item 4 (w3)']) {
+            for (const rowTitle of ['i', 'i: prefix of a', 'items considered so far']) {
+              out.push({ rows, cols, rowHeaders: Array.from({ length: rows }, () => header), rowTitle, strips });
+            }
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  it('keeps the grid, its gutters and its titles inside the band', () => {
+    for (const shape of shapes()) {
+      const { cell, x0, y0, headerW, titleY, bottom } = matrixLayout(shape);
+      expect(cell).toBeGreaterThan(0);
+      expect(cell).toBeLessThanOrEqual(MAX_CELL);
+      expect(x0 + cell * shape.cols).toBeLessThanOrEqual(VIEW_W - PAD_X + 1e-9);
+      expect(x0 - headerW).toBeGreaterThanOrEqual(PAD_X - 1e-9);
+      expect(y0 + cell * shape.rows).toBeLessThanOrEqual(bottom + 1e-9);
+      expect(titleY).toBeGreaterThanOrEqual(MATRIX_TOP);
+    }
+  });
+
+  it('spends the band on cells unless they hit the size cap', () => {
+    for (const shape of shapes()) {
+      const { cell, x0, y0, bottom } = matrixLayout(shape);
+      if (cell >= MAX_CELL - 1e-9) continue;
+      const fillsWidth = x0 + cell * shape.cols >= VIEW_W - PAD_X - 1e-6;
+      const fillsHeight = y0 + cell * shape.rows >= bottom - 1e-6;
+      expect(fillsWidth || fillsHeight).toBe(true);
+    }
+  });
+
+  it('leaves room under the strips for every strip count', () => {
+    for (const strips of STRIP_COUNTS) {
+      expect(VIEW_H - matrixBandBottom(strips)).toBeGreaterThanOrEqual(strips * STRIP_HEIGHT);
     }
   });
 });
