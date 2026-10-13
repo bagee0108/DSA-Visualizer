@@ -115,7 +115,45 @@ export interface GraphSnapshot {
   readonly strips: readonly Strip[];
 }
 
-export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot;
+/** A table position, 0-based, rows first. */
+export interface MatrixCell {
+  readonly row: number;
+  readonly col: number;
+}
+
+/** A dependency drawn from one cell to another: where a value came from. */
+export interface MatrixArrow {
+  readonly from: MatrixCell;
+  readonly to: MatrixCell;
+  /** The move the arrow stands for, such as "match" or "delete". */
+  readonly label?: string;
+}
+
+/**
+ * A table of numbers filled in over a run: a DP table. Its shape and headers
+ * are fixed for the run. Highlights and pointers name places in it with
+ * cellRef, rowRef and colRef (src/core/matrixScene.ts).
+ */
+export interface MatrixSnapshot {
+  readonly kind: 'matrix';
+  readonly rows: number;
+  readonly cols: number;
+  /** Row-major; null is a cell not computed yet. */
+  readonly cells: readonly (number | null)[];
+  /** One label per row and per column, such as the letters of two strings. */
+  readonly rowHeaders: readonly string[];
+  readonly colHeaders: readonly string[];
+  /** What each axis counts, such as "i: prefix of a". */
+  readonly rowTitle: string;
+  readonly colTitle: string;
+  /** The current cell's dependencies. Only for the frame that shows them. */
+  readonly arrows: readonly MatrixArrow[];
+  /** The traceback so far, in the order it was walked. */
+  readonly path: readonly MatrixCell[];
+  readonly strips: readonly Strip[];
+}
+
+export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot | MatrixSnapshot;
 
 export type HighlightRole =
   | 'comparing'
