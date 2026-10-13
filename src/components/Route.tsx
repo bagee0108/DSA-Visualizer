@@ -20,8 +20,12 @@ import { Link } from '../router/router';
 import { ProgressStars, TierGlyph } from './level';
 import { FOCUS_RING } from './ui';
 
-/** Below this width the route stops winding and becomes a list. */
-const WIND_MIN_WIDTH = 880;
+/**
+ * Below this width the route stops winding and becomes a list. A ten-level
+ * lane gives each stop about 85px here; any narrower and long single words
+ * ("Topological", "algorithm") run into the next stop's name.
+ */
+const WIND_MIN_WIDTH = 1100;
 const LANE_GAP = 164;
 const TURN = LANE_GAP / 2;
 const TOP = 44;
