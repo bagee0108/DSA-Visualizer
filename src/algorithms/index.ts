@@ -18,6 +18,7 @@ import { bfs } from './graphs/bfs';
 import { dfs } from './graphs/dfs';
 import { dijkstra } from './graphs/dijkstra';
 import { unionFind } from './graphs/unionFind';
+import { lcs } from './dp/lcs';
 
 register(quicksort);
 register(mergesort);
@@ -39,5 +40,8 @@ register(bfs);
 register(dfs);
 register(dijkstra);
 register(unionFind);
+
+// Phase 4 - dynamic programming
+register(lcs);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';

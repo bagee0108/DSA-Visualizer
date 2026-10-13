@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { avl } from '../algorithms/trees/avl';
 import { dijkstra } from '../algorithms/graphs/dijkstra';
+import { lcs } from '../algorithms/dp/lcs';
 import { quicksort } from '../algorithms/arrays/quicksort';
 import type { BuildResult, ParamMap, RegisteredAlgorithm } from './define';
 
@@ -29,6 +30,7 @@ const CASES: ReadonlyArray<readonly [string, RegisteredAlgorithm, ParamMap]> = [
   ['array', quicksort, {}],
   ['tree', avl, {}],
   ['graph', dijkstra, {}],
+  ['matrix', lcs, {}],
 ];
 
 describe('chunked build', () => {
