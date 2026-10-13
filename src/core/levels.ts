@@ -25,6 +25,8 @@ interface LevelSpec {
   readonly tier: Tier;
   /** Only for a level that is not a catalog algorithm, such as race mode. */
   readonly name?: string;
+  /** Operations this level shows, as the home ticker names them. */
+  readonly ops?: readonly string[];
 }
 
 const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly LevelSpec[] }> = [
@@ -35,33 +37,33 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
       { id: 'two-pointers', tier: 1 },
       { id: 'sliding-window', tier: 1 },
       { id: 'kadane', tier: 2 },
-      { id: 'mergesort', tier: 1 },
-      { id: 'quicksort', tier: 2 },
-      { id: 'heapsort', tier: 2 },
+      { id: 'mergesort', tier: 1, ops: ['split', 'merge'] },
+      { id: 'quicksort', tier: 2, ops: ['partition'] },
+      { id: 'heapsort', tier: 2, ops: ['heapify', 'sift down'] },
     ],
   },
   {
     id: 'trees',
     levels: [
       { id: 'tree-traversals', tier: 1 },
-      { id: 'bst', tier: 1 },
-      { id: 'avl', tier: 2 },
-      { id: 'red-black', tier: 3 },
-      { id: 'binary-heap', tier: 2 },
-      { id: 'trie', tier: 2 },
+      { id: 'bst', tier: 1, ops: ['insert'] },
+      { id: 'avl', tier: 2, ops: ['insert', 'rotate'] },
+      { id: 'red-black', tier: 3, ops: ['insert', 'rotate', 'recolour'] },
+      { id: 'binary-heap', tier: 2, ops: ['heapify', 'sift down'] },
+      { id: 'trie', tier: 2, ops: ['insert', 'prefix'] },
     ],
   },
   {
     id: 'graphs',
     levels: [
-      { id: 'bfs', tier: 1 },
-      { id: 'dfs', tier: 1 },
-      { id: 'dijkstra', tier: 2 },
-      { id: 'union-find', tier: 2 },
+      { id: 'bfs', tier: 1, ops: ['enqueue'] },
+      { id: 'dfs', tier: 1, ops: ['backtrack'] },
+      { id: 'dijkstra', tier: 2, ops: ['relax'] },
+      { id: 'union-find', tier: 2, ops: ['union', 'find'] },
       { id: 'topological-sort', tier: 2 },
-      { id: 'kruskal', tier: 2 },
+      { id: 'kruskal', tier: 2, ops: ['union', 'find'] },
       { id: 'prim', tier: 2 },
-      { id: 'bellman-ford', tier: 3 },
+      { id: 'bellman-ford', tier: 3, ops: ['relax'] },
       { id: 'astar', tier: 2 },
       { id: 'tarjan-scc', tier: 3 },
     ],
@@ -69,15 +71,15 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
   {
     id: 'advanced',
     levels: [
-      { id: 'lis', tier: 2 },
-      { id: 'lcs', tier: 2 },
-      { id: 'edit-distance', tier: 2 },
-      { id: 'knapsack', tier: 2 },
-      { id: 'kmp', tier: 3 },
+      { id: 'lis', tier: 2, ops: ['memoize'] },
+      { id: 'lcs', tier: 2, ops: ['memoize'] },
+      { id: 'edit-distance', tier: 2, ops: ['memoize'] },
+      { id: 'knapsack', tier: 2, ops: ['memoize'] },
+      { id: 'kmp', tier: 3, ops: ['prefix'] },
       { id: 'segment-tree', tier: 3 },
-      { id: 'fenwick', tier: 3 },
-      { id: 'n-queens', tier: 2 },
-      { id: 'sudoku', tier: 3 },
+      { id: 'fenwick', tier: 3, ops: ['prefix'] },
+      { id: 'n-queens', tier: 2, ops: ['backtrack'] },
+      { id: 'sudoku', tier: 3, ops: ['backtrack'] },
       { id: 'race-mode', tier: 2, name: 'Race mode' },
     ],
   },
@@ -90,6 +92,7 @@ export interface Level {
   readonly name: string;
   readonly tier: Tier;
   readonly lane: LaneId;
+  readonly ops: readonly string[];
   /** The catalog entry, absent for a level that is not an algorithm. */
   readonly entry: CatalogEntry | undefined;
 }
@@ -105,6 +108,7 @@ export const LEVELS: readonly Level[] = LANES.flatMap((lane) => lane.levels).map
     name: spec.name ?? entry?.name ?? spec.id,
     tier: spec.tier,
     lane: lane?.id ?? 'advanced',
+    ops: spec.ops ?? [],
     entry,
   };
 });
@@ -134,4 +138,24 @@ export function neighbour(level: Level, direction: -1 | 1): Level | undefined {
 /** Where "Start the path" goes: the first open level. */
 export function firstOpenLevel(): Level | undefined {
   return LEVELS.find(isOpen);
+}
+
+export interface Operation {
+  readonly name: string;
+  /** True when an open level shows this operation, so it can be watched today. */
+  readonly available: boolean;
+}
+
+/**
+ * Every operation on the route, once each, in the order the route first
+ * reaches it. Derived rather than listed, so an operation lights up on its
+ * own when the level that shows it goes live.
+ */
+export function operations(): readonly Operation[] {
+  const available = new Map<string, boolean>();
+  for (const level of LEVELS) {
+    const open = isOpen(level);
+    for (const name of level.ops) available.set(name, (available.get(name) ?? false) || open);
+  }
+  return [...available].map(([name, isAvailable]) => ({ name, available: isAvailable }));
 }

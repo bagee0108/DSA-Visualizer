@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import '../algorithms';
 import { CATALOG } from '../catalog';
-import { firstOpenLevel, isOpen, LEVELS, levelFor, neighbour } from './levels';
+import { firstOpenLevel, isOpen, LEVELS, levelFor, neighbour, operations } from './levels';
 import { listAlgorithms } from './registry';
 
 describe('the learning path', () => {
@@ -40,5 +40,35 @@ describe('the learning path', () => {
     expect(previous !== undefined && isOpen(previous)).toBe(true);
     expect(next !== undefined && isOpen(next)).toBe(true);
     expect(neighbour(LEVELS[LEVELS.length - 1]!, 1)).toBeUndefined();
+  });
+});
+
+describe('the ticker of operations', () => {
+  const ops = operations();
+
+  it('names each operation once', () => {
+    const names = ops.map((op) => op.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('highlights only operations an available level shows', () => {
+    for (const op of ops.filter((candidate) => candidate.available)) {
+      const shownBy = LEVELS.filter((level) => isOpen(level) && level.ops.includes(op.name));
+      expect(shownBy.length, `${op.name} is highlighted but no available level shows it`).toBeGreaterThan(0);
+    }
+  });
+
+  it('highlights every operation an available level shows', () => {
+    for (const level of LEVELS.filter(isOpen)) {
+      for (const name of level.ops) {
+        const op = ops.find((candidate) => candidate.name === name);
+        expect(op?.available, `${level.id} shows ${name}, which is not highlighted`).toBe(true);
+      }
+    }
+  });
+
+  it('lists every operation any level shows, available or not', () => {
+    const names = new Set(ops.map((op) => op.name));
+    for (const level of LEVELS) for (const name of level.ops) expect(names.has(name), `${level.id}: ${name}`).toBe(true);
   });
 });
