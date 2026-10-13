@@ -440,8 +440,8 @@ than a pastel tint: every tint between a pale page and the accent passes
 through some role colour on the way.
 
 - **Switch theme:** change `ACTIVE_THEME`. That is the only line.
-- **Preview presets:** in `npm run dev`, the switcher in the bottom-left
-  corner rewrites the theme live. It renders behind `import.meta.env.DEV` and
+- **Preview presets:** in `npm run dev`, the `theme` select in the app
+  header, beside the light/dark toggle, rewrites the theme live. It renders behind `import.meta.env.DEV` and
   is not in the production bundle.
 - **Add a preset:** add an entry to `PRESETS` and run the tests.
 
