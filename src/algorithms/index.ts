@@ -19,6 +19,7 @@ import { dfs } from './graphs/dfs';
 import { dijkstra } from './graphs/dijkstra';
 import { unionFind } from './graphs/unionFind';
 import { lcs } from './dp/lcs';
+import { editDistance } from './dp/editDistance';
 
 register(quicksort);
 register(mergesort);
@@ -43,5 +44,6 @@ register(unionFind);
 
 // Phase 4 - dynamic programming
 register(lcs);
+register(editDistance);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
