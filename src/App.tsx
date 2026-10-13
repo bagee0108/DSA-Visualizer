@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 import { ThemeToggle } from './components/ThemeToggle';
 import { ButtonLink, FOCUS_RING } from './components/ui';
@@ -104,6 +105,7 @@ export default function App(): ReactNode {
     <RouterProvider>
       <Shell />
       <Analytics />
+      <SpeedInsights />
     </RouterProvider>
   );
 }
