@@ -4,18 +4,28 @@
  * half-circle turns, so the whole path is a single line. The line is lit
  * through the last open level and dashed beyond it.
  *
- * It is one line so it can move as one: on arrival the lit part draws itself
- * from level 1, each open node lights as the line reaches it, then the dashed
- * remainder fades in. That is the page's one orchestrated moment, and it is
- * skipped entirely under reduced motion. When progress exists it fills along
+ * It is one line so it can move as one: when the route first comes into view
+ * the lit part draws itself from level 1, each open node lights as the line
+ * reaches it, then the dashed remainder fades in. That is the page's one
+ * orchestrated moment, and it is skipped entirely under reduced motion. When progress exists it fills along
  * the same line.
  *
  * Narrower than the route needs, it becomes a single vertical list.
  */
 
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 import { isOpen, LANE_IDS, LEVELS, TIER_LABEL, type Level } from '../core/levels';
+import { usePrefersReducedMotion } from '../hooks/useMotion';
 import { Link } from '../router/router';
 import { ProgressStars, TierGlyph } from './level';
 import { FOCUS_RING } from './ui';
@@ -138,7 +148,51 @@ function StopBody({ level, open }: { level: Level; open: boolean }): ReactNode {
   );
 }
 
+/** Set once the reveal has run, so returning to the page shows the route drawn. */
+let revealPlayed = false;
+
+type Reveal = 'waiting' | 'playing' | 'done';
+
+/**
+ * The reveal runs the first time the route is on screen, once per page load.
+ * Until then its animations are applied but paused on their first frame, so
+ * the route is undrawn when it arrives rather than drawn and then reset.
+ * Under reduced motion there is no animation at all: it is simply drawn.
+ */
+function useReveal(box: RefObject<HTMLElement | null>): Reveal {
+  const reduced = usePrefersReducedMotion();
+  const [reveal, setReveal] = useState<Reveal>(() =>
+    revealPlayed || reduced || typeof IntersectionObserver === 'undefined' ? 'done' : 'waiting',
+  );
+
+  useEffect(() => {
+    if (reveal !== 'waiting' || reduced) return;
+    const node = box.current;
+    if (node === null) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting !== true) return;
+        revealPlayed = true;
+        setReveal('playing');
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [box, reveal, reduced]);
+
+  return reduced ? 'done' : reveal;
+}
+
+/** Inline style for one part of the reveal. */
+function revealStyle(reveal: Reveal, animation: string): CSSProperties {
+  if (reveal === 'done') return {};
+  return reveal === 'waiting' ? { animation, animationPlayState: 'paused' } : { animation };
+}
+
 function WindingRoute({ width }: { width: number }): ReactNode {
+  const box = useRef<HTMLDivElement | null>(null);
+  const reveal = useReveal(box);
   const geometry = useMemo(() => layout(width), [width]);
   const lastOpen = useMemo(
     () => geometry.stops.reduce((at, stop, index) => (isOpen(stop.level) ? index : at), 0),
@@ -147,10 +201,9 @@ function WindingRoute({ width }: { width: number }): ReactNode {
   const litLength = geometry.stops[lastOpen]?.along ?? 0;
 
   // The reveal is keyframes whose resting state is the finished drawing, so
-  // the page is complete whether or not it plays: under reduced motion the
-  // global rule collapses it to its last frame. It runs once per mount.
+  // the page is complete whether or not it plays.
   return (
-    <div className="relative" style={{ height: geometry.height }}>
+    <div ref={box} className="relative" style={{ height: geometry.height }}>
       <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
         <path
           d={routePath(geometry, geometry.stops.length - 1)}
@@ -159,7 +212,7 @@ function WindingRoute({ width }: { width: number }): ReactNode {
           strokeWidth="2"
           strokeDasharray="4 6"
           strokeLinecap="round"
-          style={{ animation: 'viz-route-fade var(--duration-slow) var(--ease-enter) var(--duration-reveal) backwards' }}
+          style={revealStyle(reveal, 'viz-route-fade var(--duration-slow) var(--ease-enter) var(--duration-reveal) backwards')}
         />
         <path
           d={routePath(geometry, lastOpen)}
@@ -173,7 +226,7 @@ function WindingRoute({ width }: { width: number }): ReactNode {
           style={
             {
               '--route-length': litLength + 2,
-              animation: 'viz-route-draw var(--duration-reveal) var(--ease-enter) backwards',
+              ...revealStyle(reveal, 'viz-route-draw var(--duration-reveal) var(--ease-enter) backwards'),
             } as CSSProperties
           }
         />
@@ -212,7 +265,7 @@ function WindingRoute({ width }: { width: number }): ReactNode {
                   className={`group grid justify-items-center gap-1 rounded-sm pb-1 text-center ${FOCUS_RING}`}
                   aria-label={stopLabel(stop.level, true)}
                 >
-                  <LitNode level={stop.level} delay={fraction} />
+                  <LitNode level={stop.level} delay={fraction} reveal={reveal} />
                   <span className="grid justify-items-center gap-1 rounded-xs px-1 transition-colors group-hover:bg-raised" aria-hidden="true">
                     {body}
                   </span>
@@ -234,16 +287,17 @@ function WindingRoute({ width }: { width: number }): ReactNode {
 }
 
 /** An open node, which lights when the drawing line reaches it. */
-function LitNode({ level, delay }: { level: Level; delay: number }): ReactNode {
+function LitNode({ level, delay, reveal }: { level: Level; delay: number; reveal: Reveal }): ReactNode {
   const start = level.number === 1;
   return (
     <span
       className={`${NODE} border-accent ${
         start ? 'bg-accent shadow-[0_0_0_3px_var(--color-ground),0_0_0_4.5px_var(--color-accent)]' : 'bg-ground'
       }`}
-      style={{
-        animation: `viz-node-light var(--duration-base) var(--ease-enter) calc(var(--duration-reveal) * ${delay.toFixed(3)}) backwards`,
-      }}
+      style={revealStyle(
+        reveal,
+        `viz-node-light var(--duration-base) var(--ease-enter) calc(var(--duration-reveal) * ${delay.toFixed(3)}) backwards`,
+      )}
     />
   );
 }
