@@ -204,12 +204,13 @@ export class MatrixScene {
     return this.stackCache;
   }
 
-  frame(input: MatrixFrameInput): Frame {
-    for (const arrow of input.arrows ?? []) {
+  /** The table as it stands, for a frame of its own or a pane of a split frame. */
+  snapshot(arrows: readonly MatrixArrow[] = NO_ARROWS, strips: readonly Strip[] = NO_STRIPS): MatrixSnapshot {
+    for (const arrow of arrows) {
       this.index(arrow.from.row, arrow.from.col);
       this.index(arrow.to.row, arrow.to.col);
     }
-    const structure: MatrixSnapshot = {
+    return {
       kind: 'matrix',
       rows: this.rows,
       cols: this.cols,
@@ -218,15 +219,23 @@ export class MatrixScene {
       colHeaders: this.colHeaders,
       rowTitle: this.rowTitle,
       colTitle: this.colTitle,
-      arrows: input.arrows === undefined || input.arrows.length === 0 ? NO_ARROWS : Object.freeze([...input.arrows]),
+      arrows: arrows.length === 0 ? NO_ARROWS : Object.freeze([...arrows]),
       path: this.pathSnapshot(),
-      strips: input.strips ?? NO_STRIPS,
+      strips,
     };
+  }
+
+  /** The call stack as it stands, shared until it changes. */
+  callStack(): readonly CallStackEntry[] {
+    return this.stackSnapshot();
+  }
+
+  frame(input: MatrixFrameInput): Frame {
     return {
-      structure,
+      structure: this.snapshot(input.arrows, input.strips),
       highlights: input.highlights ?? {},
       pointers: input.pointers ?? NO_POINTERS,
-      callStack: this.stackSnapshot(),
+      callStack: this.callStack(),
       explanation: input.explanation,
       codeLine: input.codeLine,
       counters: this.counters(),

@@ -4,7 +4,16 @@ import { LAYOUT_ASPECT } from '../core/graphLayout';
 import { arrayBands, FLOOR, INDEX_ROW_Y, POINTER_ROW_HEIGHT, POINTER_ROW_Y, type BandVariant } from './ArrayRenderer';
 import { VIEW_H, VIEW_W } from './canvas';
 import { graphBandBottom, graphBox, GRAPH_TOP } from './GraphRenderer';
-import { matrixBandBottom, matrixLayout, MATRIX_TOP, MAX_CELL, type MatrixShape } from './MatrixRenderer';
+import {
+  matrixBandBottom,
+  matrixLayout,
+  matrixStackLayout,
+  MATRIX_TOP,
+  MAX_CELL,
+  PANE_TITLE_H,
+  type MatrixShape,
+  type PaneShape,
+} from './MatrixRenderer';
 import { PAD_X, STRIP_HEIGHT } from './strips';
 import { treeScale, TREE_TOP, type TreeRunBound } from './TreeRenderer';
 
@@ -152,5 +161,78 @@ describe('matrix layout', () => {
     for (const strips of STRIP_COUNTS) {
       expect(VIEW_H - matrixBandBottom(strips)).toBeGreaterThanOrEqual(strips * STRIP_HEIGHT);
     }
+  });
+});
+
+describe('stacked matrix layout', () => {
+  function pane(rows: number, cols: number, header = 'item 3'): PaneShape {
+    return { rows, cols, rowHeaders: Array.from({ length: rows }, () => header), rowTitle: 'i: items so far' };
+  }
+
+  function stacks(): { shapes: PaneShape[]; strips: number }[] {
+    const out: { shapes: PaneShape[]; strips: number }[] = [];
+    for (const strips of STRIP_COUNTS) {
+      for (const rows of [1, 4, 8, 13]) {
+        for (const cols of [2, 8, 16, 31]) {
+          out.push({ shapes: [pane(rows, cols), pane(1, cols, 'dp')], strips });
+          out.push({ shapes: [pane(rows, cols), pane(2, Math.max(1, cols - 3), 'x')], strips });
+        }
+      }
+    }
+    return out;
+  }
+
+  it('fits every pane, its lines and its gutters inside the band', () => {
+    for (const { shapes, strips } of stacks()) {
+      const { cell, x0, left, panes, bottom } = matrixStackLayout(shapes, strips, true);
+      expect(cell).toBeGreaterThan(0);
+      expect(cell).toBeLessThanOrEqual(MAX_CELL);
+      expect(x0 - left).toBeGreaterThanOrEqual(PAD_X - 1e-9);
+      for (const [at, place] of panes.entries()) {
+        const shape = shapes[at];
+        if (shape === undefined) continue;
+        expect(x0 + cell * shape.cols).toBeLessThanOrEqual(VIEW_W - PAD_X + 1e-9);
+        expect(place.paneTitleY - PANE_TITLE_H / 2).toBeGreaterThanOrEqual(MATRIX_TOP - 1e-9);
+        expect(place.y0 + cell * shape.rows).toBeLessThanOrEqual(bottom + 1e-9);
+      }
+    }
+  });
+
+  it('stacks the panes in order without overlap', () => {
+    for (const { shapes, strips } of stacks()) {
+      const { cell, panes } = matrixStackLayout(shapes, strips, true);
+      for (let at = 1; at < panes.length; at++) {
+        const above = panes[at - 1];
+        const below = panes[at];
+        const rows = shapes[at - 1]?.rows ?? 0;
+        if (above === undefined || below === undefined) continue;
+        expect(above.y0 + rows * cell).toBeLessThan(below.paneTitleY - PANE_TITLE_H / 2);
+        expect(below.paneTitleY).toBeLessThan(below.titleY);
+        expect(below.titleY).toBeLessThan(below.pointerY + 1e-9);
+        expect(below.pointerY).toBeLessThan(below.headerY);
+        expect(below.headerY).toBeLessThan(below.y0);
+      }
+    }
+  });
+
+  it('spends the band on cells unless they hit the size cap', () => {
+    for (const { shapes, strips } of stacks()) {
+      const { cell, x0, panes, bottom } = matrixStackLayout(shapes, strips, true);
+      if (cell >= MAX_CELL - 1e-9) continue;
+      const widest = Math.max(...shapes.map((shape) => shape.cols));
+      const last = panes[panes.length - 1];
+      const lastRows = shapes[shapes.length - 1]?.rows ?? 0;
+      const fillsWidth = x0 + cell * widest >= VIEW_W - PAD_X - 1e-6;
+      const fillsHeight = last !== undefined && last.y0 + cell * lastRows >= bottom - 1e-6;
+      expect(fillsWidth || fillsHeight).toBe(true);
+    }
+  });
+
+  it('lays a single table out exactly as before', () => {
+    const shape: MatrixShape = { ...pane(8, 7), strips: 1 };
+    const single = matrixLayout(shape);
+    const stack = matrixStackLayout([shape], 1, false);
+    expect(single.cell).toBe(stack.cell);
+    expect(single.y0).toBe(stack.panes[0]?.y0);
   });
 });

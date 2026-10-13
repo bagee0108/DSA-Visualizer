@@ -4,7 +4,8 @@ import { expect } from 'vitest';
 
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
 import { parseMatrixRef } from '../core/matrixScene';
-import type { ArraySnapshot, EntityId, Frame, Graph, GraphSnapshot, MatrixSnapshot, TreeSnapshot } from '../core/types';
+import { parsePaneRef } from '../core/splitScene';
+import type { ArraySnapshot, EntityId, Frame, Graph, GraphSnapshot, MatrixSnapshot, SplitSnapshot, TreeSnapshot } from '../core/types';
 
 export function runFrames(algorithm: RegisteredAlgorithm, params: ParamMap): readonly Frame[] {
   const result = algorithm.build(params);
@@ -40,6 +41,19 @@ export function matrixOf(frame: Frame | undefined): MatrixSnapshot {
   if (frame === undefined) throw new Error('no frame');
   if (frame.structure.kind !== 'matrix') throw new Error(`expected a matrix frame, got ${frame.structure.kind}`);
   return frame.structure;
+}
+
+export function splitOf(frame: Frame | undefined): SplitSnapshot {
+  if (frame === undefined) throw new Error('no frame');
+  if (frame.structure.kind !== 'split') throw new Error(`expected a split frame, got ${frame.structure.kind}`);
+  return frame.structure;
+}
+
+/** One pane's table out of a split frame. */
+export function paneOf(frame: Frame | undefined, pane: string): MatrixSnapshot {
+  const found = splitOf(frame).panes.find((candidate) => candidate.id === pane);
+  if (found === undefined) throw new Error(`no pane "${pane}"`);
+  return found.view;
 }
 
 export function valuesOf(frame: Frame): number[] {
@@ -94,6 +108,8 @@ export function expectFrameHygiene(
       expectTreeFrame(frame.structure, frame, where);
     } else if (frame.structure.kind === 'matrix') {
       expectMatrixFrame(frame.structure, frame, where, previous);
+    } else if (frame.structure.kind === 'split') {
+      expectSplitFrame(frame.structure, frame, where, previous);
     } else {
       if (topology === null) {
         topology = frame.structure.graph;
@@ -312,12 +328,13 @@ function expectGraphFrame(structure: GraphSnapshot, frame: Frame, where: string,
   }
 }
 
-function expectMatrixFrame(structure: MatrixSnapshot, frame: Frame, where: string, previous: Frame | null): void {
+/** The table on its own: fixed shape, frozen, every arrow and path cell on it. */
+function expectMatrixTable(structure: MatrixSnapshot, where: string, previous: MatrixSnapshot | null): void {
   const { rows, cols } = structure;
   expect(rows, `${where}: rows`).toBeGreaterThan(0);
   expect(cols, `${where}: cols`).toBeGreaterThan(0);
-  if (previous !== null && previous.structure.kind === 'matrix') {
-    expect([rows, cols], `${where}: shape is fixed for the run`).toEqual([previous.structure.rows, previous.structure.cols]);
+  if (previous !== null) {
+    expect([rows, cols], `${where}: shape is fixed for the run`).toEqual([previous.rows, previous.cols]);
   }
 
   expect(Object.isFrozen(structure.cells), `${where}: cells frozen`).toBe(true);
@@ -328,31 +345,83 @@ function expectMatrixFrame(structure: MatrixSnapshot, frame: Frame, where: strin
   expect(structure.colHeaders.length, `${where}: column headers`).toBe(cols);
   expect(firstBad(structure.cells, (value) => value === null || Number.isFinite(value)), `${where}: cell value`).toBeNull();
 
-  const inside = (cell: { readonly row: number; readonly col: number }): boolean =>
-    Number.isInteger(cell.row) && Number.isInteger(cell.col) && cell.row >= 0 && cell.col >= 0 && cell.row < rows && cell.col < cols;
+  const inside = (cell: { readonly row: number; readonly col: number }): boolean => insideTable(structure, cell);
   expect(firstBad(structure.arrows, (arrow) => inside(arrow.from) && inside(arrow.to)), `${where}: arrow off the table`).toBeNull();
   expect(firstBad(structure.path, inside), `${where}: path off the table`).toBeNull();
   expect(new Set(structure.path.map((cell) => `${cell.row}:${cell.col}`)).size, `${where}: path revisits a cell`).toBe(structure.path.length);
+}
 
-  const validRef = (target: EntityId): boolean => {
-    if (typeof target !== 'string') return false;
-    const ref = parseMatrixRef(target);
-    if (ref === null) return false;
-    if (ref.kind === 'cell') return inside(ref);
-    return ref.index < (ref.kind === 'row' ? rows : cols);
-  };
-  expect(firstBad(Object.entries(frame.pointers), ([, target]) => validRef(target)), `${where}: pointer off the table`).toBeNull();
-  for (const [role, targets] of Object.entries(frame.highlights)) {
-    expect(
-      firstBad(targets ?? [], (target) => validRef(target) || (typeof target === 'string' && /^(queue|stack|pq|output):/.test(target))),
-      `${where}: highlight ${role} off the table`,
-    ).toBeNull();
-  }
+function insideTable(structure: MatrixSnapshot, cell: { readonly row: number; readonly col: number }): boolean {
+  return (
+    Number.isInteger(cell.row) &&
+    Number.isInteger(cell.col) &&
+    cell.row >= 0 &&
+    cell.col >= 0 &&
+    cell.row < structure.rows &&
+    cell.col < structure.cols
+  );
+}
 
-  for (const strip of structure.strips) {
+function onTable(structure: MatrixSnapshot, target: string): boolean {
+  const ref = parseMatrixRef(target);
+  if (ref === null) return false;
+  if (ref.kind === 'cell') return insideTable(structure, ref);
+  return ref.index < (ref.kind === 'row' ? structure.rows : structure.cols);
+}
+
+const STRIP_REF = /^(queue|stack|pq|output):/;
+
+function expectStrips(strips: SplitSnapshot['strips'], where: string): void {
+  for (const strip of strips) {
     expect(strip.label.length, `${where}: strip label`).toBeGreaterThan(0);
     expect(new Set(strip.items.map((item) => item.id)).size, `${where}: strip ${strip.label} duplicate chips`).toBe(strip.items.length);
   }
+}
+
+/** Pointers and highlights all resolve, via `resolve`, to a place that exists. */
+function expectRefs(frame: Frame, where: string, resolve: (target: string) => boolean): void {
+  expect(
+    firstBad(Object.entries(frame.pointers), ([, target]) => typeof target === 'string' && resolve(target)),
+    `${where}: pointer off the table`,
+  ).toBeNull();
+  for (const [role, targets] of Object.entries(frame.highlights)) {
+    expect(
+      firstBad(targets ?? [], (target) => typeof target === 'string' && (resolve(target) || STRIP_REF.test(target))),
+      `${where}: highlight ${role} off the table`,
+    ).toBeNull();
+  }
+}
+
+function expectMatrixFrame(structure: MatrixSnapshot, frame: Frame, where: string, previous: Frame | null): void {
+  expectMatrixTable(structure, where, previous?.structure.kind === 'matrix' ? previous.structure : null);
+  expectRefs(frame, where, (target) => onTable(structure, target));
+  expectStrips(structure.strips, where);
+}
+
+function expectSplitFrame(structure: SplitSnapshot, frame: Frame, where: string, previous: Frame | null): void {
+  expect(Object.isFrozen(structure.panes), `${where}: panes frozen`).toBe(true);
+  expect(structure.panes.length, `${where}: a split has at least two panes`).toBeGreaterThanOrEqual(2);
+  const ids = structure.panes.map((pane) => pane.id);
+  expect(new Set(ids).size, `${where}: duplicate pane ids`).toBe(ids.length);
+
+  const before = previous?.structure.kind === 'split' ? previous.structure : null;
+  if (before !== null) {
+    expect(ids, `${where}: panes are fixed for the run`).toEqual(before.panes.map((pane) => pane.id));
+    expect(structure.panes.map((pane) => pane.title), `${where}: pane titles`).toEqual(before.panes.map((pane) => pane.title));
+  }
+  for (const [at, pane] of structure.panes.entries()) {
+    expect(pane.title.length, `${where}: pane ${pane.id} title`).toBeGreaterThan(0);
+    expect(pane.view.strips, `${where}: pane ${pane.id} strips belong to the frame`).toHaveLength(0);
+    expectMatrixTable(pane.view, `${where} pane ${pane.id}`, before?.panes[at]?.view ?? null);
+  }
+
+  const byId = new Map(structure.panes.map((pane) => [pane.id, pane.view] as const));
+  expectRefs(frame, where, (target) => {
+    const scoped = parsePaneRef(target);
+    const view = scoped === null ? undefined : byId.get(scoped.pane);
+    return scoped !== null && view !== undefined && onTable(view, scoped.ref);
+  });
+  expectStrips(structure.strips, where);
 }
 
 export function expectDeterministic(algorithm: RegisteredAlgorithm, params: ParamMap): void {

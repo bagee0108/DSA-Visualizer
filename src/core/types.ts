@@ -5,7 +5,7 @@
 
 export type EntityId = number | string;
 
-export type StructureKind = 'array' | 'tree' | 'graph' | 'grid' | 'list' | 'matrix';
+export type StructureKind = 'array' | 'tree' | 'graph' | 'grid' | 'list' | 'matrix' | 'split';
 
 export interface ArrayElement {
   readonly id: number;
@@ -153,7 +153,27 @@ export interface MatrixSnapshot {
   readonly strips: readonly Strip[];
 }
 
-export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot | MatrixSnapshot;
+/** One view in a split frame. Its id and title are fixed for the run. */
+export interface SplitPane {
+  readonly id: string;
+  readonly title: string;
+  /** Tables only for now; another kind joins once its renderer can draw inside a band. */
+  readonly view: MatrixSnapshot;
+}
+
+/**
+ * Two or more views of one run in one frame, stacked top to bottom: a DP
+ * table over its rolling row. Highlights and pointers name a place in a pane
+ * as paneRef(pane, ref) (src/core/splitScene.ts). Strips belong to the frame,
+ * not to a pane, and sit under the last one.
+ */
+export interface SplitSnapshot {
+  readonly kind: 'split';
+  readonly panes: readonly SplitPane[];
+  readonly strips: readonly Strip[];
+}
+
+export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot | MatrixSnapshot | SplitSnapshot;
 
 export type HighlightRole =
   | 'comparing'

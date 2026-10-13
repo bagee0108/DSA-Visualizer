@@ -6,7 +6,7 @@ import type { Frame } from '../core/types';
 import { ArrayRenderer } from './ArrayRenderer';
 import { useInk } from './ink';
 import { GraphRenderer } from './GraphRenderer';
-import { MatrixRenderer } from './MatrixRenderer';
+import { MatrixRenderer, SplitRenderer } from './MatrixRenderer';
 import { TreeRenderer, treeRunBound } from './TreeRenderer';
 
 export interface StructureCanvasProps {
@@ -66,6 +66,17 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           durationMs={durationMs}
         />
       );
+    case 'split':
+      return (
+        <SplitRenderer
+          snapshot={frame.structure}
+          ink={ink}
+          highlights={frame.highlights}
+          pointers={frame.pointers}
+          animate={animate}
+          durationMs={durationMs}
+        />
+      );
     default:
       return (
         <div className="flex h-full items-center justify-center text-body text-fg-mute">
@@ -77,5 +88,5 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
 
 export { ArrayRenderer } from './ArrayRenderer';
 export { GraphRenderer } from './GraphRenderer';
-export { MatrixRenderer } from './MatrixRenderer';
+export { MatrixRenderer, SplitRenderer } from './MatrixRenderer';
 export { TreeRenderer } from './TreeRenderer';
