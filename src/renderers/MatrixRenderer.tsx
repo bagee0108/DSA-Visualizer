@@ -162,6 +162,15 @@ function tagFont(label: string, box: number): number {
   return box < 34 ? 0 : fitFont(label, box, 9.5);
 }
 
+/**
+ * A jump along the bottom row, such as a rolling DP row reading to its left.
+ * Drawn through the row it would cover every number it passes, so it dips
+ * under the row instead and carries its label beneath, where nothing else is.
+ */
+function underArrow(arrow: MatrixArrow, rows: number): boolean {
+  return arrow.from.row === rows - 1 && arrow.to.row === rows - 1 && Math.abs(arrow.to.col - arrow.from.col) > 1;
+}
+
 function paintFor(animate: boolean, durationMs: number): { readonly ms: number; readonly paint: string } {
   const ms = Math.min(220, Math.max(60, durationMs * 0.6));
   return { ms, paint: animate ? `fill ${ms}ms var(--ease-paint), stroke ${ms}ms var(--ease-paint)` : 'none' };
@@ -220,13 +229,14 @@ function MatrixPane({ view, stack, place, prefix, title, roles, pointers, ink, a
     const out = new Map<number, { readonly text: string; readonly top: boolean }>();
     for (const arrow of arrows) {
       if (arrow.label === undefined) continue;
+      if (underArrow(arrow, rows)) continue;
       const at = arrow.from.row * cols + arrow.from.col;
       const held = out.get(at);
       const top = arrow.to.row > arrow.from.row;
       out.set(at, held === undefined ? { text: arrow.label, top } : { text: `${held.text}/${arrow.label}`, top: held.top && top });
     }
     return out;
-  }, [arrows, cols]);
+  }, [arrows, rows, cols]);
 
   const { cell, x0, headerW } = stack;
   const { y0 } = place;
@@ -363,6 +373,37 @@ function MatrixPane({ view, stack, place, prefix, title, roles, pointers, ink, a
         const length = Math.hypot(dx, dy) || 1;
         const ux = dx / length;
         const uy = dy / length;
+        if (underArrow(arrow, rows)) {
+          // Out of the source's bottom edge, under the row, and up into the target's.
+          const y1 = a.y + box / 2 + 1;
+          const dip = Math.max(10, cell * 0.45);
+          const d = `M ${a.x} ${y1} Q ${(a.x + b.x) / 2} ${y1 + dip * 2} ${b.x} ${y1 + 3}`;
+          return (
+            <g
+              key={arrowKey(arrow)}
+              style={animate ? { animation: `viz-fade-rise var(--duration-base) var(--ease-enter) backwards` } : undefined}
+            >
+              <path d={d} fill="none" stroke="var(--viz-bg)" strokeWidth={arrowWidth + 3.2} strokeLinecap="round" />
+              <path d={d} fill="none" stroke="var(--viz-text)" strokeWidth={arrowWidth} markerEnd="url(#matrix-arrow)" />
+              {arrow.label !== undefined && (
+                <text
+                  x={(a.x + b.x) / 2}
+                  y={y1 + dip + 13}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontWeight={600}
+                  fill="var(--viz-text)"
+                  stroke="var(--viz-bg)"
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  className="font-mono"
+                >
+                  {arrow.label}
+                </text>
+              )}
+            </g>
+          );
+        }
         // Leave through the source's edge, clear of its value, and stop short of the target's.
         const exit = box / 2 / Math.max(Math.abs(ux), Math.abs(uy)) - cell * 0.12;
         const x1 = a.x + ux * exit;

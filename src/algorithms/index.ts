@@ -20,6 +20,7 @@ import { dijkstra } from './graphs/dijkstra';
 import { unionFind } from './graphs/unionFind';
 import { lcs } from './dp/lcs';
 import { editDistance } from './dp/editDistance';
+import { knapsack } from './dp/knapsack';
 
 register(quicksort);
 register(mergesort);
@@ -45,5 +46,6 @@ register(unionFind);
 // Phase 4 - dynamic programming
 register(lcs);
 register(editDistance);
+register(knapsack);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
