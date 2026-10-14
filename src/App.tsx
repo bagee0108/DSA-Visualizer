@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 
+import { Logo } from './components/Logo';
 import { ThemeToggle } from './components/ThemeToggle';
 import { ButtonLink, FOCUS_RING } from './components/ui';
 import { BrowsePage } from './pages/BrowsePage';
@@ -60,11 +61,7 @@ function Shell(): ReactNode {
           aria-label="dsa/visualizer, home"
           className={`flex items-center gap-2 rounded-xs font-display text-ui font-semibold font-stretch-semi-condensed text-fg ${FOCUS_RING}`}
         >
-          <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-accent" fill="currentColor" aria-hidden="true">
-            <rect x="2" y="11" width="3" height="7" rx="1" />
-            <rect x="7" y="7" width="3" height="11" rx="1" />
-            <rect x="12" y="2" width="3" height="16" rx="1" />
-          </svg>
+          <Logo surface="panel" className="h-6 w-6" />
           <span>
             dsa<span className="font-normal text-fg-mute">/</span>visualizer
           </span>
