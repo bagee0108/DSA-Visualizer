@@ -57,6 +57,8 @@ export interface MatrixSceneOptions {
   readonly colHeaders: readonly string[];
   readonly rowTitle: string;
   readonly colTitle: string;
+  /** Reserve a band under the bottom row for long jumps along it, such as a rolling row reading left. */
+  readonly arrowsUnder?: boolean;
 }
 
 export interface MatrixFrameInput {
@@ -76,6 +78,7 @@ export class MatrixScene {
   private readonly colHeaders: readonly string[];
   private readonly rowTitle: string;
   private readonly colTitle: string;
+  private readonly arrowsUnder: boolean;
 
   private readonly values: (number | null)[];
   private cellsCache: readonly (number | null)[] | null = null;
@@ -98,6 +101,7 @@ export class MatrixScene {
     this.colHeaders = Object.freeze([...options.colHeaders]);
     this.rowTitle = options.rowTitle;
     this.colTitle = options.colTitle;
+    this.arrowsUnder = options.arrowsUnder ?? false;
     this.values = new Array<number | null>(this.rows * this.cols).fill(null);
   }
 
@@ -221,6 +225,7 @@ export class MatrixScene {
       colTitle: this.colTitle,
       arrows: arrows.length === 0 ? NO_ARROWS : Object.freeze([...arrows]),
       path: this.pathSnapshot(),
+      arrowsUnder: this.arrowsUnder,
       strips,
     };
   }

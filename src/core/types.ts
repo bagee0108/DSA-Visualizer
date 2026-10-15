@@ -150,6 +150,11 @@ export interface MatrixSnapshot {
   readonly arrows: readonly MatrixArrow[];
   /** The traceback so far, in the order it was walked. */
   readonly path: readonly MatrixCell[];
+  /**
+   * Long jumps along the bottom row are drawn under it, in a band the layout
+   * keeps free, rather than across the numbers they pass. Fixed for the run.
+   */
+  readonly arrowsUnder: boolean;
   readonly strips: readonly Strip[];
 }
 

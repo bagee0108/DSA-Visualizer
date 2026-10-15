@@ -335,6 +335,7 @@ function expectMatrixTable(structure: MatrixSnapshot, where: string, previous: M
   expect(cols, `${where}: cols`).toBeGreaterThan(0);
   if (previous !== null) {
     expect([rows, cols], `${where}: shape is fixed for the run`).toEqual([previous.rows, previous.cols]);
+    expect(structure.arrowsUnder, `${where}: arrowsUnder is fixed for the run`).toBe(previous.arrowsUnder);
   }
 
   expect(Object.isFrozen(structure.cells), `${where}: cells frozen`).toBe(true);

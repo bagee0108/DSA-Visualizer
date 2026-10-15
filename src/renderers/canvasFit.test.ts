@@ -11,6 +11,7 @@ import {
   MATRIX_TOP,
   MAX_CELL,
   PANE_TITLE_H,
+  UNDER_H,
   type MatrixShape,
   type PaneShape,
 } from './MatrixRenderer';
@@ -165,6 +166,10 @@ describe('matrix layout', () => {
 });
 
 describe('stacked matrix layout', () => {
+  function under(shape: PaneShape): number {
+    return shape.arrowsUnder === true ? UNDER_H : 0;
+  }
+
   function pane(rows: number, cols: number, header = 'item 3'): PaneShape {
     return { rows, cols, rowHeaders: Array.from({ length: rows }, () => header), rowTitle: 'i: items so far' };
   }
@@ -176,6 +181,9 @@ describe('stacked matrix layout', () => {
         for (const cols of [2, 8, 16, 31]) {
           out.push({ shapes: [pane(rows, cols), pane(1, cols, 'dp')], strips });
           out.push({ shapes: [pane(rows, cols), pane(2, Math.max(1, cols - 3), 'x')], strips });
+          // A band kept under a pane: knapsack's rolling row below, LIS's table above.
+          out.push({ shapes: [pane(rows, cols), { ...pane(1, cols, 'dp'), arrowsUnder: true }], strips });
+          out.push({ shapes: [{ ...pane(2, cols, 'L[i]'), arrowsUnder: true }, pane(rows, cols, 'top')], strips });
         }
       }
     }
@@ -193,7 +201,7 @@ describe('stacked matrix layout', () => {
         if (shape === undefined) continue;
         expect(x0 + cell * shape.cols).toBeLessThanOrEqual(VIEW_W - PAD_X + 1e-9);
         expect(place.paneTitleY - PANE_TITLE_H / 2).toBeGreaterThanOrEqual(MATRIX_TOP - 1e-9);
-        expect(place.y0 + cell * shape.rows).toBeLessThanOrEqual(bottom + 1e-9);
+        expect(place.y0 + cell * shape.rows + under(shape)).toBeLessThanOrEqual(bottom + 1e-9);
       }
     }
   });
@@ -204,9 +212,9 @@ describe('stacked matrix layout', () => {
       for (let at = 1; at < panes.length; at++) {
         const above = panes[at - 1];
         const below = panes[at];
-        const rows = shapes[at - 1]?.rows ?? 0;
-        if (above === undefined || below === undefined) continue;
-        expect(above.y0 + rows * cell).toBeLessThan(below.paneTitleY - PANE_TITLE_H / 2);
+        const shape = shapes[at - 1];
+        if (above === undefined || below === undefined || shape === undefined) continue;
+        expect(above.y0 + shape.rows * cell + under(shape)).toBeLessThan(below.paneTitleY - PANE_TITLE_H / 2);
         expect(below.paneTitleY).toBeLessThan(below.titleY);
         expect(below.titleY).toBeLessThan(below.pointerY + 1e-9);
         expect(below.pointerY).toBeLessThan(below.headerY);
@@ -221,9 +229,10 @@ describe('stacked matrix layout', () => {
       if (cell >= MAX_CELL - 1e-9) continue;
       const widest = Math.max(...shapes.map((shape) => shape.cols));
       const last = panes[panes.length - 1];
-      const lastRows = shapes[shapes.length - 1]?.rows ?? 0;
+      const lastShape = shapes[shapes.length - 1];
       const fillsWidth = x0 + cell * widest >= VIEW_W - PAD_X - 1e-6;
-      const fillsHeight = last !== undefined && last.y0 + cell * lastRows >= bottom - 1e-6;
+      const fillsHeight =
+        last !== undefined && lastShape !== undefined && last.y0 + cell * lastShape.rows + under(lastShape) >= bottom - 1e-6;
       expect(fillsWidth || fillsHeight).toBe(true);
     }
   });

@@ -22,6 +22,9 @@ export const HEADER_H = 20;
 /** A split frame names each pane on a line of its own, and spaces the panes apart. */
 export const PANE_TITLE_H = 16;
 export const PANE_GAP = 12;
+/** The band kept under a table that draws long bottom-row jumps beneath it: the dip, then the label. */
+export const UNDER_H = 28;
+const UNDER_DIP = 9;
 /** Row pointers sit left of the row headers; labels are short names such as i or j. */
 export const ROW_POINTER_W = 40;
 export const MAX_CELL = 56;
@@ -36,6 +39,7 @@ export interface PaneShape {
   readonly cols: number;
   readonly rowHeaders: readonly string[];
   readonly rowTitle: string;
+  readonly arrowsUnder?: boolean;
 }
 
 export interface MatrixShape extends PaneShape {
@@ -94,8 +98,9 @@ export function matrixStackLayout(shapes: readonly PaneShape[], strips: number, 
 
   const cols = Math.max(...shapes.map((shape) => shape.cols));
   const rows = shapes.reduce((sum, shape) => sum + shape.rows, 0);
+  const under = shapes.reduce((sum, shape) => sum + (shape.arrowsUnder === true ? UNDER_H : 0), 0);
   const availW = VIEW_W - PAD_X * 2 - left;
-  const availH = bottom - MATRIX_TOP - shapes.length * lines - (shapes.length - 1) * PANE_GAP;
+  const availH = bottom - MATRIX_TOP - shapes.length * lines - (shapes.length - 1) * PANE_GAP - under;
   const cell = Math.min(MAX_CELL, availW / cols, availH / rows);
 
   const x0 = (VIEW_W - (left + cell * cols)) / 2 + left;
@@ -104,7 +109,7 @@ export function matrixStackLayout(shapes: readonly PaneShape[], strips: number, 
     const paneTitleY = top + PANE_TITLE_H / 2;
     const titleY = top + (titled ? PANE_TITLE_H : 0) + TITLE_H / 2;
     const y0 = top + lines;
-    top = y0 + shape.rows * cell + PANE_GAP;
+    top = y0 + shape.rows * cell + (shape.arrowsUnder === true ? UNDER_H : 0) + PANE_GAP;
     return { y0, paneTitleY, titleY, pointerY: y0 - HEADER_H - POINTER_H, headerY: y0 - HEADER_H };
   });
   return { cell, x0, headerW, left, panes, bottom };
@@ -164,11 +169,13 @@ function tagFont(label: string, box: number): number {
 
 /**
  * A jump along the bottom row, such as a rolling DP row reading to its left.
- * Drawn through the row it would cover every number it passes, so it dips
- * under the row instead and carries its label beneath, where nothing else is.
+ * Drawn through the row it would cover every number it passes, so in a table
+ * that asked for it, it dips into the band the layout keeps under the row and
+ * carries its label there.
  */
-function underArrow(arrow: MatrixArrow, rows: number): boolean {
-  return arrow.from.row === rows - 1 && arrow.to.row === rows - 1 && Math.abs(arrow.to.col - arrow.from.col) > 1;
+function underArrow(arrow: MatrixArrow, view: MatrixSnapshot): boolean {
+  const last = view.rows - 1;
+  return view.arrowsUnder && arrow.from.row === last && arrow.to.row === last && Math.abs(arrow.to.col - arrow.from.col) > 1;
 }
 
 function paintFor(animate: boolean, durationMs: number): { readonly ms: number; readonly paint: string } {
@@ -229,14 +236,14 @@ function MatrixPane({ view, stack, place, prefix, title, roles, pointers, ink, a
     const out = new Map<number, { readonly text: string; readonly top: boolean }>();
     for (const arrow of arrows) {
       if (arrow.label === undefined) continue;
-      if (underArrow(arrow, rows)) continue;
+      if (underArrow(arrow, view)) continue;
       const at = arrow.from.row * cols + arrow.from.col;
       const held = out.get(at);
       const top = arrow.to.row > arrow.from.row;
       out.set(at, held === undefined ? { text: arrow.label, top } : { text: `${held.text}/${arrow.label}`, top: held.top && top });
     }
     return out;
-  }, [arrows, rows, cols]);
+  }, [arrows, view, cols]);
 
   const { cell, x0, headerW } = stack;
   const { y0 } = place;
@@ -373,10 +380,10 @@ function MatrixPane({ view, stack, place, prefix, title, roles, pointers, ink, a
         const length = Math.hypot(dx, dy) || 1;
         const ux = dx / length;
         const uy = dy / length;
-        if (underArrow(arrow, rows)) {
+        if (underArrow(arrow, view)) {
           // Out of the source's bottom edge, under the row, and up into the target's.
           const y1 = a.y + box / 2 + 1;
-          const dip = Math.max(10, cell * 0.45);
+          const dip = UNDER_DIP;
           const d = `M ${a.x} ${y1} Q ${(a.x + b.x) / 2} ${y1 + dip * 2} ${b.x} ${y1 + 3}`;
           return (
             <g
@@ -508,11 +515,11 @@ export interface MatrixRendererProps {
 }
 
 function MatrixRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: MatrixRendererProps): ReactNode {
-  const { rows, cols, rowHeaders, rowTitle } = snapshot;
+  const { rows, cols, rowHeaders, rowTitle, arrowsUnder } = snapshot;
   const strips = snapshot.strips.length;
   const stack = useMemo(
-    () => matrixStackLayout([{ rows, cols, rowHeaders, rowTitle }], strips, false),
-    [rows, cols, rowHeaders, rowTitle, strips],
+    () => matrixStackLayout([{ rows, cols, rowHeaders, rowTitle, arrowsUnder }], strips, false),
+    [rows, cols, rowHeaders, rowTitle, arrowsUnder, strips],
   );
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const { ms, paint } = paintFor(animate, durationMs);
@@ -560,7 +567,7 @@ export interface SplitRendererProps {
 /** Shapes are fixed for the run, so this key changes only between runs. */
 function shapeKey(snapshot: SplitSnapshot): string {
   return snapshot.panes
-    .map(({ view }) => `${view.rows}x${view.cols}|${view.rowTitle}|${view.rowHeaders.join('\u0000')}`)
+    .map(({ view }) => `${view.rows}x${view.cols}|${view.arrowsUnder ? 'u' : ''}|${view.rowTitle}|${view.rowHeaders.join('\u0000')}`)
     .join('\u0001');
 }
 

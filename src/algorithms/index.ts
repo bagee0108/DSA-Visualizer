@@ -21,6 +21,7 @@ import { unionFind } from './graphs/unionFind';
 import { lcs } from './dp/lcs';
 import { editDistance } from './dp/editDistance';
 import { knapsack } from './dp/knapsack';
+import { lis } from './dp/lis';
 
 register(quicksort);
 register(mergesort);
@@ -47,5 +48,6 @@ register(unionFind);
 register(lcs);
 register(editDistance);
 register(knapsack);
+register(lis);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';

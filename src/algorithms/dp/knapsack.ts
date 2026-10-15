@@ -189,7 +189,13 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       rowTitle: 'i: items 1..i',
       colTitle: 'w: capacity',
     });
-    const row = new MatrixScene({ rowHeaders: ['dp'], colHeaders: capacities, rowTitle: 'one row', colTitle: 'w: capacity' });
+    const row = new MatrixScene({
+      rowHeaders: ['dp'],
+      colHeaders: capacities,
+      rowTitle: 'one row',
+      colTitle: 'w: capacity',
+      arrowsUnder: true,
+    });
     const scene = new SplitScene([
       { id: TABLE, title: 'T[i][w] - best value from the first i items within capacity w', scene: table },
       { id: ROW, title: 'dp[w] - the same answers, rolled into one row', scene: row },
