@@ -40,6 +40,8 @@ export class ArrayScene<V extends ArrayValue = number> {
   private readonly values: V[];
   private readonly ids: number[];
   private readonly sorted = new Set<number>();
+  /** Keyed by element id, so a note follows its element through a swap. */
+  private readonly notes = new Map<number, string>();
   private readonly stack: CallStackEntry[] = [];
 
   private comparisons = 0;
@@ -55,6 +57,7 @@ export class ArrayScene<V extends ArrayValue = number> {
 
   private auxValues: V[] | null = null;
   private auxIds: number[] = [];
+  private auxNotes: (string | undefined)[] = [];
   private auxLabel = 'aux';
   private auxFrom = 0;
   private auxTo = -1;
@@ -154,6 +157,7 @@ export class ArrayScene<V extends ArrayValue = number> {
     if (this.auxValues === null) {
       this.auxValues = [...this.values];
       this.auxIds = new Array<number>(this.values.length).fill(-1);
+      this.auxNotes = new Array<string | undefined>(this.values.length).fill(undefined);
     }
     return this.auxValues;
   }
@@ -166,6 +170,7 @@ export class ArrayScene<V extends ArrayValue = number> {
       this.reads += 1;
       this.writes += 1;
     }
+    this.auxNotes.fill(undefined, from, to + 1);
     this.auxLabel = label;
     this.auxFrom = from;
     this.auxTo = to;
@@ -176,9 +181,10 @@ export class ArrayScene<V extends ArrayValue = number> {
    * Lay other values into the aux row, starting under index `at`: a pattern
    * slid along a text. Each keeps its position in `values` as its id, so
    * placing the same values at a new offset slides them there. Uncounted:
-   * it is the picture of a shift, not work the algorithm does.
+   * it is the picture of a shift, not work the algorithm does. `notes`, if
+   * given, caption the placed values in order and slide with them.
    */
-  placeAux(label: string, values: readonly V[], at: number): void {
+  placeAux(label: string, values: readonly V[], at: number, notes?: readonly (string | null)[]): void {
     if (!Number.isInteger(at) || at < 0 || at + values.length > this.values.length || values.length === 0) {
       throw new RangeError(`aux values ${at}..${at + values.length - 1} do not fit an array of length ${this.values.length}`);
     }
@@ -186,6 +192,7 @@ export class ArrayScene<V extends ArrayValue = number> {
     values.forEach((value, offset) => {
       aux[at + offset] = value;
       this.auxIds[at + offset] = offset;
+      this.auxNotes[at + offset] = notes?.[offset] ?? undefined;
     });
     this.auxLabel = label;
     this.auxFrom = at;
@@ -226,6 +233,15 @@ export class ArrayScene<V extends ArrayValue = number> {
     this.auxFrom = 0;
     this.auxTo = -1;
     this.auxCache = null;
+  }
+
+  /** Caption the element at `index`, or clear its caption with null. Uncounted. */
+  setNote(index: number, note: string | null): void {
+    this.at(index);
+    const id = this.ids[index] ?? index;
+    if (note === null) this.notes.delete(id);
+    else this.notes.set(id, note);
+    this.elementsCache = null;
   }
 
   setHeapSize(size: number | null): void {
@@ -291,7 +307,9 @@ export class ArrayScene<V extends ArrayValue = number> {
     if (this.elementsCache === null) {
       const next: ArrayElement[] = new Array<ArrayElement>(this.values.length);
       for (let i = 0; i < this.values.length; i++) {
-        next[i] = { id: this.ids[i] ?? i, value: this.at(i) };
+        const id = this.ids[i] ?? i;
+        const note = this.notes.get(id);
+        next[i] = note === undefined ? { id, value: this.at(i) } : { id, value: this.at(i), note };
       }
       this.elementsCache = Object.freeze(next);
     }
@@ -313,10 +331,11 @@ export class ArrayScene<V extends ArrayValue = number> {
   private auxElements(): readonly ArrayElement[] {
     if (this.auxCache === null) {
       const source = this.auxValues ?? [];
-      const next: ArrayElement[] = source.map((value, index) => ({
-        id: this.auxIds[index] ?? index,
-        value,
-      }));
+      const next: ArrayElement[] = source.map((value, index) => {
+        const id = this.auxIds[index] ?? index;
+        const note = this.auxNotes[index];
+        return note === undefined ? { id, value } : { id, value, note };
+      });
       this.auxCache = Object.freeze(next);
     }
     return this.auxCache;

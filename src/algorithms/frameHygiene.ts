@@ -162,6 +162,11 @@ function expectArrayFrame(
     typeof value === kind &&
     (typeof value === 'number' ? Number.isFinite(value) : typeof value === 'string' && value.length >= 1 && value.length <= MAX_LETTER_LENGTH);
   expect(firstBad(structure.elements.map((element) => element.value), wellKept), `${where}: element value`).toBeNull();
+  // A note is a corner caption on a tile, so only letters carry one, and it is as short as a tile label.
+  const noteKept = (element: ArraySnapshot['elements'][number]): boolean =>
+    element.note === undefined ||
+    (typeof element.value === 'string' && element.note.length >= 1 && element.note.length <= MAX_LETTER_LENGTH);
+  expect(firstBad(structure.elements, noteKept), `${where}: element note`).toBeNull();
 
   for (const [label, index] of Object.entries(frame.pointers)) {
     expect(typeof index, `${where}: pointer ${label} must be an index`).toBe('number');
@@ -196,6 +201,7 @@ function expectArrayFrame(
     expect(aux.elements.length, `${where}: aux size`).toBe(size);
     const shown = aux.elements.slice(aux.activeFrom, aux.activeTo + 1).map((element) => element.value);
     expect(firstBad(shown, wellKept), `${where}: aux value of another kind`).toBeNull();
+    expect(firstBad(aux.elements.slice(aux.activeFrom, aux.activeTo + 1), noteKept), `${where}: aux note`).toBeNull();
   }
 
   const heap = structure.heap;

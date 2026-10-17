@@ -76,6 +76,25 @@ describe('ArrayScene over letters', () => {
     expect(() => scene.placeAux('pattern', [], 0)).toThrow(RangeError);
   });
 
+  it('keeps a note on its element, through a swap, until it is cleared', () => {
+    const scene = new ArrayScene<string>([...'abc']);
+    scene.setNote(0, '2');
+    scene.swap(0, 2);
+    const swapped = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).elements;
+    expect(swapped.map((element) => element.note)).toEqual([undefined, undefined, '2']);
+    scene.setNote(2, null);
+    const cleared = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).elements;
+    expect(cleared.every((element) => element.note === undefined)).toBe(true);
+    expect(scene.counters().writes).toBe(2);
+  });
+
+  it('captions placed aux values in order, so the notes slide with them', () => {
+    const scene = new ArrayScene<string>([...'abcabd']);
+    scene.placeAux('pattern', [...'abd'], 3, ['0', '0', null]);
+    const aux = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).auxiliary;
+    expect(aux?.elements.slice(3).map((element) => element.note)).toEqual(['0', '0', undefined]);
+  });
+
   it('still copies numbers to aux as before', () => {
     const scene = new ArrayScene([5, 3, 8]);
     scene.copyToAux('copy', 0, 2);
@@ -105,5 +124,17 @@ describe('letter frames', () => {
       },
     });
     expect(() => expectFrameHygiene(long, runFrames(long, {}))).toThrow();
+  });
+
+  it('fail hygiene when a bar carries a note, which only tiles can draw', () => {
+    const noted = defineAlgorithm<SlideInput>({
+      ...slideDefinition,
+      *run() {
+        const scene = new ArrayScene([3, 1]);
+        scene.setNote(0, '1');
+        yield scene.frame({ explanation: '', codeLine: 1 });
+      },
+    });
+    expect(() => expectFrameHygiene(noted, runFrames(noted, {}))).toThrow();
   });
 });

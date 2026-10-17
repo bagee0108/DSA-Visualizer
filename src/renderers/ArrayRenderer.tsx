@@ -172,6 +172,14 @@ export function letterTiles(variant: BandVariant, slot: number): LetterTiles {
   return { size, mainY, auxY: mainY + size + LETTER_ROW_GAP };
 }
 
+/** Below this tile size a corner note would be unreadable, so it is left out. */
+export const NOTE_MIN_TILE = 24;
+
+/** A tile's corner note, small enough to clear the centred letter. */
+export function noteFont(tile: number): number {
+  return Math.min(12, Math.max(8, tile * 0.24));
+}
+
 function isLetters(elements: readonly ArrayElement[]): boolean {
   return elements.length > 0 && typeof elements[0]?.value === 'string';
 }
@@ -309,6 +317,7 @@ function ArrayRendererImpl({
     y: number,
     role: HighlightRole | undefined,
     keyPrefix: string,
+    note: string | undefined,
   ): ReactNode => {
     const tile = geometry.tiles.size;
     const fill = role === undefined ? 'var(--viz-default)' : ROLE_COLOR[role];
@@ -343,6 +352,19 @@ function ArrayRendererImpl({
             className="font-mono"
           >
             {value}
+          </text>
+        )}
+        {note !== undefined && tile >= NOTE_MIN_TILE && (
+          <text
+            x={tile - 3}
+            y={y + tile - 3}
+            textAnchor="end"
+            fontSize={noteFont(tile)}
+            fill={ink[role ?? 'default']}
+            opacity={0.8}
+            className="font-mono"
+          >
+            {note}
           </text>
         )}
       </g>
@@ -458,7 +480,7 @@ function ArrayRendererImpl({
 
       {elements.map((element, index) =>
         typeof element.value === 'string'
-          ? drawTile(index, element.id, element.value, geometry.tiles.mainY, roles.get(index), '')
+          ? drawTile(index, element.id, element.value, geometry.tiles.mainY, roles.get(index), '', element.note)
           : drawBar(index, element.id, element.value, geometry.yOf, geometry.baseline, roles.get(index), '', true),
       )}
 
@@ -486,7 +508,7 @@ function ArrayRendererImpl({
             if (index < auxiliary.activeFrom || index > auxiliary.activeTo) return null;
             const role = roles.get(`aux:${index}`);
             return typeof element.value === 'string'
-              ? drawTile(index, element.id, element.value, geometry.tiles.auxY, role, 'aux-')
+              ? drawTile(index, element.id, element.value, geometry.tiles.auxY, role, 'aux-', element.note)
               : drawBar(index, element.id, element.value, geometry.auxYOf, geometry.auxBaseline, role, 'aux-', false);
           })}
           {drawPointerGroups(auxPointerGroups, letters ? geometry.tiles.auxY + geometry.tiles.size + 12 : bands.aux.bottom + 16)}

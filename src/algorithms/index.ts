@@ -22,6 +22,7 @@ import { lcs } from './dp/lcs';
 import { editDistance } from './dp/editDistance';
 import { knapsack } from './dp/knapsack';
 import { lis } from './dp/lis';
+import { kmp } from './strings/kmp';
 
 register(quicksort);
 register(mergesort);
@@ -49,5 +50,8 @@ register(lcs);
 register(editDistance);
 register(knapsack);
 register(lis);
+
+// Phase 4 - strings
+register(kmp);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';

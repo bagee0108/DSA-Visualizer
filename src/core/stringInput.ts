@@ -20,14 +20,14 @@ export function parseString(raw: string, label: string, max = MAX_STRING): Parse
   return { ok: true, value: text };
 }
 
-export function stringField(key: string, label: string, defaultValue: string): FieldSpec {
+export function stringField(key: string, label: string, defaultValue: string, max = MAX_STRING): FieldSpec {
   return {
     key,
     label,
     kind: 'text',
     defaultValue,
     placeholder: defaultValue,
-    help: `Letters and digits, up to ${MAX_STRING}.`,
+    help: `Letters and digits, up to ${max}.`,
   };
 }
 

@@ -17,6 +17,8 @@ export type ArrayValue = number | string;
 export interface ArrayElement {
   readonly id: number;
   readonly value: ArrayValue;
+  /** A short caption drawn in a letter tile's corner, such as a failure-function value. It travels with the element. */
+  readonly note?: string;
 }
 
 export type RegionTone = 'active' | 'sorted' | 'excluded' | 'left' | 'right';
