@@ -97,6 +97,8 @@ describe('every preset is legible', () => {
           expect(contrastRatio(t.accentInk, surface), `accent-ink on ${name}`).toBeGreaterThanOrEqual(4.5);
           expect(contrastRatio(t.focus, surface), `focus on ${name}`).toBeGreaterThanOrEqual(3);
         }
+        // a pressed chip: fg text on the accent wash
+        expect(contrastRatio(t.fg, t.accentWash), 'fg on the accent wash').toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.onAccent, t.accent), 'ink on the accent fill').toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.onAccent, t.accentHover), 'ink on the hover fill').toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.onAccent, t.accentPress), 'ink on the pressed fill').toBeGreaterThanOrEqual(4.5);

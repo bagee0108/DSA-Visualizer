@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { usePrefersReducedMotion } from '../hooks/useMotion';
-import { PanelHeader } from './ui';
+import { FOCUS_RING, PanelHeader } from './ui';
 
 /** Row height in px. The sliding highlight is positioned off it, so the row
  *  and this constant have to agree; `text-micro` carries a 16px line box. */
@@ -83,7 +83,10 @@ export function CodePanel({ lines, activeLine, title = 'source' }: CodePanelProp
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Source code"
+        className={`min-h-0 flex-1 overflow-auto ${FOCUS_RING}`}
         onWheel={markUserScroll}
         onTouchStart={markUserScroll}
         onPointerDown={markUserScroll}

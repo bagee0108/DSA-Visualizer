@@ -41,7 +41,7 @@ const STAR = 'M6 1.2l1.4 3 3.2.3-2.4 2.2.7 3.2L6 8.3 3.1 9.9l.7-3.2L1.4 4.5l3.2-
 /** Three outline stars. Never filled until there is real progress to show. */
 export function ProgressStars({ withLabel = false, className }: { withLabel?: boolean; className?: string }): ReactNode {
   return (
-    <span className={`inline-flex items-center gap-1.5 ${className ?? ''}`} aria-label="Progress: not started">
+    <span className={`inline-flex items-center gap-1.5 ${className ?? ''}`} role="img" aria-label="Progress: not started">
       <span className="inline-flex gap-px text-edge" aria-hidden="true">
         {[0, 1, 2].map((star) => (
           <svg key={star} viewBox="0 0 12 12" className="h-3 w-3">

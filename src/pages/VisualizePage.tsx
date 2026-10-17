@@ -10,6 +10,7 @@ import { CallStackPanel } from '../components/CallStackPanel';
 import { CodePanel } from '../components/CodePanel';
 import { ComplexityPanel } from '../components/ComplexityPanel';
 import { ExplanationBar } from '../components/ExplanationBar';
+import { FrameAnnouncer } from '../components/FrameAnnouncer';
 import { InputPanel } from '../components/InputPanel';
 import { Player } from '../components/Player';
 import { PrecomputeBar } from '../components/PrecomputeBar';
@@ -244,7 +245,12 @@ function Canvas({ error }: { error: string | null }): ReactNode {
 function Commentary(): ReactNode {
   const { frame, frameDurationMs, jumped } = usePlayback();
   // Below a quarter of a second the fade never finishes and reads as flicker.
-  return <ExplanationBar frame={frame} animate={!jumped && frameDurationMs >= 250} />;
+  return (
+    <>
+      <ExplanationBar frame={frame} animate={!jumped && frameDurationMs >= 250} />
+      <FrameAnnouncer />
+    </>
+  );
 }
 
 function SourceView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {

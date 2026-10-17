@@ -99,7 +99,7 @@ export function IconButton({ label, variant = 'ghost', size = 'md', className, t
 export function chipClass(pressed: boolean | undefined): string {
   const tone =
     pressed === true
-      ? 'border-accent-line bg-accent-wash text-accent-ink'
+      ? 'border-accent-line bg-accent-wash text-fg'
       : pressed === false
         ? 'border-transparent text-fg-mute hover:bg-raised hover:text-fg active:bg-edge'
         : 'border-line text-fg-dim hover:border-edge hover:bg-raised hover:text-fg active:bg-edge';

@@ -113,8 +113,10 @@ function routePath(geometry: Geometry, end: number): string {
   return d;
 }
 
+/** Starts with the visible text ("01 Binary search"), so a spoken command finds it (WCAG 2.5.3). */
 function stopLabel(level: Level, open: boolean): string {
-  return `Level ${level.number}, ${level.lane}: ${level.name}, ${TIER_LABEL[level.tier]}${open ? '' : ', coming soon'}`;
+  const visible = `${String(level.number).padStart(2, '0')} ${level.name}`;
+  return `${visible}: level ${level.number}, ${level.lane}, ${TIER_LABEL[level.tier]}${open ? '' : ', coming soon'}`;
 }
 
 const NODE = 'relative z-10 h-[18px] w-[18px] shrink-0 rounded-full border-2';
