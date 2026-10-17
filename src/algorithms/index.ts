@@ -24,6 +24,7 @@ import { knapsack } from './dp/knapsack';
 import { lis } from './dp/lis';
 import { kmp } from './strings/kmp';
 import { segmentTree } from './trees/segmentTree';
+import { fenwick } from './trees/fenwick';
 
 register(quicksort);
 register(mergesort);
@@ -57,5 +58,6 @@ register(kmp);
 
 // Phase 4 - range structures
 register(segmentTree);
+register(fenwick);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';
