@@ -103,7 +103,7 @@ export function chipClass(pressed: boolean | undefined): string {
       : pressed === false
         ? 'border-transparent text-fg-mute hover:bg-raised hover:text-fg active:bg-edge'
         : 'border-line text-fg-dim hover:border-edge hover:bg-raised hover:text-fg active:bg-edge';
-  return `inline-flex items-center gap-1 rounded-xs border px-1.5 py-0.5 text-micro transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${tone} ${FOCUS_RING}`;
+  return `inline-flex min-h-6 min-w-6 items-center justify-center gap-1 rounded-xs border px-1.5 py-0.5 text-micro transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${tone} ${FOCUS_RING}`;
 }
 
 export interface ChipProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-pressed'> {

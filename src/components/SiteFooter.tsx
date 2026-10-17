@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from '../router/router';
 import { FOCUS_RING } from './ui';
 
-const LINK = `rounded-xs underline decoration-line underline-offset-2 transition-colors hover:text-fg hover:decoration-fg-mute ${FOCUS_RING}`;
+const LINK = `inline-flex min-h-6 items-center rounded-xs underline decoration-line underline-offset-2 transition-colors hover:text-fg hover:decoration-fg-mute ${FOCUS_RING}`;
 
 /** The quiet line at the foot of the reading pages. The visualizer is a full-screen tool and has none. */
 export function SiteFooter(): ReactNode {

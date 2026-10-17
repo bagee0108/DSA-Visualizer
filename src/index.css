@@ -199,12 +199,13 @@ body {
 
 /* Range inputs. The track and thumb live in shadow DOM that utility classes
    cannot reach, so both sliders are styled once here. --viz-range-progress is
-   the filled fraction, set inline by the component. */
+   the filled fraction, set inline by the component. The box is 24px tall so
+   the target meets WCAG 2.5.8 on its own; the track and thumb draw inside it. */
 .viz-range {
   --viz-range-fill: var(--color-focus);
   appearance: none;
   -webkit-appearance: none;
-  height: 14px;
+  height: 24px;
   background: transparent;
   cursor: pointer;
 }
@@ -275,11 +276,11 @@ body {
 }
 
 .viz-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-focus);
+  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 4px var(--color-focus);
 }
 
 .viz-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 3px var(--color-focus);
+  box-shadow: 0 0 0 2px var(--color-panel), 0 0 0 4px var(--color-focus);
 }
 
 @keyframes viz-node-mount {
