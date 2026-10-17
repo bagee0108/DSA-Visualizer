@@ -2,6 +2,8 @@ import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+import './src/algorithms';
+import { sitemapXml } from './src/seo/sitemap';
 import { ACTIVE_THEME, PRESETS, THEME_STYLE_ID, themeCss } from './src/theme/themes';
 
 /**
@@ -18,8 +20,19 @@ function theme(): Plugin {
   };
 }
 
+/** Emits sitemap.xml from the open levels; see src/seo/sitemap.ts. */
+function sitemap(): Plugin {
+  return {
+    name: 'lowlink-sitemap',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml() });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [theme(), react(), tailwindcss()],
+  plugins: [theme(), sitemap(), react(), tailwindcss()],
   base: '/',
   build: {
     target: 'es2022',

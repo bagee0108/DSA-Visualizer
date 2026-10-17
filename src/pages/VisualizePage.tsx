@@ -62,7 +62,7 @@ export function VisualizePage({ algorithmId }: VisualizePageProps): ReactNode {
 }
 
 function UnknownAlgorithm({ id }: { id: string }): ReactNode {
-  usePageMeta(`Not found: ${id} - Lowlink`);
+  usePageMeta(`Not found: ${id} - Lowlink`, { canonical: false });
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
       <h1 className="text-title font-semibold text-fg">No algorithm registered as &quot;{id}&quot;</h1>

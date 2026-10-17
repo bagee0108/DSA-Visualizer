@@ -30,7 +30,7 @@ function Routes(): ReactNode {
 }
 
 function NotFound({ path }: { path: string }): ReactNode {
-  usePageMeta('Page not found - Lowlink');
+  usePageMeta('Page not found - Lowlink', { canonical: false });
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
       <h1 className="text-title font-semibold text-fg">Page not found</h1>
