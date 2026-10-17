@@ -86,7 +86,7 @@ export function BrowsePage(): ReactNode {
   }, []);
 
   useEffect(() => {
-    document.title = 'Browse all - DSA Visualizer';
+    document.title = 'Browse all - Lowlink';
   }, []);
 
   const readyCount = useMemo(() => CATALOG.filter((entry) => isRegistered(entry.id)).length, []);

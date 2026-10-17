@@ -70,7 +70,7 @@ function Legend(): ReactNode {
 
 export function HomePage(): ReactNode {
   useEffect(() => {
-    document.title = 'DSA Visualizer';
+    document.title = 'Lowlink: learn data structures and algorithms by watching them run';
   }, []);
 
   return (

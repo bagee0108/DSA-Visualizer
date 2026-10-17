@@ -86,7 +86,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   const { frames, error, building, progress } = useChunkedBuild(algorithm, params);
 
   useEffect(() => {
-    document.title = `${algorithm.meta.name} - DSA Visualizer`;
+    document.title = `${algorithm.meta.name} - Lowlink`;
   }, [algorithm.meta.name]);
 
   const onApply = useCallback(

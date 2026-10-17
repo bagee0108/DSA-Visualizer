@@ -1,4 +1,9 @@
-# DSA Visualizer
+# Lowlink
+
+Learn data structures and algorithms by watching them run.
+
+The name comes from the lowlink value in Tarjan's strongly connected
+components algorithm.
 
 Frame-by-frame visualizations of data structures and algorithms. Every run is
 precomputed, so you can scrub it like video: step backwards as cheaply as

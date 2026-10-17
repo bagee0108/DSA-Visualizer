@@ -59,13 +59,11 @@ function Shell(): ReactNode {
       <header className="flex h-11 shrink-0 items-center gap-5 border-b border-line bg-panel px-3">
         <Link
           to="/"
-          aria-label="dsa/visualizer, home"
+          aria-label="Lowlink, home"
           className={`flex items-center gap-2 rounded-xs font-display text-ui font-semibold font-stretch-semi-condensed text-fg ${FOCUS_RING}`}
         >
           <Logo surface="panel" className="h-6 w-6" />
-          <span>
-            dsa<span className="font-normal text-fg-mute">/</span>visualizer
-          </span>
+          <span>lowlink</span>
         </Link>
         {/* A leaderboard link joins these once that page exists; never before. */}
         <nav aria-label="Main" className="flex items-center gap-1">
