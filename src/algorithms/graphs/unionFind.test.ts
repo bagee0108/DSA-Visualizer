@@ -108,11 +108,11 @@ describe('union-find: rank and compression', () => {
     for (const preset of unionFind.presets) {
       const params = preset.build(64, makeRng(8));
       const frames = runFrames(unionFind, params);
-      for (const frame of frames) {
+      for (const [at, frame] of frames.entries()) {
         const parent = forestOf(graphOf(frame));
-        for (const node of graphOf(frame).graph.nodes) {
-          expect(depthOf(parent, node.id), `${preset.id}: depth of ${node.id}`).toBeLessThanOrEqual(6);
-        }
+        // The deepest node, asserted once per frame: an expect per node made this the slowest test in the suite.
+        const deepest = Math.max(...graphOf(frame).graph.nodes.map((node) => depthOf(parent, node.id)));
+        expect(deepest, `${preset.id} frame ${at}: deepest node`).toBeLessThanOrEqual(6);
       }
     }
   });
