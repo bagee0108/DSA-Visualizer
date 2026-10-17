@@ -6,6 +6,7 @@ describe('resolveRoute', () => {
   it('maps the known pages', () => {
     expect(resolveRoute('/')).toEqual({ page: 'home' });
     expect(resolveRoute('/browse/')).toEqual({ page: 'browse' });
+    expect(resolveRoute('/about')).toEqual({ page: 'about' });
     expect(resolveRoute('/visualize/avl')).toEqual({ page: 'visualize', id: 'avl' });
     expect(resolveRoute('/visualize/a%20b/')).toEqual({ page: 'visualize', id: 'a b' });
   });

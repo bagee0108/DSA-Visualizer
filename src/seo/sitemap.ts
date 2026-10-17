@@ -8,7 +8,7 @@ import { isOpen, LEVELS } from '../core/levels';
 import { siteUrl } from '../site';
 
 /** Pages that are always there, before the levels. */
-export const STATIC_PATHS: readonly string[] = ['/', '/browse'];
+export const STATIC_PATHS: readonly string[] = ['/', '/browse', '/about'];
 
 export function sitemapPaths(): readonly string[] {
   return [...STATIC_PATHS, ...LEVELS.filter(isOpen).map((level) => `/visualize/${level.id}`)];

@@ -182,3 +182,14 @@ Deep links are real paths (`/visualize/quicksort`), so the host must serve
 `index.html` for unknown paths. Netlify, Vercel and Cloudflare Pages do this
 with one rule. On GitHub Pages, copy `dist/index.html` to `dist/404.html` after
 building, and set `base` in `vite.config.ts` to `/<repo-name>/`.
+
+`vercel.json` also sends the security headers, including a Content-Security-Policy
+of plain `'self'`. It holds only because `index.html` has no inline script or
+style; keep it that way.
+
+## Licence
+
+MIT; see [LICENSE](LICENSE). The fonts are under the SIL Open Font License
+1.1, with each `OFL.txt` beside its font in `public/fonts/`. After changing
+`dependencies`, run `npm run licenses` to regenerate
+`public/THIRD_PARTY_LICENSES.txt`, and commit it.

@@ -2,6 +2,7 @@
   "name": "lowlink",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "licenses": "node scripts/third-party-licenses.mjs",
+    "og-image": "node scripts/og-image.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

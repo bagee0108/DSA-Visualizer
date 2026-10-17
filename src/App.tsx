@@ -6,6 +6,7 @@ import { Logo } from './components/Logo';
 import { ThemeToggle } from './components/ThemeToggle';
 import { ButtonLink, FOCUS_RING } from './components/ui';
 import { usePageMeta } from './hooks/usePageMeta';
+import { AboutPage } from './pages/AboutPage';
 import { BrowsePage } from './pages/BrowsePage';
 import { HomePage } from './pages/HomePage';
 import { VisualizePage } from './pages/VisualizePage';
@@ -22,6 +23,8 @@ function Routes(): ReactNode {
       return <HomePage />;
     case 'browse':
       return <BrowsePage />;
+    case 'about':
+      return <AboutPage />;
     case 'visualize':
       return <VisualizePage algorithmId={route.id} />;
     case 'not-found':
@@ -60,7 +63,7 @@ function NavLink({ to, current, children }: { to: string; current: boolean; chil
 
 function Shell(): ReactNode {
   const { path } = useRouter();
-  const route = path === '/' || path === '' ? 'home' : path.startsWith('/browse') ? 'browse' : 'visualize';
+  const route = resolveRoute(path).page;
 
   return (
     <div className="flex h-full flex-col bg-ground text-fg">
@@ -75,7 +78,7 @@ function Shell(): ReactNode {
         </Link>
         {/* A leaderboard link joins these once that page exists; never before. */}
         <nav aria-label="Main" className="flex items-center gap-1">
-          <NavLink to="/" current={route !== 'browse'}>
+          <NavLink to="/" current={route === 'home' || route === 'visualize'}>
             Path
           </NavLink>
           <NavLink to="/browse" current={route === 'browse'}>

@@ -15,6 +15,7 @@ import { isRegistered } from '../core/registry';
 import { levelFor } from '../core/levels';
 import type { Category } from '../core/define';
 import { TierLabel } from '../components/level';
+import { SiteFooter } from '../components/SiteFooter';
 import { Chip, ChipGroup, FOCUS_RING } from '../components/ui';
 import { usePrefersReducedMotion } from '../hooks/useMotion';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -205,6 +206,7 @@ export function BrowsePage(): ReactNode {
           </div>
         )}
       </div>
+      <SiteFooter />
     </div>
   );
 }

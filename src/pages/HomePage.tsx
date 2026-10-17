@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { HeroStage } from '../components/HeroStage';
 import { Marquee } from '../components/Marquee';
 import { Route } from '../components/Route';
+import { SiteFooter } from '../components/SiteFooter';
 import { ButtonLink } from '../components/ui';
 import { firstOpenLevel, LEVELS } from '../core/levels';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -91,6 +92,7 @@ export function HomePage(): ReactNode {
         </div>
         <Route />
       </section>
+      <SiteFooter />
     </div>
   );
 }

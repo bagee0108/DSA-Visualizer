@@ -3,6 +3,7 @@
 export type Route =
   | { readonly page: 'home' }
   | { readonly page: 'browse' }
+  | { readonly page: 'about' }
   | { readonly page: 'visualize'; readonly id: string }
   | { readonly page: 'not-found' };
 
@@ -18,6 +19,7 @@ function safeDecode(text: string): string | null {
 export function resolveRoute(path: string): Route {
   if (path === '/' || path === '') return { page: 'home' };
   if (path === '/browse' || path === '/browse/') return { page: 'browse' };
+  if (path === '/about' || path === '/about/') return { page: 'about' };
 
   const visualize = /^\/visualize\/([^/]+)\/?$/.exec(path);
   if (visualize !== null) {

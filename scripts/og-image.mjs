@@ -45,8 +45,8 @@ const MARK = `
 
 const HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
-@font-face { font-family: "Martian Mono"; font-weight: 100 800; font-stretch: 75% 112.5%; src: url("${font('martian-mono-latin-wdth-wght-normal.woff2')}") format("woff2"); }
-@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 200 800; src: url("${font('atkinson-hyperlegible-next-latin-wght-normal.woff2')}") format("woff2"); }
+@font-face { font-family: "Martian Mono"; font-weight: 100 800; font-stretch: 75% 112.5%; src: url("${font('martian-mono/martian-mono-latin-wdth-wght-normal.woff2')}") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 200 800; src: url("${font('atkinson-hyperlegible-next/atkinson-hyperlegible-next-latin-wght-normal.woff2')}") format("woff2"); }
 html, body { margin: 0; width: ${WIDTH}px; height: ${HEIGHT}px; overflow: hidden; background: ${GROUND}; }
 body {
   box-sizing: border-box; padding: 0 96px; display: flex; flex-direction: column; justify-content: center; gap: 40px;
