@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ACTIVE_THEME, PRESETS, THEME_STYLE_ID, themeCss, type ThemeId } from './themes';
 
 const STORAGE_KEY = 'dsa-dev-theme';
+const DEV_STYLE_ID = `${THEME_STYLE_ID}-dev`;
 
 function isThemeId(value: string | null): value is ThemeId {
   return value !== null && Object.hasOwn(PRESETS, value);
@@ -18,8 +19,8 @@ function readChoice(): ThemeId {
 }
 
 /**
- * Development only: previews every preset live by rewriting the theme
- * stylesheet that vite.config.ts put into index.html. App renders it behind
+ * Development only: previews every preset live by layering a <style> over
+ * the theme stylesheet that vite.config.ts links from index.html. App renders it behind
  * import.meta.env.DEV, so it is stripped from production builds. Shipping a
  * different theme is a change to ACTIVE_THEME, not to this.
  */
@@ -28,11 +29,12 @@ export function DevThemeSwitcher(): ReactNode {
   const css = themeCss(PRESETS[choice]);
 
   useEffect(() => {
-    let style = document.getElementById(THEME_STYLE_ID);
+    // Appended after the shipped theme stylesheet, so it wins the cascade.
+    let style = document.getElementById(DEV_STYLE_ID);
     if (style === null) {
       style = document.createElement('style');
-      style.id = THEME_STYLE_ID;
-      document.head.prepend(style);
+      style.id = DEV_STYLE_ID;
+      document.head.append(style);
     }
     style.textContent = css;
     try {

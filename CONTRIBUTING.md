@@ -403,10 +403,14 @@ else - type sizes, spacing, radii, motion, and the role palette - is in
 `src/index.css`.
 
 `@theme` in `index.css` declares the colour *names* Tailwind turns into
-utilities, each pointing at a `--theme-*` variable. `vite.config.ts` writes the
-active preset into `index.html` as a `<style id="theme">` holding those
-variables for both modes (`:root.dark` and `:root:not(.dark)`), so the first
-paint is already themed and the mode toggle needs no script. Because utilities
+utilities, each pointing at a `--theme-*` variable. `vite.config.ts` emits the
+active preset as a content-hashed stylesheet (`assets/theme-*.css`), linked from
+`index.html` as `<link id="theme">`, holding those variables for both modes
+(`:root.dark` and `:root:not(.dark)`). `public/theme-init.js`, a blocking script
+in `<head>`, sets the `dark` class before first paint, so nothing flashes.
+Both are files rather than inline so the Content-Security-Policy in
+`vercel.json` stays plain `'self'` with no hashes: never add an inline
+`<script>` or `<style>` to `index.html`. Because utilities
 compile to `var(--color-…)`, a component never needs a `dark:` variant for
 colour: the token flips underneath it.
 

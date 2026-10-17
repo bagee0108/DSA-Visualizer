@@ -6,17 +6,38 @@ import './src/algorithms';
 import { sitemapXml } from './src/seo/sitemap';
 import { ACTIVE_THEME, PRESETS, THEME_STYLE_ID, themeCss } from './src/theme/themes';
 
+/** FNV-1a, 32 bit: enough to tell one theme build from the next. */
+function contentHash(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+const THEME_CSS = themeCss(PRESETS[ACTIVE_THEME]);
+const THEME_FILE = `assets/theme-${contentHash(THEME_CSS)}.css`;
+
 /**
- * Writes the active theme into index.html as a <style> in <head>,
- * so the first paint is already in the right colours with no script and no
- * flash. src/theme/themes.ts is the only place chrome colours are defined.
+ * Ships the active theme as its own stylesheet, linked first in <head>, so
+ * the first paint is already in the right colours with no flash. A file, not
+ * an inline <style>, so the CSP is plain 'self' (see vercel.json). The name
+ * carries a content hash, so a theme change is never served stale.
+ * src/theme/themes.ts is the only place chrome colours are defined.
  */
 function theme(): Plugin {
   return {
-    name: 'dsa-theme',
+    name: 'lowlink-theme',
     transformIndexHtml: () => [
-      { tag: 'style', attrs: { id: THEME_STYLE_ID }, children: themeCss(PRESETS[ACTIVE_THEME]), injectTo: 'head' },
+      { tag: 'link', attrs: { rel: 'stylesheet', id: THEME_STYLE_ID, href: `/${THEME_FILE}` }, injectTo: 'head' },
     ],
+    configureServer(server) {
+      server.middlewares.use(`/${THEME_FILE}`, (_request, response) => {
+        response.setHeader('Content-Type', 'text/css');
+        response.end(THEME_CSS);
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: THEME_FILE, source: THEME_CSS });
+    },
   };
 }
 
