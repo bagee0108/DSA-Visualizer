@@ -23,6 +23,7 @@ import { editDistance } from './dp/editDistance';
 import { knapsack } from './dp/knapsack';
 import { lis } from './dp/lis';
 import { kmp } from './strings/kmp';
+import { segmentTree } from './trees/segmentTree';
 
 register(quicksort);
 register(mergesort);
@@ -53,5 +54,8 @@ register(lis);
 
 // Phase 4 - strings
 register(kmp);
+
+// Phase 4 - range structures
+register(segmentTree);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';

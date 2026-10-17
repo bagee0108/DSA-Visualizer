@@ -76,7 +76,7 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
       { id: 'edit-distance', tier: 2, ops: ['memoize'] },
       { id: 'knapsack', tier: 2, ops: ['memoize'] },
       { id: 'kmp', tier: 3, ops: ['prefix'] },
-      { id: 'segment-tree', tier: 3 },
+      { id: 'segment-tree', tier: 3, ops: ['split', 'range query'] },
       { id: 'fenwick', tier: 3, ops: ['prefix'] },
       { id: 'n-queens', tier: 2, ops: ['backtrack'] },
       { id: 'sudoku', tier: 3, ops: ['backtrack'] },
