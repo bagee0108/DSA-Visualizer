@@ -9,7 +9,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 import { LAYOUT_ASPECT } from '../core/graphLayout';
 import type { Graph, GraphSnapshot, Highlights, Pointers } from '../core/types';
 import type { FillName, InkMap } from './ink';
-import { VIEW_H, VIEW_W } from './canvas';
+import { counted, VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
@@ -134,7 +134,7 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
-      aria-label={`Graph of ${graph.nodes.length} nodes and ${graph.edges.length} edges`}
+      aria-label={`Graph of ${counted(graph.nodes.length, 'node')} and ${counted(graph.edges.length, 'edge')}`}
     >
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

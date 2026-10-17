@@ -18,6 +18,7 @@ import { ProgressStars, TierLabel } from '../components/level';
 import { Button, ButtonLink, Kbd } from '../components/ui';
 import { levelFor, neighbour, type Level } from '../core/levels';
 import { getAlgorithm } from '../core/registry';
+import { usePageMeta } from '../hooks/usePageMeta';
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
 import { ZERO_COUNTERS } from '../core/types';
 import { PlaybackProvider, usePlayback } from '../playback/PlaybackProvider';
@@ -55,23 +56,24 @@ export interface VisualizePageProps {
 export function VisualizePage({ algorithmId }: VisualizePageProps): ReactNode {
   const algorithm = getAlgorithm(algorithmId);
 
-  if (algorithm === undefined) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <h1 className="text-title font-semibold text-fg">
-          No algorithm registered as &quot;{algorithmId}&quot;
-        </h1>
-        <p className="max-w-md text-meta text-fg-dim">
-          It is probably still being built. The path on the home page marks every level that is coming.
-        </p>
-        <ButtonLink to="/" variant="secondary">
-          Back to the path
-        </ButtonLink>
-      </div>
-    );
-  }
+  if (algorithm === undefined) return <UnknownAlgorithm id={algorithmId} />;
 
   return <AlgorithmView algorithm={algorithm} />;
+}
+
+function UnknownAlgorithm({ id }: { id: string }): ReactNode {
+  usePageMeta(`Not found: ${id} - Lowlink`);
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+      <h1 className="text-title font-semibold text-fg">No algorithm registered as &quot;{id}&quot;</h1>
+      <p className="max-w-md text-meta text-fg-dim">
+        It is probably still being built. The path on the home page marks every level that is coming.
+      </p>
+      <ButtonLink to="/" variant="secondary">
+        Back to the path
+      </ButtonLink>
+    </div>
+  );
 }
 
 function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {
@@ -86,9 +88,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
 
   const { frames, error, building, progress } = useChunkedBuild(algorithm, params);
 
-  useEffect(() => {
-    document.title = `${algorithm.meta.name} - Lowlink`;
-  }, [algorithm.meta.name]);
+  usePageMeta(`${algorithm.meta.name} - Lowlink`);
 
   const onApply = useCallback(
     (next: ParamMap) => {

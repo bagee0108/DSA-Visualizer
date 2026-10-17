@@ -1,6 +1,6 @@
 /** Browse all: every algorithm on the roadmap, grouped by category, searchable. */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
   CATALOG,
@@ -17,6 +17,7 @@ import type { Category } from '../core/define';
 import { TierLabel } from '../components/level';
 import { Chip, ChipGroup, FOCUS_RING } from '../components/ui';
 import { usePrefersReducedMotion } from '../hooks/useMotion';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { Link } from '../router/router';
 
 const PHASES: readonly Phase[] = [1, 2, 3, 4];
@@ -85,9 +86,7 @@ export function BrowsePage(): ReactNode {
     else cards.current.set(id, node);
   }, []);
 
-  useEffect(() => {
-    document.title = 'Browse all - Lowlink';
-  }, []);
+  usePageMeta('Browse all - Lowlink');
 
   const readyCount = useMemo(() => CATALOG.filter((entry) => isRegistered(entry.id)).length, []);
 

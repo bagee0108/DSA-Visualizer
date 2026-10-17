@@ -5,24 +5,32 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Logo } from './components/Logo';
 import { ThemeToggle } from './components/ThemeToggle';
 import { ButtonLink, FOCUS_RING } from './components/ui';
+import { usePageMeta } from './hooks/usePageMeta';
 import { BrowsePage } from './pages/BrowsePage';
 import { HomePage } from './pages/HomePage';
 import { VisualizePage } from './pages/VisualizePage';
 import { Link, RouterProvider, useRouter } from './router/router';
+import { resolveRoute } from './router/routes';
 import { DevThemeSwitcher } from './theme/DevThemeSwitcher';
 
 function Routes(): ReactNode {
   const { path } = useRouter();
+  const route = resolveRoute(path);
 
-  if (path === '/' || path === '') return <HomePage />;
-  if (path === '/browse' || path === '/browse/') return <BrowsePage />;
-
-  const visualizeMatch = /^\/visualize\/([^/]+)\/?$/.exec(path);
-  if (visualizeMatch !== null) {
-    const id = decodeURIComponent(visualizeMatch[1] ?? '');
-    return <VisualizePage algorithmId={id} />;
+  switch (route.page) {
+    case 'home':
+      return <HomePage />;
+    case 'browse':
+      return <BrowsePage />;
+    case 'visualize':
+      return <VisualizePage algorithmId={route.id} />;
+    case 'not-found':
+      return <NotFound path={path} />;
   }
+}
 
+function NotFound({ path }: { path: string }): ReactNode {
+  usePageMeta('Page not found - Lowlink');
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
       <h1 className="text-title font-semibold text-fg">Page not found</h1>

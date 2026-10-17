@@ -10,7 +10,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 
 import type { Frame, Highlights, Pointers, TreeNodeSnapshot, TreeSnapshot } from '../core/types';
 import type { FillName, InkMap } from './ink';
-import { VIEW_H, VIEW_W } from './canvas';
+import { counted, VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
@@ -199,7 +199,7 @@ function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
-      aria-label={`Tree of ${snapshot.nodes.length} nodes`}
+      aria-label={`Tree of ${counted(snapshot.nodes.length, 'node')}`}
     >
       <TreeLayer
         snapshot={snapshot}

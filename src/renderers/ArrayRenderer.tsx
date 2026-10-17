@@ -12,7 +12,7 @@ import type {
   Pointers,
   RegionTone,
 } from '../core/types';
-import { VIEW_H, VIEW_W } from './canvas';
+import { counted, VIEW_H, VIEW_W } from './canvas';
 import type { InkMap } from './ink';
 import { circleMark, markFor, rectMark } from './roles';
 
@@ -426,7 +426,7 @@ function ArrayRendererImpl({
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
-      aria-label={`Array of ${size} elements`}
+      aria-label={`Array of ${counted(size, 'element')}`}
     >
       {regions.map((region: ArrayRegion, position) => {
         const from = Math.max(0, Math.min(size - 1, region.from));

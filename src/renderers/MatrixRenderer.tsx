@@ -9,7 +9,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 
 import { parseMatrixRef } from '../core/matrixScene';
 import type { EntityId, Highlights, HighlightRole, MatrixArrow, MatrixSnapshot, Pointers, SplitSnapshot, Strip } from '../core/types';
-import { VIEW_H, VIEW_W } from './canvas';
+import { counted, VIEW_H, VIEW_W } from './canvas';
 import type { FillName, InkMap } from './ink';
 import { markFor, rectMark, ROLE_COLOR, resolveRoles } from './roles';
 import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
@@ -531,7 +531,7 @@ function MatrixRendererImpl({ snapshot, ink, highlights, pointers, animate, dura
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
-      aria-label={`Table of ${rows} rows and ${cols} columns`}
+      aria-label={`Table of ${counted(rows, 'row')} and ${counted(cols, 'column')}`}
     >
       <ArrowDefs />
       {place !== undefined && (
