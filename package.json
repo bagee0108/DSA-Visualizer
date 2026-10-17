@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "licenses": "node scripts/third-party-licenses.mjs",
-    "og-image": "node scripts/og-image.mjs"
+    "og": "node scripts/og-image.mjs",
+    "favicons": "node scripts/favicons.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

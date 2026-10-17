@@ -1,32 +1,30 @@
 /**
  * Renders public/og.png, the 1200x630 card that link previews show.
  *
- *   node scripts/og-image.mjs
+ *   npm run og                              write public/og.png
+ *   node scripts/og-image.mjs --out <dir>   write somewhere else, to compare first
  *
  * It builds the card as HTML (the relax mark, the "lowlink" wordmark in
- * Martian Mono, the one-line description, Ember dark) and screenshots it
- * with a local headless Chrome, so it needs no dependency. Set CHROME to the
- * browser's path if it is not in a standard place. Run it again after a
- * change to the mark, the fonts or the Ember preset, and commit the PNG.
+ * Martian Mono, the one-line description, in the active theme's dark
+ * colours) and screenshots it with a local headless Chrome; see render.mjs.
+ * Set CHROME to the browser's path if it is not in a standard place. Re-run
+ * it after a change to the mark, the fonts or the active theme, and commit
+ * the PNG.
  */
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mkdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'public', 'og.png');
+import { darkTokens, ROOT, screenshot } from './render.mjs';
+
+const at = process.argv.indexOf('--out');
+const DIR = at === -1 ? join(ROOT, 'public') : resolve(process.argv[at + 1]);
+mkdirSync(DIR, { recursive: true });
+const OUT = join(DIR, 'og.png');
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-// Ember, dark mode: PRESETS.ember in src/theme/themes.ts.
-const GROUND = '#0f0d0e';
-const LINE = '#342c2a';
-const FG = '#ece6e3';
-const FG_MUTE = '#9a8f8b';
-const ACCENT = '#ee5515';
+const { ground: GROUND, line: LINE, fg: FG, fgMute: FG_MUTE, accent: ACCENT } = await darkTokens();
 
 const DESCRIPTION = 'Learn data structures and algorithms by watching them run.';
 
@@ -64,41 +62,5 @@ p { margin: 0; max-width: 900px; font-family: "Atkinson Hyperlegible Next"; font
   <p>${DESCRIPTION}</p>
 </body></html>`;
 
-function chrome() {
-  const candidates = [
-    process.env.CHROME,
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-  ];
-  const found = candidates.find((path) => path !== undefined && existsSync(path));
-  if (found === undefined) throw new Error('No Chrome found; set CHROME to its path.');
-  return found;
-}
-
-const work = mkdtempSync(join(tmpdir(), 'lowlink-og-'));
-try {
-  const page = join(work, 'og.html');
-  writeFileSync(page, HTML);
-  execFileSync(chrome(), [
-    '--headless=new',
-    '--disable-gpu',
-    '--hide-scrollbars',
-    '--force-device-scale-factor=1',
-    `--user-data-dir=${join(work, 'profile')}`,
-    `--window-size=${WIDTH},${HEIGHT}`,
-    '--virtual-time-budget=3000',
-    `--screenshot=${OUT}`,
-    pathToFileURL(page).href,
-  ], { stdio: 'ignore' });
-} finally {
-  rmSync(work, { recursive: true, force: true });
-}
-
-// A PNG's IHDR holds the size at bytes 16-23; check Chrome gave the exact card.
-const png = readFileSync(OUT);
-const size = [png.readUInt32BE(16), png.readUInt32BE(20)];
-if (size[0] !== WIDTH || size[1] !== HEIGHT) throw new Error(`og.png is ${size.join('x')}, expected ${WIDTH}x${HEIGHT}`);
-console.log(`wrote public/og.png (${WIDTH}x${HEIGHT}, ${statSync(OUT).size} bytes)`);
+screenshot(HTML, OUT, WIDTH, HEIGHT);
+console.log(`wrote ${OUT} (${WIDTH}x${HEIGHT}, ${statSync(OUT).size} bytes)`);

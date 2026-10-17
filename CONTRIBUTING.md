@@ -443,7 +443,12 @@ hue that clears 4.5:1. The light-mode accent border is that fill itself rather
 than a pastel tint: every tint between a pale page and the accent passes
 through some role colour on the way.
 
-- **Switch theme:** change `ACTIVE_THEME`. That is the only line.
+- **Switch theme:** change `ACTIVE_THEME`. That is the only line of code, but
+  the static images are baked from it: run `npm run favicons` (favicon.svg,
+  apple-touch-icon, icon-192, icon-512 and the manifest colours) and
+  `npm run og` (the share card), then commit what they write to `public/`. Do
+  the same after changing the active preset's values. Both read the dark-mode
+  tokens from `themes.ts` and render with a local Chrome.
 - **Preview presets:** in `npm run dev`, the `theme` select in the app
   header, beside the light/dark toggle, rewrites the theme live. It renders behind `import.meta.env.DEV` and
   is not in the production bundle.
