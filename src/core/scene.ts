@@ -3,11 +3,16 @@
  * immutable, so consecutive frames that do not mutate the array share one
  * frozen elements array; a run with 5000 frames over 200 elements allocates a
  * few hundred arrays, not 5000.
+ *
+ * Values are numbers unless the scene is made over strings, such as the
+ * letters of a text: new ArrayScene<string>([...'abc']). Comparisons then
+ * order them as strings.
  */
 
 import type {
   ArrayElement,
   ArrayRegion,
+  ArrayValue,
   ArraySnapshot,
   CallStackEntry,
   Counters,
@@ -31,8 +36,8 @@ export interface FrameInput {
   readonly auxPointers?: Pointers;
 }
 
-export class ArrayScene {
-  private readonly values: number[];
+export class ArrayScene<V extends ArrayValue = number> {
+  private readonly values: V[];
   private readonly ids: number[];
   private readonly sorted = new Set<number>();
   private readonly stack: CallStackEntry[] = [];
@@ -48,7 +53,7 @@ export class ArrayScene {
   private stackCache: readonly CallStackEntry[] | null = null;
   private sortedCache: readonly number[] | null = null;
 
-  private auxValues: number[] | null = null;
+  private auxValues: V[] | null = null;
   private auxIds: number[] = [];
   private auxLabel = 'aux';
   private auxFrom = 0;
@@ -59,7 +64,7 @@ export class ArrayScene {
 
   private nextId: number;
 
-  constructor(values: readonly number[]) {
+  constructor(values: readonly V[]) {
     this.values = [...values];
     this.ids = values.map((_, index) => index);
     this.nextId = values.length;
@@ -69,7 +74,7 @@ export class ArrayScene {
     return this.values.length;
   }
 
-  push(value: number): number {
+  push(value: V): number {
     this.values.push(value);
     this.ids.push(this.nextId);
     this.nextId += 1;
@@ -78,7 +83,7 @@ export class ArrayScene {
     return this.values.length - 1;
   }
 
-  pop(): number {
+  pop(): V {
     const value = this.values.pop();
     this.ids.pop();
     if (value === undefined) throw new RangeError('pop on an empty array');
@@ -87,7 +92,7 @@ export class ArrayScene {
     return value;
   }
 
-  private at(index: number): number {
+  private at(index: number): V {
     const value = this.values[index];
     if (value === undefined) {
       throw new RangeError(`Index ${index} out of bounds for length ${this.values.length}`);
@@ -95,16 +100,16 @@ export class ArrayScene {
     return value;
   }
 
-  read(index: number): number {
+  read(index: number): V {
     this.reads += 1;
     return this.at(index);
   }
 
-  peek(index: number): number {
+  peek(index: number): V {
     return this.at(index);
   }
 
-  write(index: number, value: number): void {
+  write(index: number, value: V): void {
     this.at(index);
     this.writes += 1;
     this.values[index] = value;
@@ -138,20 +143,25 @@ export class ArrayScene {
     return a < b ? -1 : a > b ? 1 : 0;
   }
 
-  compareValue(index: number, value: number): number {
+  compareValue(index: number, value: V): number {
     this.comparisons += 1;
     this.reads += 1;
     const a = this.at(index);
     return a < value ? -1 : a > value ? 1 : 0;
   }
 
-  copyToAux(label: string, from: number, to: number): void {
+  private ensureAux(): V[] {
     if (this.auxValues === null) {
-      this.auxValues = new Array<number>(this.values.length).fill(0);
+      this.auxValues = [...this.values];
       this.auxIds = new Array<number>(this.values.length).fill(-1);
     }
+    return this.auxValues;
+  }
+
+  copyToAux(label: string, from: number, to: number): void {
+    const aux = this.ensureAux();
     for (let i = from; i <= to; i++) {
-      this.auxValues[i] = this.at(i);
+      aux[i] = this.at(i);
       this.auxIds[i] = this.ids[i] ?? i;
       this.reads += 1;
       this.writes += 1;
@@ -162,13 +172,34 @@ export class ArrayScene {
     this.auxCache = null;
   }
 
-  private auxAt(index: number): number {
+  /**
+   * Lay other values into the aux row, starting under index `at`: a pattern
+   * slid along a text. Each keeps its position in `values` as its id, so
+   * placing the same values at a new offset slides them there. Uncounted:
+   * it is the picture of a shift, not work the algorithm does.
+   */
+  placeAux(label: string, values: readonly V[], at: number): void {
+    if (!Number.isInteger(at) || at < 0 || at + values.length > this.values.length || values.length === 0) {
+      throw new RangeError(`aux values ${at}..${at + values.length - 1} do not fit an array of length ${this.values.length}`);
+    }
+    const aux = this.ensureAux();
+    values.forEach((value, offset) => {
+      aux[at + offset] = value;
+      this.auxIds[at + offset] = offset;
+    });
+    this.auxLabel = label;
+    this.auxFrom = at;
+    this.auxTo = at + values.length - 1;
+    this.auxCache = null;
+  }
+
+  private auxAt(index: number): V {
     const value = this.auxValues?.[index];
     if (value === undefined) throw new RangeError(`aux index ${index} is not populated`);
     return value;
   }
 
-  auxPeek(index: number): number {
+  auxPeek(index: number): V {
     return this.auxAt(index);
   }
 
@@ -241,7 +272,7 @@ export class ArrayScene {
     return this.sorted.has(index);
   }
 
-  toArray(): number[] {
+  toArray(): V[] {
     return [...this.values];
   }
 

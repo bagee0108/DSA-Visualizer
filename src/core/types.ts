@@ -7,9 +7,16 @@ export type EntityId = number | string;
 
 export type StructureKind = 'array' | 'tree' | 'graph' | 'grid' | 'list' | 'matrix' | 'split';
 
+/**
+ * What an array slot holds: a number, drawn as a bar of that height, or a
+ * short string such as one letter of a text, drawn as a tile. One array holds
+ * one kind; frameHygiene checks it.
+ */
+export type ArrayValue = number | string;
+
 export interface ArrayElement {
   readonly id: number;
-  readonly value: number;
+  readonly value: ArrayValue;
 }
 
 export type RegionTone = 'active' | 'sorted' | 'excluded' | 'left' | 'right';

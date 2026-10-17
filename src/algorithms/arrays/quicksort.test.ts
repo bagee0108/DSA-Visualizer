@@ -14,7 +14,7 @@ function run(params: ParamMap): readonly Frame[] {
 }
 
 function valuesOf(frame: Frame): number[] {
-  return arrayOf(frame).elements.map((element) => element.value);
+  return arrayOf(frame).elements.map((element) => Number(element.value));
 }
 
 function lastFrame(frames: readonly Frame[]): Frame {

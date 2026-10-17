@@ -3,6 +3,7 @@
 import { memo, useMemo, type ReactNode } from 'react';
 
 import type {
+  ArrayElement,
   ArrayRegion,
   ArraySnapshot,
   EntityId,
@@ -130,10 +131,49 @@ export function arrayBands(variant: BandVariant): BandLayout {
   return { tree: null, chart: { top: CHART_TOP, bottom: FLOOR }, aux: null };
 }
 
-function layoutFor(snapshot: ArraySnapshot): BandLayout {
-  if (snapshot.heap !== undefined) return arrayBands('heap');
-  if (snapshot.auxiliary !== undefined) return arrayBands('aux');
-  return arrayBands('plain');
+function variantOf(snapshot: ArraySnapshot): BandVariant {
+  if (snapshot.heap !== undefined) return 'heap';
+  if (snapshot.auxiliary !== undefined) return 'aux';
+  return 'plain';
+}
+
+/** The largest letter tile; past it more room becomes space between tiles. */
+export const TILE_MAX = 56;
+/** Between a text row and the pattern under it: the aux label and its rule. */
+export const LETTER_ROW_GAP = 30;
+/** Above a text row and below a pattern row: three stacked pointer labels. */
+export const LETTER_POINTER_ROOM = 54;
+
+export interface LetterTiles {
+  readonly size: number;
+  /** Top of the main row's tiles. */
+  readonly mainY: number;
+  /** Top of the aux row's tiles; equal to mainY when there is no aux row. */
+  readonly auxY: number;
+}
+
+/**
+ * Letters are tiles of one size, not bars. A lone row sits in the middle of
+ * its band. With an aux row the two are one picture - a pattern directly
+ * under the text it is matched against - centred in the space both bands
+ * share, with room above the text and below the pattern for their pointers.
+ */
+export function letterTiles(variant: BandVariant, slot: number): LetterTiles {
+  const bands = arrayBands(variant);
+  if (bands.aux === null) {
+    const chart = bands.chart.bottom - bands.chart.top;
+    const size = Math.max(4, Math.min(TILE_MAX, slot * 0.86, chart));
+    const mainY = bands.chart.top + (chart - size) / 2;
+    return { size, mainY, auxY: mainY };
+  }
+  const span = bands.aux.bottom - bands.chart.top;
+  const size = Math.max(4, Math.min(TILE_MAX, slot * 0.86, (span - LETTER_ROW_GAP - 2 * LETTER_POINTER_ROOM) / 2));
+  const mainY = bands.chart.top + (span - 2 * size - LETTER_ROW_GAP) / 2;
+  return { size, mainY, auxY: mainY + size + LETTER_ROW_GAP };
+}
+
+function isLetters(elements: readonly ArrayElement[]): boolean {
+  return elements.length > 0 && typeof elements[0]?.value === 'string';
 }
 
 function ArrayRendererImpl({
@@ -146,7 +186,9 @@ function ArrayRendererImpl({
 }: ArrayRendererProps): ReactNode {
   const { elements, regions, auxiliary, heap } = snapshot;
   const size = elements.length;
-  const bands = useMemo(() => layoutFor(snapshot), [snapshot]);
+  const variant = variantOf(snapshot);
+  const bands = useMemo(() => arrayBands(variant), [variant]);
+  const letters = isLetters(elements);
 
   const geometry = useMemo(() => {
     const innerWidth = VIEW_W - PAD_X * 2;
@@ -155,9 +197,10 @@ function ArrayRendererImpl({
 
     let min = Infinity;
     let max = -Infinity;
-    for (const element of elements) {
-      if (element.value < min) min = element.value;
-      if (element.value > max) max = element.value;
+    for (const { value } of elements) {
+      if (typeof value !== 'number') continue;
+      if (value < min) min = value;
+      if (value > max) max = value;
     }
     if (!Number.isFinite(min)) {
       min = 0;
@@ -185,8 +228,9 @@ function ArrayRendererImpl({
       auxYOf,
       baseline: yOf(0),
       auxBaseline: auxYOf(0),
+      tiles: letterTiles(variant, slot),
     };
-  }, [bands, elements, size]);
+  }, [bands, elements, size, variant]);
 
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const pointerGroups = useMemo(() => groupPointers(pointers, size), [pointers, size]);
@@ -257,6 +301,78 @@ function ArrayRendererImpl({
       </g>
     );
   };
+
+  const drawTile = (
+    index: number,
+    id: number,
+    value: string,
+    y: number,
+    role: HighlightRole | undefined,
+    keyPrefix: string,
+  ): ReactNode => {
+    const tile = geometry.tiles.size;
+    const fill = role === undefined ? 'var(--viz-default)' : ROLE_COLOR[role];
+    const mark = markFor(role);
+    const stroke = mark === null ? null : rectMark(mark, tile, tile);
+    const x = geometry.xOf(index) + (geometry.slot - tile) / 2;
+    const font = Math.min(22, tile * 0.5, (tile - 6) / (Math.max(1, value.length) * 0.6));
+    return (
+      <g key={`${keyPrefix}${id}`} style={{ transform: `translate(${x}px, 0px)`, transition }}>
+        <rect x={0} y={y} width={tile} height={tile} rx={Math.min(4, tile / 5)} fill={fill} />
+        {stroke !== null && (
+          <rect
+            x={stroke.width / 2}
+            y={y + stroke.width / 2}
+            width={tile - stroke.width}
+            height={tile - stroke.width}
+            rx={stroke.radius}
+            fill="none"
+            stroke={ink[role ?? 'default']}
+            strokeWidth={stroke.width}
+            strokeDasharray={stroke.dash}
+          />
+        )}
+        {font >= 6 && (
+          <text
+            x={tile / 2}
+            y={y + tile / 2 + font * 0.36}
+            textAnchor="middle"
+            fontSize={font}
+            fontWeight={600}
+            fill={ink[role ?? 'default']}
+            className="font-mono"
+          >
+            {value}
+          </text>
+        )}
+      </g>
+    );
+  };
+
+  /** Pointers over a row of tiles, labels stacking upward, each marker pointing down at its tile. */
+  const drawPointersAbove = (groups: readonly PointerGroup[], tileTop: number): ReactNode =>
+    groups.map((group) => {
+      const cx = geometry.xOf(group.index) + geometry.slot / 2;
+      return (
+        <g key={`ptr-above-${group.index}`} style={{ transform: `translate(${cx}px, 0px)`, transition }}>
+          <path d={`M -5 ${tileTop - 9} L 5 ${tileTop - 9} L 0 ${tileTop - 2} Z`} fill="var(--viz-active)" />
+          {group.labels.map((label, row) => (
+            <text
+              key={label}
+              x={0}
+              y={tileTop - 13 - row * POINTER_ROW_HEIGHT}
+              textAnchor="middle"
+              fontSize={12}
+              fontWeight={600}
+              fill="var(--viz-active)"
+              className="font-mono"
+            >
+              {label}
+            </text>
+          ))}
+        </g>
+      );
+    });
 
   const drawPointerGroups = (groups: readonly PointerGroup[], rowY: number): ReactNode =>
     groups.map((group) => {
@@ -329,7 +445,7 @@ function ArrayRendererImpl({
         />
       )}
 
-      {geometry.baseline < bands.chart.bottom - 0.5 && (
+      {!letters && geometry.baseline < bands.chart.bottom - 0.5 && (
         <line
           x1={PAD_X}
           x2={VIEW_W - PAD_X}
@@ -341,16 +457,9 @@ function ArrayRendererImpl({
       )}
 
       {elements.map((element, index) =>
-        drawBar(
-          index,
-          element.id,
-          element.value,
-          geometry.yOf,
-          geometry.baseline,
-          roles.get(index),
-          '',
-          true,
-        ),
+        typeof element.value === 'string'
+          ? drawTile(index, element.id, element.value, geometry.tiles.mainY, roles.get(index), '')
+          : drawBar(index, element.id, element.value, geometry.yOf, geometry.baseline, roles.get(index), '', true),
       )}
 
       {auxiliary !== undefined && bands.aux !== null && (
@@ -358,15 +467,15 @@ function ArrayRendererImpl({
           <line
             x1={PAD_X}
             x2={VIEW_W - PAD_X}
-            y1={bands.aux.top - 14}
-            y2={bands.aux.top - 14}
+            y1={letters ? geometry.tiles.auxY - LETTER_ROW_GAP + 8 : bands.aux.top - 14}
+            y2={letters ? geometry.tiles.auxY - LETTER_ROW_GAP + 8 : bands.aux.top - 14}
             stroke="var(--viz-grid)"
             strokeWidth={1}
             strokeDasharray="3 4"
           />
           <text
             x={PAD_X}
-            y={bands.aux.top - 4}
+            y={letters ? geometry.tiles.auxY - 6 : bands.aux.top - 4}
             fontSize={11}
             fill="var(--viz-text-dim)"
             className="font-mono"
@@ -375,18 +484,12 @@ function ArrayRendererImpl({
           </text>
           {auxiliary.elements.map((element, index) => {
             if (index < auxiliary.activeFrom || index > auxiliary.activeTo) return null;
-            return drawBar(
-              index,
-              element.id,
-              element.value,
-              geometry.auxYOf,
-              geometry.auxBaseline,
-              roles.get(`aux:${index}`),
-              'aux-',
-              false,
-            );
+            const role = roles.get(`aux:${index}`);
+            return typeof element.value === 'string'
+              ? drawTile(index, element.id, element.value, geometry.tiles.auxY, role, 'aux-')
+              : drawBar(index, element.id, element.value, geometry.auxYOf, geometry.auxBaseline, role, 'aux-', false);
           })}
-          {drawPointerGroups(auxPointerGroups, bands.aux.bottom + 16)}
+          {drawPointerGroups(auxPointerGroups, letters ? geometry.tiles.auxY + geometry.tiles.size + 12 : bands.aux.bottom + 16)}
         </>
       )}
 
@@ -405,14 +508,16 @@ function ArrayRendererImpl({
           </text>
         ))}
 
-      {auxiliary === undefined && drawPointerGroups(pointerGroups, POINTER_ROW_Y)}
-      {auxiliary !== undefined && drawPointerGroups(pointerGroups, INDEX_ROW_Y + 16)}
+      {letters && auxiliary !== undefined && drawPointersAbove(pointerGroups, geometry.tiles.mainY)}
+      {letters && auxiliary === undefined && drawPointerGroups(pointerGroups, geometry.tiles.mainY + geometry.tiles.size + 12)}
+      {!letters && auxiliary === undefined && drawPointerGroups(pointerGroups, POINTER_ROW_Y)}
+      {!letters && auxiliary !== undefined && drawPointerGroups(pointerGroups, INDEX_ROW_Y + 16)}
     </svg>
   );
 }
 
 interface HeapTreeProps {
-  readonly elements: readonly { id: number; value: number }[];
+  readonly elements: readonly ArrayElement[];
   readonly size: number;
   readonly roles: ReadonlyMap<EntityId, HighlightRole>;
   readonly band: Band;

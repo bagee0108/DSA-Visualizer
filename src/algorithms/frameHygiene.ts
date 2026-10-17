@@ -56,8 +56,20 @@ export function paneOf(frame: Frame | undefined, pane: string): MatrixSnapshot {
   return found.view;
 }
 
+/** A numeric array's values; throws on letters, so a test cannot quietly compare the wrong kind. */
 export function valuesOf(frame: Frame): number[] {
-  return arrayOf(frame).elements.map((element) => element.value);
+  return arrayOf(frame).elements.map(({ value }) => {
+    if (typeof value !== 'number') throw new Error(`expected numbers, found "${value}"`);
+    return value;
+  });
+}
+
+/** A letter array's values; throws on numbers. */
+export function lettersOf(frame: Frame): string[] {
+  return arrayOf(frame).elements.map(({ value }) => {
+    if (typeof value !== 'string') throw new Error(`expected letters, found ${value}`);
+    return value;
+  });
 }
 
 export function idsOf(frame: Frame): number[] {
@@ -125,6 +137,9 @@ export function expectFrameHygiene(
   }
 }
 
+/** The longest string an array tile is drawn to hold. */
+export const MAX_LETTER_LENGTH = 3;
+
 function expectArrayFrame(
   structure: ArraySnapshot,
   frame: Frame,
@@ -140,6 +155,13 @@ function expectArrayFrame(
 
   // Snapshots are frozen, so a renderer cannot corrupt playback.
   expect(Object.isFrozen(structure.elements), `${where}: frozen`).toBe(true);
+
+  // One kind per array: bars and tiles do not mix, and a tile holds a short label.
+  const kind = typeof structure.elements[0]?.value;
+  const wellKept = (value: unknown): boolean =>
+    typeof value === kind &&
+    (typeof value === 'number' ? Number.isFinite(value) : typeof value === 'string' && value.length >= 1 && value.length <= MAX_LETTER_LENGTH);
+  expect(firstBad(structure.elements.map((element) => element.value), wellKept), `${where}: element value`).toBeNull();
 
   for (const [label, index] of Object.entries(frame.pointers)) {
     expect(typeof index, `${where}: pointer ${label} must be an index`).toBe('number');
@@ -172,6 +194,8 @@ function expectArrayFrame(
     expect(aux.activeFrom, `${where}: aux from`).toBeGreaterThanOrEqual(0);
     expect(aux.activeTo, `${where}: aux to`).toBeLessThan(size);
     expect(aux.elements.length, `${where}: aux size`).toBe(size);
+    const shown = aux.elements.slice(aux.activeFrom, aux.activeTo + 1).map((element) => element.value);
+    expect(firstBad(shown, wellKept), `${where}: aux value of another kind`).toBeNull();
   }
 
   const heap = structure.heap;

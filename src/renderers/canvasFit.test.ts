@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import { LAYOUT_ASPECT } from '../core/graphLayout';
-import { arrayBands, FLOOR, INDEX_ROW_Y, POINTER_ROW_HEIGHT, POINTER_ROW_Y, type BandVariant } from './ArrayRenderer';
+import {
+  arrayBands,
+  FLOOR,
+  INDEX_ROW_Y,
+  LETTER_POINTER_ROOM,
+  LETTER_ROW_GAP,
+  letterTiles,
+  POINTER_ROW_HEIGHT,
+  POINTER_ROW_Y,
+  TILE_MAX,
+  type BandVariant,
+} from './ArrayRenderer';
 import { VIEW_H, VIEW_W } from './canvas';
 import { graphBandBottom, graphBox, GRAPH_TOP } from './GraphRenderer';
 import {
@@ -62,6 +73,40 @@ describe('tree scale', () => {
       const { treeBottom } = treeScale({ columns: 8, depth: 3, strips });
       expect(VIEW_H - treeBottom).toBeGreaterThanOrEqual(strips * STRIP_HEIGHT);
     }
+  });
+});
+
+describe('letter tiles', () => {
+  const SLOTS = [2, 8, 25, 40, 64, 83, 200, 980];
+
+  it('fit inside their slot and their band', () => {
+    for (const variant of ['plain', 'heap', 'aux'] as const) {
+      const bands = arrayBands(variant);
+      for (const slot of SLOTS) {
+        const { size, mainY, auxY } = letterTiles(variant, slot);
+        expect(size).toBeGreaterThan(0);
+        expect(size).toBeLessThanOrEqual(Math.max(4, Math.min(slot, TILE_MAX)));
+        expect(mainY).toBeGreaterThanOrEqual(bands.chart.top - 1e-9);
+        expect(mainY + size).toBeLessThanOrEqual(bands.chart.bottom + 1e-9);
+        if (bands.aux !== null) expect(auxY + size).toBeLessThanOrEqual(bands.aux.bottom + 1e-9);
+      }
+    }
+  });
+
+  it('hang a pattern one label gap under its text, with pointer room above and below', () => {
+    for (const slot of SLOTS) {
+      const { size, mainY, auxY } = letterTiles('aux', slot);
+      const { chart, aux } = arrayBands('aux');
+      expect(auxY - (mainY + size)).toBeCloseTo(LETTER_ROW_GAP);
+      expect(mainY - LETTER_POINTER_ROOM).toBeGreaterThanOrEqual(chart.top - 1e-9);
+      expect(auxY + size + LETTER_POINTER_ROOM).toBeLessThanOrEqual((aux?.bottom ?? 0) + 1e-9);
+    }
+  });
+
+  it('centre a lone row in its band', () => {
+    const { chart } = arrayBands('plain');
+    const { size, mainY } = letterTiles('plain', 60);
+    expect(mainY - chart.top).toBeCloseTo(chart.bottom - (mainY + size));
   });
 });
 
