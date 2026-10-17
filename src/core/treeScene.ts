@@ -386,14 +386,19 @@ export class TreeScene {
     return this.stackCache;
   }
 
-  frame(input: TreeFrameInput): Frame {
-    const structure: TreeSnapshot = {
+  /** The tree alone, for a scene that draws it beside its own picture, such as a board's search tree. */
+  snapshot(strips: readonly TreeStrip[] = NO_STRIPS): TreeSnapshot {
+    return {
       kind: 'tree',
       arity: this.arity,
       rootId: this.rootId,
       nodes: this.snapshotNodes(),
-      strips: input.strips ?? NO_STRIPS,
+      strips,
     };
+  }
+
+  frame(input: TreeFrameInput): Frame {
+    const structure = this.snapshot(input.strips ?? NO_STRIPS);
     return {
       structure,
       highlights: input.highlights ?? {},

@@ -5,7 +5,7 @@ import { expect } from 'vitest';
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
 import { parseMatrixRef } from '../core/matrixScene';
 import { parsePaneRef } from '../core/splitScene';
-import type { ArraySnapshot, EntityId, Frame, Graph, GraphSnapshot, MatrixSnapshot, SplitSnapshot, TreeSnapshot } from '../core/types';
+import type { ArraySnapshot, EntityId, Frame, Graph, GraphSnapshot, GridSnapshot, MatrixSnapshot, SplitSnapshot, TreeSnapshot } from '../core/types';
 
 export function runFrames(algorithm: RegisteredAlgorithm, params: ParamMap): readonly Frame[] {
   const result = algorithm.build(params);
@@ -40,6 +40,12 @@ export function graphOf(frame: Frame | undefined): GraphSnapshot {
 export function matrixOf(frame: Frame | undefined): MatrixSnapshot {
   if (frame === undefined) throw new Error('no frame');
   if (frame.structure.kind !== 'matrix') throw new Error(`expected a matrix frame, got ${frame.structure.kind}`);
+  return frame.structure;
+}
+
+export function gridOf(frame: Frame | undefined): GridSnapshot {
+  if (frame === undefined) throw new Error('no frame');
+  if (frame.structure.kind !== 'grid') throw new Error(`expected a grid frame, got ${frame.structure.kind}`);
   return frame.structure;
 }
 
@@ -122,6 +128,8 @@ export function expectFrameHygiene(
       expectMatrixFrame(frame.structure, frame, where, previous);
     } else if (frame.structure.kind === 'split') {
       expectSplitFrame(frame.structure, frame, where, previous);
+    } else if (frame.structure.kind === 'grid') {
+      expectGridFrame(frame.structure, frame, where, previous);
     } else {
       if (topology === null) {
         topology = frame.structure.graph;
@@ -212,48 +220,8 @@ function expectArrayFrame(
 }
 
 function expectTreeFrame(structure: TreeSnapshot, frame: Frame, where: string): void {
-  expect(Object.isFrozen(structure.nodes), `${where}: frozen`).toBe(true);
-
+  expectTreeShape(structure, where);
   const ids = new Set(structure.nodes.map((node) => node.id));
-  expect(ids.size, `${where}: duplicate node ids`).toBe(structure.nodes.length);
-  const byId = new Map(structure.nodes.map((node) => [node.id, node] as const));
-
-  if (structure.rootId !== null) {
-    expect(ids.has(structure.rootId), `${where}: root ${structure.rootId} exists`).toBe(true);
-    expect(byId.get(structure.rootId)?.parentId, `${where}: root has no parent`).toBeNull();
-  }
-
-  for (const node of structure.nodes) {
-    if (structure.arity === 'binary') {
-      expect(node.children.length, `${where}: node ${node.id} slots`).toBe(2);
-    }
-    for (const child of node.children) {
-      if (child === null) continue;
-      expect(ids.has(child), `${where}: child ${child} of ${node.id} exists`).toBe(true);
-      expect(byId.get(child)?.parentId, `${where}: child ${child} points back to ${node.id}`).toBe(node.id);
-    }
-    if (node.parentId !== null) {
-      expect(ids.has(node.parentId), `${where}: parent ${node.parentId} of ${node.id} exists`).toBe(true);
-      expect(
-        byId.get(node.parentId)?.children.includes(node.id),
-        `${where}: parent ${node.parentId} lists ${node.id}`,
-      ).toBe(true);
-    }
-  }
-
-  if (structure.rootId !== null) {
-    const seen = new Set<string>();
-    const stack = [structure.rootId];
-    while (stack.length > 0) {
-      const id = stack.pop();
-      if (id === undefined) break;
-      expect(seen.has(id), `${where}: cycle through ${id}`).toBe(false);
-      seen.add(id);
-      for (const child of byId.get(id)?.children ?? []) if (child !== null) stack.push(child);
-    }
-    expect(seen.size, `${where}: every node reachable from the root`).toBe(structure.nodes.length);
-  }
-
   for (const [label, target] of Object.entries(frame.pointers)) {
     expect(typeof target, `${where}: pointer ${label} must be a node id`).toBe('string');
     if (typeof target === 'string') expect(ids.has(target), `${where}: pointer ${label} -> ${target}`).toBe(true);
@@ -266,12 +234,58 @@ function expectTreeFrame(structure: TreeSnapshot, frame: Frame, where: string): 
       expect(ids.has(stripped) || target !== stripped, `${where}: highlight ${role} -> ${target}`).toBe(true);
     }
   }
+}
 
-  for (const strip of structure.strips) {
-    expect(strip.label.length, `${where}: strip label`).toBeGreaterThan(0);
-    const chipIds = new Set(strip.items.map((item) => item.id));
-    expect(chipIds.size, `${where}: strip ${strip.label} duplicate chips`).toBe(strip.items.length);
+/** Node arrays already checked. Frames that do not change a tree share its frozen array, so each shape is checked once. */
+const checkedTrees = new WeakSet<TreeSnapshot['nodes']>();
+
+/** A tree on its own terms: frozen, consistent links both ways, one root, no cycles. */
+function expectTreeShape(structure: TreeSnapshot, where: string): void {
+  expect(Object.isFrozen(structure.nodes), `${where}: frozen`).toBe(true);
+  expectStrips(structure.strips, where);
+  if (checkedTrees.has(structure.nodes)) return;
+  checkedTrees.add(structure.nodes);
+
+  const ids = new Set(structure.nodes.map((node) => node.id));
+  expect(ids.size, `${where}: duplicate node ids`).toBe(structure.nodes.length);
+  const byId = new Map(structure.nodes.map((node) => [node.id, node] as const));
+
+  if (structure.rootId !== null) {
+    expect(ids.has(structure.rootId), `${where}: root ${structure.rootId} exists`).toBe(true);
+    expect(byId.get(structure.rootId)?.parentId, `${where}: root has no parent`).toBeNull();
   }
+
+  // Problems are collected in plain code and asserted once: a per-node expect is what made big searches slow.
+  const problems: string[] = [];
+  for (const node of structure.nodes) {
+    if (structure.arity === 'binary' && node.children.length !== 2) problems.push(`node ${node.id} has ${node.children.length} slots`);
+    for (const child of node.children) {
+      if (child === null) continue;
+      if (!ids.has(child)) problems.push(`child ${child} of ${node.id} does not exist`);
+      else if (byId.get(child)?.parentId !== node.id) problems.push(`child ${child} does not point back to ${node.id}`);
+    }
+    if (node.parentId !== null) {
+      if (!ids.has(node.parentId)) problems.push(`parent ${node.parentId} of ${node.id} does not exist`);
+      else if (byId.get(node.parentId)?.children.includes(node.id) !== true) problems.push(`parent ${node.parentId} does not list ${node.id}`);
+    }
+  }
+
+  if (structure.rootId !== null) {
+    const seen = new Set<string>();
+    const stack = [structure.rootId];
+    while (stack.length > 0) {
+      const id = stack.pop();
+      if (id === undefined) break;
+      if (seen.has(id)) {
+        problems.push(`cycle through ${id}`);
+        break;
+      }
+      seen.add(id);
+      for (const child of byId.get(id)?.children ?? []) if (child !== null) stack.push(child);
+    }
+    if (seen.size !== structure.nodes.length) problems.push(`${structure.nodes.length - seen.size} nodes unreachable from the root`);
+  }
+  expect(problems, `${where}: tree shape`).toEqual([]);
 }
 
 function expectWellFormedGraph(graph: Graph, where: string): void {
@@ -452,6 +466,57 @@ function expectSplitFrame(structure: SplitSnapshot, frame: Frame, where: string,
     const view = scoped === null ? undefined : byId.get(scoped.pane);
     return scoped !== null && view !== undefined && onTable(view, scoped.ref);
   });
+  expectStrips(structure.strips, where);
+}
+
+function expectGridFrame(structure: GridSnapshot, frame: Frame, where: string, previous: Frame | null): void {
+  const { rows, cols } = structure;
+  expect(rows, `${where}: rows`).toBeGreaterThan(0);
+  expect(cols, `${where}: cols`).toBeGreaterThan(0);
+  const before = previous?.structure.kind === 'grid' ? previous.structure : null;
+  if (before !== null) {
+    expect([rows, cols, structure.piece, structure.checkered], `${where}: the board is fixed for the run`).toEqual([
+      before.rows,
+      before.cols,
+      before.piece,
+      before.checkered,
+    ]);
+    expect(structure.tree === null, `${where}: a search tree is there for the whole run or not at all`).toBe(before.tree === null);
+  }
+
+  expect(Object.isFrozen(structure.cells), `${where}: cells frozen`).toBe(true);
+  expect(Object.isFrozen(structure.lines), `${where}: lines frozen`).toBe(true);
+  expect(structure.cells.length, `${where}: cell count`).toBe(rows * cols);
+  expect(structure.rowHeaders.length, `${where}: row headers`).toBe(rows);
+  expect(structure.colHeaders.length, `${where}: column headers`).toBe(cols);
+  expect(
+    firstBad(structure.cells, (value) => value === null || (value.length >= 1 && value.length <= MAX_LETTER_LENGTH)),
+    `${where}: square value`,
+  ).toBeNull();
+
+  const square = (cell: { readonly row: number; readonly col: number }): boolean =>
+    Number.isInteger(cell.row) && Number.isInteger(cell.col) && cell.row >= 0 && cell.col >= 0 && cell.row < rows && cell.col < cols;
+  expect(firstBad(structure.lines, (line) => square(line.from) && square(line.to)), `${where}: line off the board`).toBeNull();
+
+  const onBoard = (target: string): boolean => {
+    const ref = parseMatrixRef(target);
+    if (ref === null) return false;
+    if (ref.kind === 'cell') return square(ref);
+    return ref.index < (ref.kind === 'row' ? rows : cols);
+  };
+  const nodes = new Set(structure.tree?.nodes.map((node) => node.id) ?? []);
+  if (structure.tree !== null) expectTreeShape(structure.tree, `${where} tree`);
+
+  expect(
+    firstBad(Object.entries(frame.pointers), ([, target]) => typeof target === 'string' && (onBoard(target) || nodes.has(target))),
+    `${where}: pointer off the board`,
+  ).toBeNull();
+  for (const [role, targets] of Object.entries(frame.highlights)) {
+    expect(
+      firstBad(targets ?? [], (target) => typeof target === 'string' && (onBoard(target) || nodes.has(target) || STRIP_REF.test(target))),
+      `${where}: highlight ${role} off the board`,
+    ).toBeNull();
+  }
   expectStrips(structure.strips, where);
 }
 

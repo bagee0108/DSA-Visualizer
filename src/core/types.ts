@@ -187,7 +187,38 @@ export interface SplitSnapshot {
   readonly strips: readonly Strip[];
 }
 
-export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot | MatrixSnapshot | SplitSnapshot;
+/** A straight line across a board between two squares: the line a queen attacks along. */
+export interface GridLine {
+  readonly from: MatrixCell;
+  readonly to: MatrixCell;
+}
+
+/**
+ * A board of squares: a chessboard for N-Queens, a Sudoku grid. Its shape,
+ * headers and look are fixed for the run. Squares are named with cellRef,
+ * rowRef and colRef (src/core/matrixScene.ts), the same as table cells. A
+ * search tree, when there is one, is drawn beside the board, and its nodes are
+ * named by their own ids.
+ */
+export interface GridSnapshot {
+  readonly kind: 'grid';
+  readonly rows: number;
+  readonly cols: number;
+  /** Row-major; a piece or a digit, null for an empty square. */
+  readonly cells: readonly (string | null)[];
+  /** How a filled square is drawn: a queen, or its text. */
+  readonly piece: 'queen' | 'text';
+  /** Alternate square shading, as on a chessboard. */
+  readonly checkered: boolean;
+  readonly rowHeaders: readonly string[];
+  readonly colHeaders: readonly string[];
+  /** Lines drawn this frame only, such as the attack that rules a square out. */
+  readonly lines: readonly GridLine[];
+  readonly tree: TreeSnapshot | null;
+  readonly strips: readonly Strip[];
+}
+
+export type StructureSnapshot = ArraySnapshot | TreeSnapshot | GraphSnapshot | MatrixSnapshot | SplitSnapshot | GridSnapshot;
 
 export type HighlightRole =
   | 'comparing'

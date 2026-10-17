@@ -26,6 +26,7 @@ import {
   type MatrixShape,
   type PaneShape,
 } from './MatrixRenderer';
+import { BOARD_SHARE, gridLayout, SQUARE_MAX } from './GridRenderer';
 import { PAD_X, STRIP_HEIGHT } from './strips';
 import { treeScale, TREE_TOP, type TreeRunBound } from './TreeRenderer';
 
@@ -288,5 +289,29 @@ describe('stacked matrix layout', () => {
     const stack = matrixStackLayout([shape], 1, false);
     expect(single.cell).toBe(stack.cell);
     expect(single.y0).toBe(stack.panes[0]?.y0);
+  });
+});
+
+describe('board layout', () => {
+  it('fits every board size, with or without its search tree and strips, inside the canvas', () => {
+    for (let size = 2; size <= 9; size++) {
+      for (const strips of STRIP_COUNTS) {
+        for (const withTree of [false, true]) {
+          const { square, x0, y0, bottom, tree } = gridLayout(size, size, strips, withTree);
+          const where = `${size}x${size}, ${strips} strips, tree ${withTree}`;
+          expect(square, where).toBeGreaterThan(20);
+          expect(square, where).toBeLessThanOrEqual(SQUARE_MAX);
+          expect(x0, where).toBeGreaterThan(0);
+          expect(y0 + size * square, where).toBeLessThanOrEqual(bottom);
+          expect(bottom, where).toBeLessThanOrEqual(VIEW_H - strips * STRIP_HEIGHT);
+          if (tree === null) {
+            expect(x0 + size * square, where).toBeLessThanOrEqual(VIEW_W);
+          } else {
+            expect(x0 + size * square, where).toBeLessThanOrEqual(VIEW_W * BOARD_SHARE);
+            expect(tree.x + tree.width, where).toBeLessThanOrEqual(VIEW_W);
+          }
+        }
+      }
+    }
   });
 });

@@ -76,11 +76,13 @@ export function treeRunBound(frames: readonly Frame[]): TreeRunBound {
   let strips = 0;
   const measured = new Set<readonly TreeNodeSnapshot[]>();
   for (const frame of frames) {
-    if (frame.structure.kind !== 'tree') continue;
-    if (frame.structure.strips.length > strips) strips = frame.structure.strips.length;
-    if (measured.has(frame.structure.nodes)) continue;
-    measured.add(frame.structure.nodes);
-    const size = measureTree(frame.structure);
+    // A board's search tree is measured the same way; its strips belong to the board.
+    const tree = frame.structure.kind === 'tree' ? frame.structure : frame.structure.kind === 'grid' ? frame.structure.tree : null;
+    if (tree === null) continue;
+    if (tree.strips.length > strips) strips = tree.strips.length;
+    if (measured.has(tree.nodes)) continue;
+    measured.add(tree.nodes);
+    const size = measureTree(tree);
     if (size.columns > columns) columns = size.columns;
     if (size.depth > depth) depth = size.depth;
   }
@@ -103,9 +105,9 @@ export interface Scale {
  * is what letterboxed the canvas - and only the radius is capped, so a shallow
  * tree gains air rather than balloons.
  */
-export function treeScale(bound: TreeRunBound): Scale {
-  const innerWidth = VIEW_W - PAD_X * 2;
-  const treeBottom = VIEW_H - bound.strips * STRIP_HEIGHT - 10;
+export function treeScale(bound: TreeRunBound, width = VIEW_W, height = VIEW_H): Scale {
+  const innerWidth = width - PAD_X * 2;
+  const treeBottom = height - bound.strips * STRIP_HEIGHT - 10;
   const treeHeight = treeBottom - TREE_TOP;
   const columns = Math.max(1, bound.columns);
   const slot = Math.min(MAX_SLOT, innerWidth / columns);
@@ -113,7 +115,7 @@ export function treeScale(bound: TreeRunBound): Scale {
   const radius = Math.max(5, Math.min(MAX_RADIUS, slot * 0.42));
   // A lone node has no levels to spread, so it sits in the middle of the band.
   const rootY = bound.depth === 0 ? TREE_TOP + treeHeight / 2 : TREE_TOP + radius + 6;
-  return { slot, levelHeight, radius, x0: (VIEW_W - slot * columns) / 2, rootY, treeBottom };
+  return { slot, levelHeight, radius, x0: (width - slot * columns) / 2, rootY, treeBottom };
 }
 
 function layoutTree(snapshot: TreeSnapshot, scale: Scale): ReadonlyMap<string, Placed> {
@@ -191,6 +193,42 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
 
 function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
   const scale = useMemo(() => treeScale(bound), [bound]);
+  return (
+    <svg
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="h-full w-full select-none"
+      role="img"
+      aria-label={`Tree of ${snapshot.nodes.length} nodes`}
+    >
+      <TreeLayer
+        snapshot={snapshot}
+        scale={scale}
+        width={VIEW_W}
+        ink={ink}
+        highlights={highlights}
+        pointers={pointers}
+        animate={animate}
+        durationMs={durationMs}
+      />
+    </svg>
+  );
+}
+
+export interface TreeLayerProps {
+  readonly snapshot: TreeSnapshot;
+  readonly scale: Scale;
+  /** The width the scale was made for; the empty-tree note centres in it. */
+  readonly width: number;
+  readonly ink: InkMap;
+  readonly highlights: Highlights;
+  readonly pointers: Pointers;
+  readonly animate: boolean;
+  readonly durationMs: number;
+}
+
+/** The drawing itself, in a box of the scale's making, so another renderer can place a tree beside its own picture. */
+export function TreeLayer({ snapshot, scale, width, ink, highlights, pointers, animate, durationMs }: TreeLayerProps): ReactNode {
   const positions = useMemo(() => layoutTree(snapshot, scale), [snapshot, scale]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
@@ -204,15 +242,9 @@ function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
   const allBadges = slot >= BADGE_MIN_SLOT;
 
   return (
-    <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="h-full w-full select-none"
-      role="img"
-      aria-label={`Tree of ${snapshot.nodes.length} nodes`}
-    >
+    <>
       {snapshot.rootId === null && (
-        <text x={VIEW_W / 2} y={treeBottom / 2} textAnchor="middle" fontSize={13} fill="var(--viz-text-dim)">
+        <text x={width / 2} y={treeBottom / 2} textAnchor="middle" fontSize={13} fill="var(--viz-text-dim)">
           empty tree
         </text>
       )}
@@ -340,7 +372,7 @@ function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
           ink={ink}
         />
       ))}
-    </svg>
+    </>
   );
 }
 

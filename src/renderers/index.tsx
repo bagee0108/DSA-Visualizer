@@ -6,6 +6,7 @@ import type { Frame } from '../core/types';
 import { ArrayRenderer } from './ArrayRenderer';
 import { useInk } from './ink';
 import { GraphRenderer } from './GraphRenderer';
+import { GridRenderer } from './GridRenderer';
 import { MatrixRenderer, SplitRenderer } from './MatrixRenderer';
 import { TreeRenderer, treeRunBound } from './TreeRenderer';
 
@@ -77,6 +78,18 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           durationMs={durationMs}
         />
       );
+    case 'grid':
+      return (
+        <GridRenderer
+          snapshot={frame.structure}
+          ink={ink}
+          bound={treeBound}
+          highlights={frame.highlights}
+          pointers={frame.pointers}
+          animate={animate}
+          durationMs={durationMs}
+        />
+      );
     default:
       return (
         <div className="flex h-full items-center justify-center text-body text-fg-mute">
@@ -88,5 +101,6 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
 
 export { ArrayRenderer } from './ArrayRenderer';
 export { GraphRenderer } from './GraphRenderer';
+export { GridRenderer } from './GridRenderer';
 export { MatrixRenderer, SplitRenderer } from './MatrixRenderer';
 export { TreeRenderer } from './TreeRenderer';
