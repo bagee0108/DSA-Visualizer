@@ -118,13 +118,18 @@ export function hash53(text: string): string {
 
 /**
  * A run's frames as one fingerprint: every field of every frame, in order. The
- * graph is shared by every frame of a run, so it is hashed once, not per frame.
+ * graph is shared by every frame of a run, so it is hashed once, not per frame,
+ * and only its topology: where the layout puts nodes is not part of a run.
  */
 export function fingerprint(frames: readonly Frame[]): string {
   const first = frames[0];
   const graph = first === undefined ? null : graphOf(first).graph;
+  const topology =
+    graph === null
+      ? null
+      : { directed: graph.directed, weighted: graph.weighted, nodes: graph.nodes.map((node) => [node.id, node.label]), edges: graph.edges };
   const body = JSON.stringify(frames, (key, value: unknown) => (key === 'graph' ? undefined : value));
-  return `${frames.length}:${hash53(JSON.stringify(graph))}:${hash53(body)}`;
+  return `${frames.length}:${hash53(JSON.stringify(topology))}:${hash53(body)}`;
 }
 
 /** Seeds every clearance sweep uses, fixed so the sweep is deterministic. */
