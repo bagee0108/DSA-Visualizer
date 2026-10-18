@@ -326,6 +326,10 @@ shows **custom graph - not shareable**, Copy link is disabled, and a reload
 or any navigation returns to the URL's run. A link is never produced that
 would fail to reproduce its run.
 
+### Deferred
+
+- Layered layout for the tree preset, deferred: it depends on the source node, which conflicts with fixed per-run topology.
+
 # Precompute
 
 Building a run means draining a generator, and a 150-node Dijkstra yields
