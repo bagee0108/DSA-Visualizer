@@ -18,6 +18,9 @@ export const GRAPH_TOP = 12;
 /** Peak offset, in view units, of a reciprocal directed edge from the straight line. */
 export const RECIPROCAL_BOW_MAX = 14;
 
+/** Below this node radius the graph is too dense for text inside nodes, or for single-node component outlines. */
+export const MIN_TEXT_RADIUS = 7;
+
 /** Gap, in view units, between a component's outline and the rims of its nodes. */
 export const OUTLINE_PAD = 7;
 
@@ -147,11 +150,14 @@ export function graphGeometry(graph: Graph, bottom: number): Geometry {
 /**
  * How a closed component is drawn: a padded convex hull around its nodes, with
  * its tag under the lowest point, or, when that hull would take in or graze a
- * node of another component, a tag beside each of its own nodes instead.
+ * node of another component, a tag beside each of its own nodes instead. On a
+ * graph too dense for node text, a single-node component is not drawn at all;
+ * the components strip still lists it.
  */
 export type ComponentOutline =
   | { readonly id: string; readonly mode: 'outline'; readonly points: readonly Placed[]; readonly tag: Placed }
-  | { readonly id: string; readonly mode: 'tags'; readonly nodes: readonly string[] };
+  | { readonly id: string; readonly mode: 'tags'; readonly nodes: readonly string[] }
+  | { readonly id: string; readonly mode: 'hidden' };
 
 const OUTLINE_SAMPLES = 24;
 
@@ -200,6 +206,7 @@ export function componentOutlines(geometry: Pick<Geometry, 'positions' | 'radius
   const { positions, radius } = geometry;
   const reach = radius + OUTLINE_PAD;
   return components.map((component): ComponentOutline => {
+    if (component.nodes.length === 1 && radius < MIN_TEXT_RADIUS) return { id: component.id, mode: 'hidden' };
     const own = new Set(component.nodes);
     const samples: Placed[] = [];
     for (const id of component.nodes) {
@@ -250,7 +257,7 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
   const ms = Math.min(220, Math.max(60, durationMs * 0.6));
   const paint = animate ? `fill ${ms}ms var(--ease-paint), stroke ${ms}ms var(--ease-paint), stroke-width ${ms}ms var(--ease-paint)` : 'none';
   const { radius } = geometry;
-  const showText = radius >= 7;
+  const showText = radius >= MIN_TEXT_RADIUS;
   const showWeights = graph.weighted && graph.edges.length <= 220;
 
   return (

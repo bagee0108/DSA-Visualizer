@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Graph, GraphEdge } from '../core/types';
-import { graphBandBottom, graphGeometry, RECIPROCAL_BOW_MAX } from './GraphRenderer';
+import { componentOutlines, graphBandBottom, graphGeometry, MIN_TEXT_RADIUS, RECIPROCAL_BOW_MAX } from './GraphRenderer';
 
 const BOTTOM = graphBandBottom(0);
 
@@ -62,5 +62,34 @@ describe('reciprocal directed edges', () => {
   it('never bows an undirected edge', () => {
     const g = graph(false, [['0', '1'], ['1', '0'], ['0', '2']]);
     expect(graphGeometry(g, BOTTOM).edges.every((candidate) => candidate.curve === null)).toBe(true);
+  });
+});
+
+describe('component outlines', () => {
+  /** n nodes spread along a line, with nodes 0 and 1 a two-node component and every other node alone. */
+  function spread(n: number): Graph {
+    return {
+      directed: true,
+      weighted: false,
+      nodes: Array.from({ length: n }, (_, i) => ({ id: String(i), label: String(i), x: (i + 0.5) / n, y: 0.2 })),
+      edges: [],
+    };
+  }
+  const components = (n: number) => [{ id: 'C1', nodes: ['0', '1'] }, ...Array.from({ length: n - 2 }, (_, i) => ({ id: `C${i + 2}`, nodes: [String(i + 2)] }))];
+
+  it('decorates a single-node component while node text is drawn', () => {
+    const geometry = graphGeometry(spread(12), BOTTOM);
+    expect(geometry.radius).toBeGreaterThanOrEqual(MIN_TEXT_RADIUS);
+    const outlines = componentOutlines(geometry, components(12));
+    expect(outlines[5]?.mode).not.toBe('hidden');
+  });
+
+  it('drops single-node decorations once node text is suppressed, but keeps multi-node ones', () => {
+    const geometry = graphGeometry(spread(120), BOTTOM);
+    expect(geometry.radius).toBeLessThan(MIN_TEXT_RADIUS);
+    const outlines = componentOutlines(geometry, components(120));
+    expect(outlines).toHaveLength(119);
+    expect(outlines.slice(1).every((outline) => outline.mode === 'hidden')).toBe(true);
+    expect(outlines[0]?.mode).not.toBe('hidden');
   });
 });
