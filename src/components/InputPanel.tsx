@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { countTokens, type FieldSpec, type ParamMap, type RegisteredAlgorithm } from '../core/define';
+import { toAsciiMinus } from '../core/graphInput';
 import { makeRng, randomSeed } from '../core/random';
 import { Button, Chip, PanelHeader } from './ui';
 
@@ -51,7 +52,9 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
 
   const renderField = (field: FieldSpec): ReactNode => {
     const value = draft[field.key] ?? '';
-    const update = (next: string): void => setDraft((current) => ({ ...current, [field.key]: next }));
+    // An edge list stays ASCII: a pasted true minus (as the canvas draws weights) becomes a hyphen, so the URL and copied links do too.
+    const update = (next: string): void =>
+      setDraft((current) => ({ ...current, [field.key]: field.kind === 'edges' ? toAsciiMinus(next) : next }));
 
     return (
       <div key={field.key} className="space-y-1">

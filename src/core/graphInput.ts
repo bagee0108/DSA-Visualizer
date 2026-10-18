@@ -33,8 +33,14 @@ export interface EdgeListOptions {
 
 const TOKEN = /^(\d+)(?:-(\d+)(?::(-?\d+(?:\.\d+)?))?)?$/;
 
+/** The edge-list text with any true minus (U+2212) turned back into an ASCII hyphen. */
+export function toAsciiMinus(text: string): string {
+  return text.replace(/−/g, '-');
+}
+
 export function parseEdgeList(raw: string, options: EdgeListOptions = {}): ParseResult<EdgeList> {
-  const tokens = raw.split(/[\s,;]+/).filter((token) => token.length > 0);
+  // A true minus (U+2212), as the canvas draws negative weights, pastes back in as a hyphen.
+  const tokens = toAsciiMinus(raw).split(/[\s,;]+/).filter((token) => token.length > 0);
   if (tokens.length === 0) return { ok: false, error: 'Give at least one edge, like 0-1.' };
 
   const edges: EdgeListEdge[] = [];

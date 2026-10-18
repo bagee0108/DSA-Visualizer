@@ -173,8 +173,8 @@ function negativeCycle(size: number, rng: () => number): EdgeListEdge[] {
   return shuffle([...base, ...cycle], rng);
 }
 
-/** Every edge listed after the edge that reaches its source, so the first pass finds every distance and the second confirms it. */
-function settlesInOnePass(size: number, rng: () => number): EdgeListEdge[] {
+/** Every edge listed after the edge that reaches its source, so pass 1 finds every distance and pass 2 proves it by changing nothing. */
+function correctAfterOnePass(size: number, rng: () => number): EdgeListEdge[] {
   return forward(size, 1, rng, () => randomInt(rng, -3, 9)).sort((x, y) => x.from - y.from || x.to - y.to);
 }
 
@@ -184,14 +184,14 @@ export const BELLMAN_FORD_PRESETS: readonly PresetSpec[] = [
     id: 'dijkstra-fails',
     label: 'Dijkstra fails here',
     build: (size, rng) => finish(dijkstraTrap(size, rng), size, rng),
-    description: 'Dijkstra would settle node 1 at 2 and never revisit it, but 0 -> 2 -> 1 costs 5 - 4 = 1, and every node reached through 1 would be off too. Bellman-Ford keeps relaxing and gets 1.',
+    description: 'Dijkstra would settle node 1 at 2 and never revisit it, but 0 → 2 → 1 costs 5 − 4 = 1, and every node reached through 1 would be off too. Bellman-Ford keeps relaxing and gets 1.',
   },
-  { id: 'negative-cycle', label: 'Negative cycle', build: (size, rng) => finish(negativeCycle(size, rng), size, rng), description: 'a cycle of total weight -2 is reachable from 0, so shortest paths are undefined; the check pass finds it.' },
+  { id: 'negative-cycle', label: 'Negative cycle', build: (size, rng) => finish(negativeCycle(size, rng), size, rng), description: 'a cycle of total weight −2 is reachable from 0, so shortest paths are undefined; the check pass finds it.' },
   {
     id: 'one-pass',
-    label: 'Settles in one pass',
-    build: (size, rng) => finish(settlesInOnePass(size, rng), size, rng),
-    description: 'edges are listed source-first, so pass 1 already finds every distance; pass 2 changes nothing and the run stops early.',
+    label: 'Correct after one pass',
+    build: (size, rng) => finish(correctAfterOnePass(size, rng), size, rng),
+    description: 'edges are listed source-first, so pass 1 already finds every distance. Pass 2 is what proves it: it changes nothing, and the run stops there.',
   },
 ];
 

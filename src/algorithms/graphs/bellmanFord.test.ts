@@ -85,7 +85,7 @@ describe('bellman-ford: distances', () => {
     }
   });
 
-  it('stops early when a pass relaxes nothing, and says so', () => {
+  it('is correct after one pass on its preset, and pass 2 proves it by changing nothing', () => {
     for (const size of SIZES) {
       const frames = runFrames(bellmanFord, presetParams('one-pass', size, size));
       const final = lastFrame(frames);

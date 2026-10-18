@@ -33,13 +33,13 @@ import { CATEGORY_LABEL } from '../catalog';
  */
 export const MAX_QUERY_LENGTH = 4000;
 
-function searchToParams(search: string): ParamMap {
+export function searchToParams(search: string): ParamMap {
   const params: Record<string, string> = {};
   for (const [key, value] of new URLSearchParams(search)) params[key] = value;
   return params;
 }
 
-function paramsToSearch(params: ParamMap, defaults: ParamMap): string {
+export function paramsToSearch(params: ParamMap, defaults: ParamMap): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value === defaults[key]) continue;
