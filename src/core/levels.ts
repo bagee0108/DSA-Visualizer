@@ -60,7 +60,7 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
       { id: 'dfs', tier: 1, ops: ['backtrack'] },
       { id: 'dijkstra', tier: 2, ops: ['relax'] },
       { id: 'union-find', tier: 2, ops: ['union', 'find'] },
-      { id: 'topological-sort', tier: 2 },
+      { id: 'topological-sort', tier: 2, ops: ['in-degree'] },
       { id: 'kruskal', tier: 2, ops: ['union', 'find'] },
       { id: 'prim', tier: 2 },
       { id: 'bellman-ford', tier: 3, ops: ['relax'] },

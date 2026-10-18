@@ -94,7 +94,7 @@ learner should look at, not how the algorithm stores its data.
 | --- | --- | --- | --- |
 | `ArrayScene` (`core/scene.ts`) | bars, or letter tiles when the values are strings, plus an optional `placeAux` row | sorting, searching, string matching | `arrays/quicksort.ts`, `strings/kmp.ts` |
 | `TreeScene` (`core/treeScene.ts`) | a binary tree (BST layout) or an n-ary tree | search trees, heaps, tries, segment and Fenwick trees | `trees/avl.ts`, `trees/segmentTree.ts` |
-| `GraphScene` (`core/graphScene.ts`) | a graph whose topology is shared by reference | traversals, shortest paths, union-find, strongly connected components | `graphs/dijkstra.ts` |
+| `GraphScene` (`core/graphScene.ts`) | a graph whose topology is shared by reference | traversals, shortest paths, union-find, strongly connected components, topological order | `graphs/dijkstra.ts` |
 | `MatrixScene` (`core/matrixScene.ts`) | a table with row/column headers, dependency arrows and a traceback path | dynamic programming | `dp/lcs.ts` |
 | `SplitScene` (`core/splitScene.ts`) | two or more `MatrixScene` panes in one frame | one run seen two ways | `dp/knapsack.ts`, `dp/lis.ts` |
 | `GridScene` (`core/gridScene.ts`) | a board of squares: pieces or text, boxes, givens, pencil marks, an optional search tree beside it | backtracking | `backtracking/nQueens.ts`, `backtracking/sudoku.ts` |

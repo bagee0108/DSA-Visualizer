@@ -1,9 +1,9 @@
 /** Tarjan's strongly connected components: one DFS, a low-link per node, and a stack that closes a component at its root. */
 
-import { defineAlgorithm, type FieldSpec, type ParamMap, type ParseResult, type PresetSpec } from '../../core/define';
+import { defineAlgorithm, type ParamMap, type ParseResult, type PresetSpec } from '../../core/define';
 import {
   buildGraph,
-  directedField,
+  directedOnlyField,
   edgesField,
   formatEdgeList,
   graphSizeOf,
@@ -56,9 +56,6 @@ const LINE = { enter: 1, discover: 2, push: 3, scan: 4, recurse: 6, lowFromChild
 
 /** Shown beside a node before it is discovered: no index and no low-link yet. */
 export const UNDISCOVERED = '–';
-
-/** Same choices as every graph level, so the URL and the form stay familiar; undirected is refused in parse. */
-const tarjanDirectedField: FieldSpec = { ...directedField, defaultValue: '1' };
 
 export const UNDIRECTED_ERROR =
   'Strongly connected components are defined for directed graphs. Switch "Edges are" to Directed. In an undirected graph every connected piece is already strongly connected: DFS with restarts finds them.';
@@ -192,7 +189,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
     code: CODE,
     trackedCounters: ['comparisons', 'recursiveCalls'],
   },
-  fields: [edgesField('0-10,1-4,2-6,3-8,4-1,5-0,5-3,6-4,6-9,7-3,8-7,9-2,9-7,10-2,10-5', false), tarjanDirectedField, layoutField, seedField],
+  fields: [edgesField('0-10,1-4,2-6,3-8,4-1,5-0,5-3,6-4,6-9,7-3,8-7,9-2,9-7,10-2,10-5', false), directedOnlyField, layoutField, seedField],
   presets: TARJAN_PRESETS,
   sizeRange: { min: 4, max: MAX_GRAPH_NODES, step: 1 },
   sizeOf: graphSizeOf,

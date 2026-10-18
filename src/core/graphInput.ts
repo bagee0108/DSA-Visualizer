@@ -133,6 +133,9 @@ export const directedField: FieldSpec = {
   ],
 };
 
+/** For algorithms defined only on directed graphs: the same choice, Directed by default; parse refuses Undirected with a reason. */
+export const directedOnlyField: FieldSpec = { ...directedField, defaultValue: '1' };
+
 export const layoutField: FieldSpec = {
   key: 'layout',
   label: 'Layout',
