@@ -2,12 +2,16 @@
 
 import { seedField } from './arrayInput';
 import type { FieldSpec, ParamMap, ParseResult, PresetSpec } from './define';
-import { gridColumns, layoutGraph, type EdgePair, type LayoutKind } from './graphLayout';
+import { gridColumns, layoutGraph, ringMaxNodes, type EdgePair, type LayoutKind } from './graphLayout';
 import { randomInt, shuffle } from './random';
 import type { Graph, GraphEdge, GraphNode } from './types';
 
 export const MAX_GRAPH_NODES = 150;
 export const MAX_GRAPH_EDGES = 600;
+
+/** Ring presets stop here: past it, neighbours on one ring sit closer than a node apart. */
+export const RING_MAX_NODES = ringMaxNodes(MAX_GRAPH_NODES);
+export const RING_CAP_REASON = 'so neighbours on the ring stay at least a node apart';
 
 export interface EdgeListEdge {
   readonly from: number;
@@ -237,7 +241,10 @@ export function graphPresets(options: GraphPresetOptions): readonly PresetSpec[]
     {
       id: 'ring',
       label: 'Ring with chords',
-      build: (size, rng) => {
+      maxSize: RING_MAX_NODES,
+      capReason: RING_CAP_REASON,
+      build: (requested, rng) => {
+        const size = Math.min(requested, RING_MAX_NODES);
         const edges: EdgeListEdge[] = [];
         for (let i = 0; i < size; i++) edges.push({ from: i, to: (i + 1) % size, ...weightOf(rng, weighted) });
         const chords = shuffle(Array.from({ length: size }, (_, i) => i), rng).slice(0, Math.max(1, Math.floor(size / 5)));

@@ -13,6 +13,8 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  RING_CAP_REASON,
+  RING_MAX_NODES,
   seedField,
   type EdgeListEdge,
 } from '../../core/graphInput';
@@ -155,7 +157,16 @@ function dag(size: number, rng: () => number): EdgeListEdge[] {
 export const TARJAN_PRESETS: readonly PresetSpec[] = [
   { id: 'clusters', label: 'Cycles in a chain', build: (size, rng) => finish(clusters(size, rng), size, rng, 'auto') },
   { id: 'random', label: 'Random directed', build: (size, rng) => finish(randomDirected(size, rng), size, rng, 'auto') },
-  { id: 'ring', label: 'One big cycle', build: (size, rng) => finish(ringCycle(size, rng), size, rng, 'ring') },
+  {
+    id: 'ring',
+    label: 'One big cycle',
+    maxSize: RING_MAX_NODES,
+    capReason: RING_CAP_REASON,
+    build: (requested, rng) => {
+      const size = Math.min(requested, RING_MAX_NODES);
+      return finish(ringCycle(size, rng), size, rng, 'ring');
+    },
+  },
   { id: 'dag', label: 'No cycles', build: (size, rng) => finish(dag(size, rng), size, rng, 'auto') },
 ];
 

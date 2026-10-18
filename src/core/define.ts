@@ -68,6 +68,10 @@ export interface PresetSpec {
   readonly id: string;
   readonly label: string;
   readonly build: (size: number, rng: () => number) => ParamMap;
+  /** Largest size this preset builds; build() clamps to it and the size control says why. */
+  readonly maxSize?: number;
+  /** Why the cap exists, finishing "<label>: up to N nodes, ..." in the size hint. */
+  readonly capReason?: string;
 }
 
 export interface AlgorithmDefinition<TInput> {

@@ -43,7 +43,7 @@ describe('dfs: discovery order', () => {
         const params: Record<string, string> = { ...preset.build(size, makeRng(size * 3)), forest: '1' };
         const order = stripIds(lastFrame(runFrames(dfs, params)), 'discovered').map(Number);
         expect(order, `${preset.id} @ ${size}`).toEqual(referenceDfs(adjacencyOf(params.g ?? ''), 0, true));
-        expect(order).toHaveLength(size);
+        expect(order).toHaveLength(Math.min(size, preset.maxSize ?? size));
       }
     }
   });

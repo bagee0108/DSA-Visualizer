@@ -33,8 +33,12 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
   const applyPreset = (presetId: string): void => {
     const preset = algorithm.presets.find((candidate) => candidate.id === presetId);
     if (preset === undefined) return;
-    onApply({ ...draft, ...preset.build(size, makeRng(randomSeed())) });
+    const capped = Math.min(size, preset.maxSize ?? size);
+    setSize(capped);
+    onApply({ ...draft, ...preset.build(capped, makeRng(randomSeed())) });
   };
+  // Presets that will build fewer than n, and why; shown under the size control while it is past their cap.
+  const capped = algorithm.presets.filter((preset) => preset.maxSize !== undefined && preset.maxSize < size);
 
   const renderField = (field: FieldSpec): ReactNode => {
     const value = draft[field.key] ?? '';
@@ -127,6 +131,11 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
                 {size}
               </span>
             </div>
+            {capped.map((preset) => (
+              <p key={preset.id} className="text-micro leading-snug text-fg-mute">
+                {preset.label}: up to {preset.maxSize} {algorithm.meta.structureKind === 'graph' ? 'nodes' : 'elements'}, {preset.capReason}.
+              </p>
+            ))}
           </div>
         )}
 

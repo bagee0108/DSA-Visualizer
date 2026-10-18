@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LAYOUT_ASPECT, gridColumns, layoutGraph, type EdgePair } from './graphLayout';
+import { EDGE_CLEARANCE, LAYOUT_ASPECT, LAYOUT_MIN_VIEW_SCALE, gridColumns, layoutGraph, nodeRadius, ringMaxNodes, type EdgePair } from './graphLayout';
 import { makeRng, randomInt } from './random';
 
 const HEIGHT = 1 / LAYOUT_ASPECT;
@@ -37,6 +37,20 @@ describe('graph layout', () => {
     expect(points[0]?.x).toBeCloseTo(0.5, 9);
     expect(points[0]?.y ?? 1).toBeLessThan(HEIGHT / 2);
     expect(inBox(points)).toBe(true);
+  });
+
+  it('caps a ring at the most nodes that stay a diameter plus the clearance apart', () => {
+    const closest = (n: number): number => {
+      const points = layoutGraph(n, [], 'ring');
+      return Math.min(...points.map((p, i) => {
+        const q = points[(i + 1) % n] ?? p;
+        return Math.hypot(q.x - p.x, q.y - p.y) * LAYOUT_MIN_VIEW_SCALE;
+      }));
+    };
+    const cap = ringMaxNodes(150);
+    expect(closest(cap)).toBeGreaterThanOrEqual(2 * nodeRadius(cap) + EDGE_CLEARANCE);
+    expect(closest(cap + 1)).toBeLessThan(2 * nodeRadius(cap + 1) + EDGE_CLEARANCE);
+    expect(ringMaxNodes(40)).toBe(40);
   });
 
   it('lays a lattice out row by row with one square cell size', () => {

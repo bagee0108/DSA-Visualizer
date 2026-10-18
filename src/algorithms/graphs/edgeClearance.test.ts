@@ -111,9 +111,9 @@ describe('graph layout: edge clearance', () => {
     expect(failing).toEqual([]);
   }, 120000);
 
-  it('keeps force-directed nodes a diameter plus the clearance apart, so none hides another', () => {
-    // Ring and grid place nodes structurally; a ring of 150 cannot fit that spacing on one ellipse.
-    const crowded = rows().filter((row) => row.layout === 'auto' && row.minGap < row.needGap);
+  it('keeps nodes a diameter plus the clearance apart in every layout, so none hides another', () => {
+    // Ring presets are capped (RING_MAX_NODES) so a ring can hold this spacing too.
+    const crowded = rows().filter((row) => row.minGap < row.needGap);
     expect(crowded).toEqual([]);
   }, 120000);
 });

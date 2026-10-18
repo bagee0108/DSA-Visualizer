@@ -95,6 +95,24 @@ function ring(nodeCount: number): Point[] {
   return out;
 }
 
+/**
+ * The most nodes a ring layout holds with neighbours a diameter plus the edge
+ * clearance apart, at the smallest scale the renderer draws, up to `limit`.
+ */
+export function ringMaxNodes(limit: number): number {
+  for (let n = limit; n > 2; n--) {
+    const points = ring(n);
+    let closest = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < n; i++) {
+      const p = points[i] as Point;
+      const q = points[(i + 1) % n] as Point;
+      closest = Math.min(closest, Math.hypot(q.x - p.x, q.y - p.y));
+    }
+    if (closest * LAYOUT_MIN_VIEW_SCALE >= 2 * nodeRadius(n) + EDGE_CLEARANCE) return n;
+  }
+  return Math.min(limit, 2);
+}
+
 function grid(nodeCount: number): Point[] {
   const cols = gridColumns(nodeCount);
   const rows = Math.ceil(nodeCount / cols);

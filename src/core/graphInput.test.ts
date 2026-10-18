@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildGraph, formatEdgeList, graphPresets, graphSizeOf, parseEdgeList, parseStart } from './graphInput';
+import { buildGraph, formatEdgeList, graphPresets, graphSizeOf, MAX_GRAPH_NODES, parseEdgeList, parseStart, RING_MAX_NODES } from './graphInput';
 import { makeRng } from './random';
 
 describe('edge list parsing', () => {
@@ -49,7 +49,7 @@ describe('edge list parsing', () => {
 });
 
 describe('graph presets', () => {
-  it('build parseable lists whose node count is the requested size, at both ends of the range', () => {
+  it('build parseable lists whose node count is the requested size, or the preset cap, at both ends of the range', () => {
     for (const weighted of [false, true]) {
       for (const preset of graphPresets({ weighted })) {
         for (const size of [4, 37, 150]) {
@@ -57,11 +57,19 @@ describe('graph presets', () => {
           const parsed = parseEdgeList(params.g ?? '', { requireWeights: weighted });
           expect(parsed.ok, `${preset.id} @ ${size}`).toBe(true);
           if (!parsed.ok) continue;
-          expect(parsed.value.nodeCount, `${preset.id} @ ${size} nodes`).toBe(size);
+          expect(parsed.value.nodeCount, `${preset.id} @ ${size} nodes`).toBe(Math.min(size, preset.maxSize ?? size));
           expect(parsed.value.weighted).toBe(weighted);
         }
       }
     }
+  });
+
+  it('cap only the ring, below the node cap, and say why', () => {
+    const capped = graphPresets({ weighted: false }).filter((preset) => preset.maxSize !== undefined);
+    expect(capped.map((preset) => preset.id)).toEqual(['ring']);
+    expect(RING_MAX_NODES).toBeLessThan(MAX_GRAPH_NODES);
+    expect(capped[0]?.maxSize).toBe(RING_MAX_NODES);
+    expect(capped[0]?.capReason?.length ?? 0).toBeGreaterThan(0);
   });
 
   it('stay under the URL cap at the 150-node target', () => {
