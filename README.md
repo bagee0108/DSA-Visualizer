@@ -158,10 +158,14 @@ link is disabled rather than handing out a link that would not reproduce it.
   every frame of a run; a frame carries only what changed - visited set,
   labels, tree edges, queue contents - each frozen and reused until it moves.
   Layout runs once at parse time.
-- Targets: 200 elements for sorting, ~150 nodes for graphs. Measured: a
-  150-node, 300-edge Dijkstra run renders in about 17 ms per frame (~1,100
-  SVG elements) in headless Chrome, so playback keeps pace with a 60 Hz
-  animation frame at every speed.
+- Targets: 200 elements for sorting, ~150 nodes for graphs, and a step that
+  fits a 60 Hz animation frame (~17 ms). Measured in headless Chrome as the
+  time from a step key press to React's commit plus the browser's style and
+  layout recalculation, over 120 steps, paint excluded (waiting for paint
+  would round every step up to a whole frame). On the force-directed presets
+  at 150 nodes (800-1,250 SVG elements) the median step is 9-17.5 ms and the
+  95th percentile 13-23 ms. Dijkstra on the islands preset is the one median
+  over target (17.5 ms); see the Deferred list in CONTRIBUTING.
 
 ## Known limitations
 
