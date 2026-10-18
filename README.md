@@ -21,7 +21,7 @@ frame.
 | 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 7 algorithms, 133 tests |
 | 2 | Trees: BST, AVL, red-black, heap, trie, traversals | **Complete** — 6 algorithms, 88 tests |
 | 3 | Graphs: BFS, DFS, Dijkstra, Union-Find | **First slice complete** — 4 algorithms, 49 tests. A*, Bellman-Ford, toposort, Kruskal, Prim, Tarjan and the graph editor are deferred |
-| 4 | Segment tree, Fenwick, DP tables, KMP, backtracking | Planned |
+| 4 | DP tables (LIS, LCS, edit distance, 0/1 knapsack), KMP, segment tree, Fenwick tree, N-Queens, Sudoku | **Complete** — 9 algorithms, 104 tests. Race mode follows on its own |
 
 ## Quick start
 
@@ -102,13 +102,21 @@ src/
     graphScene.ts  GraphScene: topology by reference + mutable state
     graphInput.ts  edge-list language, presets, URL cap
     graphLayout.ts force-directed / ring / lattice positions, once per run
+    matrixScene.ts MatrixScene: DP tables, dependency arrows, traceback
+    splitScene.ts  SplitScene: several table panes in one frame
+    gridScene.ts   GridScene: boards, boxes, givens, pencil marks, search tree
+    levels.ts      the learning path: order, tiers, which levels are open
     registry.ts    id -> algorithm
   algorithms/      one file per algorithm, pure generators
   playback/        PlaybackProvider: the single cursor into a run
     mode.ts        the idle / precomputing / paused / playing / editing machine
   renderers/       one renderer per structure family, frame in -> SVG out
   components/      player, code panel, counters, call stack, input
-  pages/           home (searchable catalog) and visualize
+  pages/           home (the path), browse, about and visualize
+  seo/             sitemap.xml, generated at build time from levels.ts
+  theme/           chrome colour presets; the active one is baked in at build
+scripts/           og image, favicons and third-party licences (npm run og,
+                   npm run favicons, npm run licenses)
 ```
 
 Three rules hold the design together:
@@ -167,6 +175,11 @@ link is disabled rather than handing out a link that would not reproduce it.
   The playback mode machine already has the `editing` state and the rule that
   any structural change discards the run, so the editor lands without a
   rewrite; nothing in the UI enters that state today.
+- **The Sudoku solver knows two deductions.** It places naked and hidden
+  singles, then guesses the square with the fewest candidates. Techniques
+  such as pointing pairs or X-wings would shrink the search on the hardest
+  puzzles; they are left out so every frame stays a single, explainable step.
+  Boards are 9x9 or 4x4.
 - **Very large custom graphs are not shareable.** Past 4,000 characters of
   query string the run lives only in the current tab (see URL state above).
 

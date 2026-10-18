@@ -84,6 +84,24 @@ export const bubbleSort = defineAlgorithm<BubbleInput>({
 });
 ```
 
+### Which scene
+
+The scene owns the structure, the counters and the call stack; the frame it
+returns is what one renderer draws. Pick the one that matches what the
+learner should look at, not how the algorithm stores its data.
+
+| scene | draws | for | model to copy |
+| --- | --- | --- | --- |
+| `ArrayScene` (`core/scene.ts`) | bars, or letter tiles when the values are strings, plus an optional `placeAux` row | sorting, searching, string matching | `arrays/quicksort.ts`, `strings/kmp.ts` |
+| `TreeScene` (`core/treeScene.ts`) | a binary tree (BST layout) or an n-ary tree | search trees, heaps, tries, segment and Fenwick trees | `trees/avl.ts`, `trees/segmentTree.ts` |
+| `GraphScene` (`core/graphScene.ts`) | a graph whose topology is shared by reference | traversals, shortest paths, union-find | `graphs/dijkstra.ts` |
+| `MatrixScene` (`core/matrixScene.ts`) | a table with row/column headers, dependency arrows and a traceback path | dynamic programming | `dp/lcs.ts` |
+| `SplitScene` (`core/splitScene.ts`) | two or more `MatrixScene` panes in one frame | one run seen two ways | `dp/knapsack.ts`, `dp/lis.ts` |
+| `GridScene` (`core/gridScene.ts`) | a board of squares: pieces or text, boxes, givens, pencil marks, an optional search tree beside it | backtracking | `backtracking/nQueens.ts`, `backtracking/sudoku.ts` |
+
+A board that undoes a failed guess uses `GridScene.save()` and `restore()`:
+the undo is one frame, not one frame per square.
+
 ## 2. Register it
 
 ```ts
@@ -93,11 +111,14 @@ import { bubbleSort } from './arrays/bubbleSort';
 register(bubbleSort);
 ```
 
-## 3. Add a catalog entry
+## 3. Add a catalog entry and a level
 
-`src/catalog.ts` drives the home page. Give the entry the **same id** as the
-registered algorithm and it flips from "planned" to a working link
-automatically.
+`src/catalog.ts` drives the browse page, and `src/core/levels.ts` places the
+algorithm on the learning path with a difficulty tier. Give both the **same
+id** as the registered algorithm: the level flips from "soon" to a working
+link, and the build adds it to `sitemap.xml`, with nothing else to change.
+List the operations it shows in the level's `ops`, so the home page ticker
+can point at it.
 
 ## 4. Write the test
 
@@ -113,7 +134,11 @@ rendering. Cover at least:
   the structure;
 - the run is deterministic for identical params.
 
-`src/algorithms/arrays/quicksort.test.ts` is the model to copy.
+`src/algorithms/frameHygiene.ts` checks the frame contract for every
+structure kind: `expectFrameHygiene` on each run, `expectDeterministic` and
+`expectInputContract` once. `src/algorithms/arrays/quicksort.test.ts` is the
+model to copy; `backtracking/sudoku.test.ts` shows the same pattern on a
+board, with a frameless reference search.
 
 ---
 
