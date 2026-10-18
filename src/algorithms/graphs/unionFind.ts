@@ -3,6 +3,7 @@
 import { defineAlgorithm, type FieldSpec, type ParamMap, type ParseResult, type PresetSpec } from '../../core/define';
 import { buildGraph, edgesField, formatEdgeList, graphPresets, graphSizeOf, layoutField, MAX_GRAPH_NODES, parseEdgeList, parseLayout, seedField, type EdgeListEdge } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
+import { DisjointSets } from './unionFindCore';
 import type { Frame, Graph, GraphEdge, Strip } from '../../core/types';
 
 interface UnionFindInput {
@@ -130,74 +131,9 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
   parse,
   *run(input) {
     const scene = new GraphScene(input.graph, { visitedCounter: 'nodes in merged sets' });
-    const parent = new Map<string, string>();
-    const rank = new Map<string, number>();
-    let sets = scene.nodeIds.length;
-    for (const id of scene.nodeIds) {
-      parent.set(id, id);
-      rank.set(id, 0);
-      scene.setLabel(id, 'r0');
-    }
     const history: string[] = [];
-
     const strips = (): readonly Strip[] => [scene.chips('output', 'result', history.map((text, i) => ({ id: `h${i}`, label: text })))];
-    const rootLabel = (id: string): void => {
-      if (parent.get(id) === id) scene.setLabel(id, `r${rank.get(id) ?? 0}`);
-      else scene.setLabel(id, null);
-    };
-
-    function* find(x: string, phase: string): Generator<Frame, string, undefined> {
-      scene.countCall();
-      scene.bump('finds');
-      scene.pushCall({ label: `find(${scene.label(x)})`, codeLine: LINE.findEnter });
-      const path: string[] = [];
-      let root = x;
-      while (parent.get(root) !== root) {
-        const next = parent.get(root) ?? root;
-        scene.countComparison();
-        scene.bump('parent hops');
-        path.push(root);
-        yield scene.frame({
-          codeLine: LINE.climb,
-          explanation: `find(${scene.label(x)}): ${scene.label(root)} is not its own parent, so climb to ${scene.label(next)}.`,
-          highlights: { active: [root], candidate: [next, `link:${root}`], visited: [...path] },
-          pointers: { x, root },
-          strips: strips(),
-          phase,
-        });
-        root = next;
-      }
-      scene.countComparison();
-      yield scene.frame({
-        codeLine: LINE.findReturn,
-        explanation:
-          path.length === 0
-            ? `find(${scene.label(x)}): ${scene.label(x)} is its own parent, so it is the root of its set.`
-            : `${scene.label(root)} is its own parent: the root of ${scene.label(x)}'s set, ${path.length} hop${path.length === 1 ? '' : 's'} up.`,
-        highlights: { pivot: [root], visited: [...path] },
-        pointers: { x, root },
-        strips: strips(),
-        phase,
-      });
-
-      if (input.compress && path.length > 1) {
-        for (const node of path.slice(0, -1)) {
-          scene.setLink(node, root);
-          parent.set(node, root);
-          scene.bump('pointers compressed');
-          yield scene.frame({
-            codeLine: LINE.compressSet,
-            explanation: `Path compression: ${scene.label(node)} now points straight at ${scene.label(root)}, so the next find from here is one hop.`,
-            highlights: { pivot: [root], candidate: [node, `link:${node}`], visited: [...path] },
-            pointers: { x, root },
-            strips: strips(),
-            phase,
-          });
-        }
-      }
-      scene.popCall();
-      return root;
-    }
+    const forest = new DisjointSets(scene, { byRank: input.byRank, compress: input.compress, lines: LINE, strips });
 
     function* union(edge: GraphEdge): Gen {
       const a = edge.from;
@@ -212,8 +148,8 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
         strips: strips(),
         phase: 'union',
       });
-      const ra = yield* find(a, 'union');
-      const rb = yield* find(b, 'union');
+      const ra = yield* forest.find(a, 'union');
+      const rb = yield* forest.find(b, 'union');
       scene.countComparison();
       if (ra === rb) {
         history.push(`${scene.label(a)}-${scene.label(b)} same`);
@@ -229,42 +165,15 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
         return;
       }
 
-      const rankA = rank.get(ra) ?? 0;
-      const rankB = rank.get(rb) ?? 0;
-      let child = rb;
-      let top = ra;
-      let line: number = LINE.equal;
-      let why: string;
-      if (!input.byRank) {
-        why = `Naive union: ${scene.label(rb)} goes under ${scene.label(ra)} regardless of size, so trees can grow into chains.`;
-      } else if (rankA < rankB) {
-        scene.countComparison();
-        child = ra;
-        top = rb;
-        line = LINE.shorter;
-        why = `rank ${rankA} < rank ${rankB}: the shorter tree at ${scene.label(ra)} goes under ${scene.label(rb)}, so no root's height grows.`;
-      } else if (rankA > rankB) {
-        scene.countComparison(2);
-        line = LINE.taller;
-        why = `rank ${rankA} > rank ${rankB}: ${scene.label(rb)} goes under the taller root ${scene.label(ra)}, whose rank stays ${rankA}.`;
-      } else {
-        scene.countComparison(2);
-        why = `equal ranks ${rankA}: ${scene.label(rb)} goes under ${scene.label(ra)}, and ${scene.label(ra)}'s rank rises to ${rankA + 1}, the only way a rank ever grows.`;
-      }
-      parent.set(child, top);
-      scene.setLink(child, top);
-      if (input.byRank && rankA === rankB) rank.set(top, rankA + 1);
-      rootLabel(child);
-      rootLabel(top);
+      const { child, top, line, why } = forest.merge(ra, rb);
       scene.setTreeEdge(edge);
       scene.visit(a);
       scene.visit(b);
-      sets -= 1;
       scene.bump('merges');
       history.push(`${scene.label(a)}-${scene.label(b)} join`);
       yield scene.frame({
         codeLine: line,
-        explanation: `${why} ${sets} set${sets === 1 ? '' : 's'} left.`,
+        explanation: `${why} ${forest.sets} set${forest.sets === 1 ? '' : 's'} left.`,
         highlights: { pivot: [top], candidate: [child, `link:${child}`], sorted: [edgeRef(edge)] },
         pointers: { a, b, root: top },
         strips: strips(),
@@ -275,7 +184,7 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
 
     yield scene.frame({
       codeLine: 0,
-      explanation: `${sets} singleton sets: every node is its own parent, a root of rank 0. The faint lines are the union requests, taken in order.`,
+      explanation: `${forest.sets} singleton sets: every node is its own parent, a root of rank 0. The faint lines are the union requests, taken in order.`,
       strips: strips(),
       phase: 'init',
     });
@@ -291,7 +200,7 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
         strips: strips(),
         phase: 'find',
       });
-      const root = yield* find(x, 'find');
+      const root = yield* forest.find(x, 'find');
       history.push(`f(${scene.label(x)})=${scene.label(root)}`);
       yield scene.frame({
         codeLine: LINE.findReturn,
@@ -304,10 +213,9 @@ export const unionFind = defineAlgorithm<UnionFindInput>({
     }
 
     const counters = scene.counters();
-    const maxRank = Math.max(0, ...[...rank.values()]);
     yield scene.frame({
       codeLine: 0,
-      explanation: `Done: ${sets} set${sets === 1 ? '' : 's'}, highest rank ${maxRank}, ${counters.extra['parent hops'] ?? 0} parent hops over ${counters.extra.finds ?? 0} finds.`,
+      explanation: `Done: ${forest.sets} set${forest.sets === 1 ? '' : 's'}, highest rank ${forest.maxRank}, ${counters.extra['parent hops'] ?? 0} parent hops over ${counters.extra.finds ?? 0} finds.`,
       strips: strips(),
       phase: 'done',
     });

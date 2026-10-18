@@ -95,3 +95,28 @@ export function reachedCount(dist: readonly number[]): number {
 export function sumDegrees(adj: Adjacency, nodes: readonly number[]): number {
   return nodes.reduce((sum, u) => sum + (adj.out[u]?.length ?? 0), 0);
 }
+
+/** 53-bit string hash (cyrb53): a fingerprint, not a defence. */
+export function hash53(text: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+/**
+ * A run's frames as one fingerprint: every field of every frame, in order. The
+ * graph is shared by every frame of a run, so it is hashed once, not per frame.
+ */
+export function fingerprint(frames: readonly Frame[]): string {
+  const first = frames[0];
+  const graph = first === undefined ? null : graphOf(first).graph;
+  const body = JSON.stringify(frames, (key, value: unknown) => (key === 'graph' ? undefined : value));
+  return `${frames.length}:${hash53(JSON.stringify(graph))}:${hash53(body)}`;
+}

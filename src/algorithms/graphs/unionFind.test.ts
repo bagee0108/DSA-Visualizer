@@ -3,8 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { makeRng } from '../../core/random';
 import type { GraphSnapshot } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, graphOf, lastFrame, runFrames } from '../frameHygiene';
-import { adjacencyOf } from './graphTestkit';
+import { buildGraph, parseEdgeList } from '../../core/graphInput';
+import { GraphScene } from '../../core/graphScene';
+import type { Frame } from '../../core/types';
+import { adjacencyOf, fingerprint } from './graphTestkit';
 import { unionFind } from './unionFind';
+import { GOLDEN, unionFindCases } from './unionFind.golden';
+import { DisjointSets, type UnionFindOptions } from './unionFindCore';
 
 const SAMPLE = '0-1,2-3,0-2,4-5,6-7,4-6,0-4,8-9,1-9,3-5';
 
@@ -182,5 +187,43 @@ describe('union-find: frames', () => {
     for (const preset of unionFind.presets) {
       expect(runFrames(unionFind, preset.build(150, makeRng(6))).length, preset.id).toBeLessThan(2000);
     }
+  });
+});
+
+describe('union-find: the shared forest helper', () => {
+  it('leaves every frame of every golden case exactly as it was before the refactor', () => {
+    const cases = unionFindCases(makeRng);
+    expect(cases.map(([name]) => name).sort()).toEqual(Object.keys(GOLDEN).sort());
+    const changed = cases.filter(([name, params]) => fingerprint(runFrames(unionFind, params)) !== GOLDEN[name]).map(([name]) => name);
+    expect(changed).toEqual([]);
+  }, 120000);
+
+  /** Unions along a path so 0 sits deepest, then one find(0); returns the frames of that find. */
+  function findOnChain(mode: 'every-step' | 'one-per-find'): { frames: Frame[]; root: string; scene: GraphScene } {
+    const list = parseEdgeList('0-1,1-2,2-3,3-4');
+    if (!list.ok) throw new Error(list.error);
+    const scene = new GraphScene(buildGraph(list.value, false, 'auto'));
+    const lines = { findEnter: 1, climb: 2, findReturn: 3, compressSet: 4, shorter: 5, taller: 6, equal: 7 };
+    const options: UnionFindOptions = { byRank: false, compress: true, lines, strips: () => [], findFrames: mode };
+    const forest = new DisjointSets(scene, options);
+    // Naive merge puts the second root under the first, so this builds 0 -> 1 -> 2 -> 3 -> 4 with 0 deepest.
+    for (const [a, b] of [['1', '0'], ['2', '1'], ['3', '2'], ['4', '3']] as const) forest.merge(a, b);
+    const frames: Frame[] = [];
+    const run = forest.find('0', 'find');
+    for (let step = run.next(); ; step = run.next()) {
+      if (step.done === true) return { frames, root: step.value, scene };
+      frames.push(step.value);
+    }
+  }
+
+  it('offers one frame per find, with the same root, hops and compression as the full mode', () => {
+    const full = findOnChain('every-step');
+    const brief = findOnChain('one-per-find');
+    expect(brief.root).toBe(full.root);
+    expect(full.frames.length).toBeGreaterThan(1);
+    expect(brief.frames).toHaveLength(1);
+    const counters = (frames: Frame[]) => frames[frames.length - 1]?.counters;
+    expect(counters(brief.frames)?.extra).toEqual(counters(full.frames)?.extra);
+    expect(graphOf(brief.frames[0]).links).toEqual(graphOf(full.frames[full.frames.length - 1]).links);
   });
 });
