@@ -18,12 +18,24 @@ function inBox(points: readonly { x: number; y: number }[]): boolean {
 }
 
 describe('graph layout', () => {
-  it('puts a ring on one circle, evenly spaced', () => {
-    const points = layoutGraph(8, [], 'ring');
-    const cx = 0.5;
-    const cy = HEIGHT / 2;
-    const radii = points.map((p) => Math.hypot(p.x - cx, p.y - cy));
-    for (const r of radii) expect(r).toBeCloseTo(radii[0] ?? 0, 9);
+  it('puts a ring on one ellipse spanning the box, spaced by equal arc length', () => {
+    const points = layoutGraph(150, [], 'ring');
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const a = (Math.max(...xs) - Math.min(...xs)) / 2;
+    const b = (Math.max(...ys) - Math.min(...ys)) / 2;
+    // Wider than tall, and filling most of the box both ways.
+    expect(a).toBeGreaterThan(0.45);
+    expect(b).toBeGreaterThan(HEIGHT * 0.4);
+    for (const p of points) expect(((p.x - 0.5) / a) ** 2 + ((p.y - HEIGHT / 2) / b) ** 2).toBeCloseTo(1, 2);
+    // Neighbour chords are all within 1% of each other; equal angles would vary several-fold.
+    const gaps = points.map((p, i) => {
+      const q = points[(i + 1) % points.length] ?? p;
+      return Math.hypot(q.x - p.x, q.y - p.y);
+    });
+    expect(Math.max(...gaps) / Math.min(...gaps)).toBeLessThan(1.01);
+    expect(points[0]?.x).toBeCloseTo(0.5, 9);
+    expect(points[0]?.y ?? 1).toBeLessThan(HEIGHT / 2);
     expect(inBox(points)).toBe(true);
   });
 

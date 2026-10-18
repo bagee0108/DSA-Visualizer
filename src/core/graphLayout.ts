@@ -23,13 +23,50 @@ export function gridColumns(nodeCount: number): number {
   return Math.max(1, Math.ceil(Math.sqrt(nodeCount * LAYOUT_ASPECT)));
 }
 
-function ring(nodeCount: number): Point[] {
+/** Points on the circle the force-directed pass starts from. */
+function circleSeed(nodeCount: number): Point[] {
   const height = 1 / LAYOUT_ASPECT;
   const radius = (height / 2) * 0.88;
   return Array.from({ length: nodeCount }, (_, i) => {
     const angle = (2 * Math.PI * i) / nodeCount - Math.PI / 2;
     return { x: 0.5 + radius * Math.cos(angle), y: height / 2 + radius * Math.sin(angle) };
   });
+}
+
+/** Samples per turn for the arc-length table; the spacing error is far below a view unit. */
+const ARC_SAMPLES = 2048;
+
+/**
+ * An ellipse spanning the box, nodes an equal ARC LENGTH apart, starting at the
+ * top and going clockwise. Equal angles would bunch them at the ends of the
+ * long axis, where the curve turns fastest.
+ */
+function ring(nodeCount: number): Point[] {
+  const height = 1 / LAYOUT_ASPECT;
+  const a = 0.5 - PAD;
+  const b = height / 2 - PAD;
+  const at = (t: number): Point => ({ x: 0.5 + a * Math.cos(t), y: height / 2 + b * Math.sin(t) });
+  const start = -Math.PI / 2;
+  // Cumulative length at each sample; lengths[k] is the arc from the start to sample k.
+  const lengths = new Float64Array(ARC_SAMPLES + 1);
+  let previous = at(start);
+  for (let k = 1; k <= ARC_SAMPLES; k++) {
+    const next = at(start + (2 * Math.PI * k) / ARC_SAMPLES);
+    lengths[k] = (lengths[k - 1] ?? 0) + Math.hypot(next.x - previous.x, next.y - previous.y);
+    previous = next;
+  }
+  const total = lengths[ARC_SAMPLES] ?? 0;
+  const out: Point[] = [];
+  let k = 0;
+  for (let i = 0; i < nodeCount; i++) {
+    const target = (total * i) / nodeCount;
+    while (k < ARC_SAMPLES && (lengths[k + 1] ?? 0) < target) k += 1;
+    const from = lengths[k] ?? 0;
+    const span = (lengths[k + 1] ?? from) - from;
+    const fraction = span > 0 ? (target - from) / span : 0;
+    out.push(at(start + (2 * Math.PI * (k + fraction)) / ARC_SAMPLES));
+  }
+  return out;
 }
 
 function grid(nodeCount: number): Point[] {
@@ -67,14 +104,15 @@ function fit(points: readonly Point[]): Point[] {
 }
 
 function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
-  if (nodeCount <= 2) return ring(nodeCount);
+  if (nodeCount <= 2) return circleSeed(nodeCount);
   const height = 1 / LAYOUT_ASPECT;
   const k = 1.1 * Math.sqrt((1 * height) / nodeCount);
   // Repulsion is short range (the grid variant of Fruchterman-Reingold): beyond
   // a few k it is zero, so a big graph does not push itself onto the frame.
   const cutoff = 2.5 * k;
-  const xs = ring(nodeCount).map((p) => p.x);
-  const ys = ring(nodeCount).map((p) => p.y);
+  const seed = circleSeed(nodeCount);
+  const xs = seed.map((p) => p.x);
+  const ys = seed.map((p) => p.y);
   const clamp = (value: number, high: number): number => (value < PAD ? PAD : value > high - PAD ? high - PAD : value);
   const dx = new Float64Array(nodeCount);
   const dy = new Float64Array(nodeCount);
