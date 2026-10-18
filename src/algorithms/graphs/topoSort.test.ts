@@ -5,7 +5,8 @@ import { makeRng } from '../../core/random';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, graphOf, lastFrame, runFrames } from '../frameHygiene';
 import { adjacencyOf, stripIds, type Adjacency } from './graphTestkit';
-import { NOT_A_DAG, TOPO_PRESETS, topologicalSort, UNDIRECTED_ERROR } from './topoSort';
+import { tarjanScc } from './tarjan';
+import { NOT_A_DAG, splitStuck, TOPO_PRESETS, topologicalSort, UNDIRECTED_ERROR } from './topoSort';
 
 const SAMPLE = '0-1,0-2,1-3,2-3,1-4,3-5,4-5,4-6,2-7,3-7,5-8,6-8';
 const METHODS = ['kahn', 'dfs'] as const;
@@ -152,6 +153,30 @@ describe('topological sort: cycles', () => {
     expect(stuck.length).toBeGreaterThan(0);
     const swapped = (final.highlights.swapped ?? []).filter((id) => typeof id === 'string' && !id.startsWith('edge:'));
     expect([...swapped].sort()).toEqual([...stuck].sort());
+  });
+
+  it('says the leftovers are on a cycle or depend on one, and tells the two apart by SCC', () => {
+    for (const size of SIZES) {
+      for (const seed of [1, 2, 3]) {
+        const params = presetParams('cycle', size, size * 17 + seed);
+        const final = lastFrame(runFrames(topologicalSort, { ...params, method: 'kahn' }));
+        expect(final.explanation).toContain('These nodes are on a cycle or depend on one, so none of them can ever reach in-degree 0.');
+        const placed = new Set(stripIds(final, 'order'));
+        const graph = graphOf(final).graph;
+        const stuck = graph.nodes.map((node) => node.id).filter((id) => !placed.has(id));
+        const { onCycle, downstream } = splitStuck(graph, stuck);
+        // Independent check: Tarjan's components on the same graph.
+        const cyclic = new Set(graphOf(lastFrame(runFrames(tarjanScc, params))).components.filter((c) => c.nodes.length > 1).flatMap((c) => c.nodes));
+        expect([...onCycle].sort(), `cycle @ ${size}`).toEqual([...cyclic].sort());
+        expect([...downstream].sort()).toEqual(stuck.filter((id) => !cyclic.has(id)).sort());
+      }
+    }
+  });
+
+  it('names a node that only waits on the cycle as waiting, not cycling', () => {
+    // The 12-node preset in the screenshots: 7 -> 9 -> 11 -> 7 is the cycle, 10 only depends on 7.
+    const final = lastFrame(run('2-3,1-3,1-4,3-5,3-6,6-7,5-8,6-8,4-8,7-9,7-10,5-10,9-11,11-7,0', 'kahn'));
+    expect(final.explanation).toContain('On a cycle: 7, 9 and 11. Only waiting on one: 10.');
   });
 
   it('highlights a back edge in DFS that really closes a cycle', () => {

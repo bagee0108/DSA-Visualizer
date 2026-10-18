@@ -201,6 +201,42 @@ export const TOPO_PRESETS: readonly PresetSpec[] = [
 /** Phase of the closing frame when the graph has a cycle. */
 export const NOT_A_DAG = 'not a DAG';
 
+/**
+ * Splits the nodes Kahn's could not place into those on a cycle and those that
+ * only wait on one. A stuck node is on a cycle exactly when it can reach itself
+ * through other stuck nodes (its strongly connected component has more than one
+ * node; the edge list rejects self-loops). One search per stuck node, run once.
+ */
+export function splitStuck(graph: Graph, stuck: readonly string[]): { readonly onCycle: string[]; readonly downstream: string[] } {
+  const inside = new Set(stuck);
+  const out = new Map<string, string[]>();
+  for (const edge of graph.edges) {
+    if (inside.has(edge.from) && inside.has(edge.to)) out.set(edge.from, [...(out.get(edge.from) ?? []), edge.to]);
+  }
+  const returns = (start: string): boolean => {
+    const seen = new Set<string>();
+    const queue = [...(out.get(start) ?? [])];
+    for (let head = 0; head < queue.length; head++) {
+      const node = queue[head] ?? '';
+      if (node === start) return true;
+      if (seen.has(node)) continue;
+      seen.add(node);
+      queue.push(...(out.get(node) ?? []));
+    }
+    return false;
+  };
+  const onCycle = stuck.filter(returns);
+  const cyclic = new Set(onCycle);
+  return { onCycle, downstream: stuck.filter((id) => !cyclic.has(id)) };
+}
+
+/** "7, 9 and 11", or the first few and a count once the list gets long. */
+function listOf(names: readonly string[], most = 12): string {
+  if (names.length > most) return `${names.slice(0, most).join(', ')} and ${names.length - most} more`;
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1] ?? ''}`;
+}
+
 type Gen = Generator<Frame, void, undefined>;
 
 export const topologicalSort = defineAlgorithm<TopoInput>({
@@ -313,9 +349,14 @@ function* runKahn(graph: Graph): Gen {
     const stuck = scene.nodeIds.filter((id) => !placed.has(id));
     const stuckSet = new Set(stuck);
     const between = graph.edges.filter((edge) => stuckSet.has(edge.from) && stuckSet.has(edge.to)).map(edgeRef);
+    const { onCycle, downstream } = splitStuck(graph, stuck);
+    const split =
+      downstream.length === 0
+        ? `All of them are on a cycle.`
+        : `On a cycle: ${listOf(onCycle.map(name))}. Only waiting on one: ${listOf(downstream.map(name))}.`;
     yield scene.frame({
       codeLine: LINE.kahnCycle,
-      explanation: `Not a DAG: no topological order exists. The ready set is empty, but ${stuck.length} node${stuck.length === 1 ? '' : 's'} (${stuck.map(name).join(', ')}) never reached in-degree 0. Each still waits on another of them, so they sit on a cycle or wait on one.`,
+      explanation: `Not a DAG: no topological order exists. The ready set is empty with ${stuck.length} node${stuck.length === 1 ? '' : 's'} unplaced. These nodes are on a cycle or depend on one, so none of them can ever reach in-degree 0. ${split}`,
       highlights: { swapped: [...stuck, ...between] },
       strips: strips(),
       phase: NOT_A_DAG,
