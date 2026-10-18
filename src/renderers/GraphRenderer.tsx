@@ -6,7 +6,7 @@
 
 import { memo, useMemo, type ReactNode } from 'react';
 
-import { LAYOUT_ASPECT } from '../core/graphLayout';
+import { LAYOUT_ASPECT, nodeRadius } from '../core/graphLayout';
 import type { Graph, GraphComponent, GraphSnapshot, Highlights, Pointers } from '../core/types';
 import type { FillName, InkMap } from './ink';
 import { counted, VIEW_H, VIEW_W } from './canvas';
@@ -78,7 +78,7 @@ export function graphGeometry(graph: Graph, bottom: number): Geometry {
   const { scale, x0, y0 } = graphBox(bottom);
 
   const n = graph.nodes.length;
-  const radius = n <= 12 ? 16 : n <= 30 ? 13 : n <= 60 ? 10 : n <= 100 ? 8 : 6.5;
+  const radius = nodeRadius(n);
 
   const positions = new Map<string, Placed>();
   for (const node of graph.nodes) positions.set(node.id, { x: x0 + node.x * scale, y: y0 + node.y * scale });

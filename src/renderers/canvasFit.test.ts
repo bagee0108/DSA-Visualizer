@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LAYOUT_ASPECT } from '../core/graphLayout';
+import { LAYOUT_ASPECT, LAYOUT_MIN_VIEW_SCALE } from '../core/graphLayout';
 import {
   arrayBands,
   FLOOR,
@@ -156,6 +156,10 @@ describe('graph box', () => {
       expect(y0 + height).toBeLessThanOrEqual(bottom + 1e-9);
       expect(height / innerH).toBeGreaterThan(0.85);
     }
+  });
+
+  it('never draws the layout box narrower than the scale the layout keeps edges clear at', () => {
+    for (const strips of STRIP_COUNTS) expect(graphBox(graphBandBottom(strips)).scale).toBeGreaterThanOrEqual(LAYOUT_MIN_VIEW_SCALE);
   });
 
   it('leaves room under the strips for every strip count', () => {
