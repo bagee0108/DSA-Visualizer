@@ -399,6 +399,10 @@ list; solid for `pivot`, which is a fixed reference, dashed for `swapped`,
 which is a momentary event. Exactly one member of each pair is marked, and
 nothing else is, which is what keeps a mark worth noticing.
 
+Dashed ring (`swapped`): a momentary event: a swap, a rotation, or the
+contradiction that ends a search (Sudoku's dead end, a cycle that rules out a
+topological order).
+
 The mark is an inset stroke in the label ink, drawn *inside* the shape. That is
 deliberate and not cosmetic: an outer ring needs space the dense cases do not
 have, and it would have to be dropped exactly where it is needed most. Both
