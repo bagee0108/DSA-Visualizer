@@ -4,7 +4,7 @@
  *   npm run og                              write public/og.png
  *   node scripts/og-image.mjs --out <dir>   write somewhere else, to compare first
  *
- * It builds the card as HTML (the relax mark, the "lowlink" wordmark in
+ * It builds the card as HTML (the relax mark, the "treewidth" wordmark in
  * Martian Mono, the one-line description, in the active theme's dark
  * colours) and screenshots it with a local headless Chrome; see render.mjs.
  * Set CHROME to the browser's path if it is not in a standard place. Re-run
@@ -58,7 +58,7 @@ body::after { content: ""; position: fixed; inset: 0; background: radial-gradien
 p { margin: 0; max-width: 900px; font-family: "Atkinson Hyperlegible Next"; font-weight: 500; font-size: 44px; line-height: 1.25; color: ${FG_MUTE}; }
 </style></head>
 <body>
-  <div class="lockup">${MARK}<span class="word">lowlink</span></div>
+  <div class="lockup">${MARK}<span class="word">treewidth</span></div>
   <p>${DESCRIPTION}</p>
 </body></html>`;
 

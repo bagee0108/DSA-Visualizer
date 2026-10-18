@@ -36,7 +36,7 @@ function chrome() {
 
 /** Renders `html` at width x height into the PNG at `out`, and checks Chrome gave exactly that size. */
 export function screenshot(html, out, width, height, background) {
-  const work = mkdtempSync(join(tmpdir(), 'lowlink-render-'));
+  const work = mkdtempSync(join(tmpdir(), 'treewidth-render-'));
   try {
     const page = join(work, 'page.html');
     writeFileSync(page, html);

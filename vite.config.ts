@@ -1,9 +1,11 @@
 import { defineConfig, type Plugin } from 'vitest/config';
+import { loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 import './src/algorithms';
-import { sitemapXml } from './src/seo/sitemap';
+import { robotsTxt, sitemapXml } from './src/seo/sitemap';
+import { siteOriginFrom } from './src/site';
 import { ACTIVE_THEME, PRESETS, THEME_STYLE_ID, themeCss } from './src/theme/themes';
 
 /** FNV-1a, 32 bit: enough to tell one theme build from the next. */
@@ -25,7 +27,7 @@ const THEME_FILE = `assets/theme-${contentHash(THEME_CSS)}.css`;
  */
 function theme(): Plugin {
   return {
-    name: 'lowlink-theme',
+    name: 'treewidth-theme',
     transformIndexHtml: () => [
       { tag: 'link', attrs: { rel: 'stylesheet', id: THEME_STYLE_ID, href: `/${THEME_FILE}` }, injectTo: 'head' },
     ],
@@ -41,29 +43,43 @@ function theme(): Plugin {
   };
 }
 
-/** Emits sitemap.xml from the open levels; see src/seo/sitemap.ts. */
-function sitemap(): Plugin {
+/**
+ * Puts the site's origin wherever the site names itself: %SITE_ORIGIN% in
+ * index.html (og:url, og:image), and robots.txt and sitemap.xml, emitted
+ * from the open levels (see src/seo/sitemap.ts).
+ */
+function site(origin: string): Plugin {
   return {
-    name: 'lowlink-sitemap',
-    apply: 'build',
+    name: 'treewidth-site',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: (html) => html.replaceAll('%SITE_ORIGIN%', origin),
+    },
     generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml() });
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robotsTxt(origin) });
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml(undefined, origin) });
     },
   };
 }
 
-export default defineConfig({
-  plugins: [theme(), sitemap(), react(), tailwindcss()],
-  base: '/',
-  build: {
-    target: 'es2022',
-    sourcemap: true,
-  },
-  test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
-    // Vitest blanks stylesheets by default; themes.test.ts reads the role
-    // palette out of index.css so it can never drift from what ships.
-    css: { include: [/index\.css/] },
-  },
+export default defineConfig(({ mode }) => {
+  // SITE_ORIGIN from the environment (or a .env file), else the default in
+  // src/site.ts. The app reads it as import.meta.env.SITE_ORIGIN.
+  const origin = siteOriginFrom(loadEnv(mode, '.', 'SITE_ORIGIN').SITE_ORIGIN);
+  return {
+    plugins: [theme(), site(origin), react(), tailwindcss()],
+    base: '/',
+    define: { 'import.meta.env.SITE_ORIGIN': JSON.stringify(origin) },
+    build: {
+      target: 'es2022',
+      sourcemap: true,
+    },
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
+      // Vitest blanks stylesheets by default; themes.test.ts reads the role
+      // palette out of index.css so it can never drift from what ships.
+      css: { include: [/index\.css/] },
+    },
+  };
 });

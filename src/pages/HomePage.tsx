@@ -71,7 +71,7 @@ function Legend(): ReactNode {
 }
 
 export function HomePage(): ReactNode {
-  usePageMeta('Lowlink: learn data structures and algorithms by watching them run');
+  usePageMeta('Treewidth: learn data structures and algorithms by watching them run');
 
   return (
     <div className="h-full overflow-y-auto">

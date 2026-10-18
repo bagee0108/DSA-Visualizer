@@ -656,3 +656,11 @@ percentage set inline. It is the only component-shaped CSS in the project.
   React and React DOM. That is deliberate.
 - **Stay smooth at n=200** for arrays and ~150 nodes for graphs. If a frame
   needs more than a few hundred SVG nodes, simplify the drawing.
+- **The domain lives in one place.** Canonical links, og:url, og:image,
+  robots.txt and sitemap.xml all come from `SITE_ORIGIN`, read at build time
+  from the environment (or a `.env` file) and defaulting to
+  `https://treewidth.dev` in `src/site.ts`. Never write the domain anywhere
+  else; `src/seo/siteOrigin.test.ts` checks src/, public/ and the build for
+  the old one. **Before dev is merged to main, `SITE_ORIGIN` must point at a
+  live domain:** treewidth.dev is not registered yet, so either register it
+  or set `SITE_ORIGIN` in the production environment.

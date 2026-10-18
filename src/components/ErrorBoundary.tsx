@@ -19,11 +19,11 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('Lowlink hit an error it could not recover from', error, info.componentStack);
+    console.error('Treewidth hit an error it could not recover from', error, info.componentStack);
   }
 
   override componentDidUpdate(): void {
-    if (this.state.failed) document.title = 'Something went wrong - Lowlink';
+    if (this.state.failed) document.title = 'Something went wrong - Treewidth';
   }
 
   override componentDidMount(): void {
@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
       <main className="flex h-full flex-col items-center justify-center gap-3 bg-ground p-6 text-center text-fg">
         <h1 className="text-title font-semibold">Something went wrong</h1>
         <p className="max-w-md text-meta text-fg-dim">
-          Lowlink hit an error it could not recover from. Reloading usually fixes it; if it keeps happening, start
+          Treewidth hit an error it could not recover from. Reloading usually fixes it; if it keeps happening, start
           again from the path.
         </p>
         <a href="/" className={buttonClass('secondary')}>

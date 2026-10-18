@@ -1,9 +1,9 @@
-# Lowlink
+# Treewidth
 
 Learn data structures and algorithms by watching them run.
 
-The name comes from the lowlink value in Tarjan's strongly connected
-components algorithm.
+The name comes from treewidth, a measure in graph theory of how close a graph
+is to being a tree.
 
 Frame-by-frame visualizations of data structures and algorithms. Every run is
 precomputed, so you can scrub it like video: step backwards as cheaply as

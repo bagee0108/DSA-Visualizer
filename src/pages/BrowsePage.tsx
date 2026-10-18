@@ -87,7 +87,7 @@ export function BrowsePage(): ReactNode {
     else cards.current.set(id, node);
   }, []);
 
-  usePageMeta('Browse all - Lowlink');
+  usePageMeta('Browse all - Treewidth');
 
   const readyCount = useMemo(() => CATALOG.filter((entry) => isRegistered(entry.id)).length, []);
 

@@ -26,7 +26,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 export function AboutPage(): ReactNode {
-  usePageMeta('About - Lowlink');
+  usePageMeta('About - Treewidth');
 
   return (
     <div className="h-full overflow-y-auto">
@@ -35,20 +35,19 @@ export function AboutPage(): ReactNode {
 
         <Section id="about-name" title="The name">
           <p>
-            A node&apos;s low-link, in Tarjan&apos;s strongly connected components algorithm, is the earliest node its
-            depth-first search can reach back to.
+            The name comes from treewidth, a measure in graph theory of how close a graph is to being a tree.
           </p>
         </Section>
 
         <Section id="about-privacy" title="Privacy">
           <p>
-            Lowlink sets no cookies and stores only your light or dark theme choice in your browser. It uses Vercel Web
+            Treewidth sets no cookies and stores only your light or dark theme choice in your browser. It uses Vercel Web
             Analytics and Speed Insights to count page views and measure load times, without cookies or ad tracking.
           </p>
         </Section>
 
         <Section id="about-licences" title="Licences">
-          <p>Lowlink is released under the MIT License. Copyright (c) 2026 Bageerathan Saravanakumar.</p>
+          <p>Treewidth is released under the MIT License. Copyright (c) 2026 Bageerathan Saravanakumar.</p>
           <p>
             The fonts are under the SIL Open Font License 1.1:{' '}
             {FONTS.map(([name, folder], index) => (
@@ -62,7 +61,7 @@ export function AboutPage(): ReactNode {
             .
           </p>
           <p>
-            The code Lowlink ships from other projects, with each licence in full:{' '}
+            The code Treewidth ships from other projects, with each licence in full:{' '}
             <a href="/THIRD_PARTY_LICENSES.txt" className={LINK}>
               third-party licences
             </a>

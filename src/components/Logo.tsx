@@ -22,7 +22,7 @@ export function Logo({
   surface?: keyof typeof SURFACE_FILL;
 }): ReactNode {
   return (
-    <svg viewBox="0 0 64 64" role="img" aria-label="Lowlink" className={className}>
+    <svg viewBox="0 0 64 64" role="img" aria-label="Treewidth" className={className}>
       <path
         d="M8 20 L20 32 L8 44"
         className="stroke-fg"

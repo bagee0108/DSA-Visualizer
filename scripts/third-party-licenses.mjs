@@ -64,9 +64,9 @@ function apacheNotice(pkg) {
 const apache = packages.filter((pkg) => /Apache-2\.0/.test(pkg.license));
 
 const out = [
-  'Lowlink: third-party licences',
+  'Treewidth: third-party licences',
   '',
-  'Lowlink itself is MIT licensed; see /LICENSE in the source repository.',
+  'Treewidth itself is MIT licensed; see /LICENSE in the source repository.',
   'The production bundle includes the packages below. Each is listed with',
   'its licence, followed by the full licence text it ships with.',
   '',

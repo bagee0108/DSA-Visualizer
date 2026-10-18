@@ -9,7 +9,7 @@ const LINK = `inline-flex min-h-6 items-center rounded-xs underline decoration-l
 export function SiteFooter(): ReactNode {
   return (
     <footer className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 border-t border-line px-6 py-4 text-meta text-fg-mute">
-      <span>Lowlink, MIT licensed</span>
+      <span>Treewidth, MIT licensed</span>
       <Link to="/about" className={LINK}>
         About and privacy
       </Link>

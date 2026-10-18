@@ -33,7 +33,7 @@ function Routes(): ReactNode {
 }
 
 function NotFound({ path }: { path: string }): ReactNode {
-  usePageMeta('Page not found - Lowlink', { canonical: false });
+  usePageMeta('Page not found - Treewidth', { canonical: false });
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
       <h1 className="text-title font-semibold text-fg">Page not found</h1>
@@ -70,11 +70,11 @@ function Shell(): ReactNode {
       <header className="flex h-11 shrink-0 items-center gap-5 border-b border-line bg-panel px-3">
         <Link
           to="/"
-          aria-label="Lowlink, home"
+          aria-label="Treewidth, home"
           className={`flex items-center gap-2 rounded-xs font-display text-ui font-semibold font-stretch-semi-condensed text-fg ${FOCUS_RING}`}
         >
           <Logo surface="panel" className="h-6 w-6" />
-          <span>lowlink</span>
+          <span>treewidth</span>
         </Link>
         {/* A leaderboard link joins these once that page exists; never before. */}
         <nav aria-label="Main" className="flex items-center gap-1">
