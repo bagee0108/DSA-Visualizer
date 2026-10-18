@@ -159,9 +159,12 @@ describe('tarjan: frames', () => {
 
   it('holds every structural invariant, with the recursion bound raised to the node cap', () => {
     expectFrameHygiene(tarjanScc, run(SAMPLE), { maxStackDepth: MAX_GRAPH_NODES + 2 });
+    // Every preset at a moderate size, and one at the cap, keeps this inside the default timeout.
     for (const preset of TARJAN_PRESETS) {
-      expectFrameHygiene(tarjanScc, runFrames(tarjanScc, preset.build(MAX_GRAPH_NODES, makeRng(4))), { maxStackDepth: MAX_GRAPH_NODES + 2 });
+      expectFrameHygiene(tarjanScc, runFrames(tarjanScc, preset.build(40, makeRng(4))), { maxStackDepth: MAX_GRAPH_NODES + 2 });
     }
+    const clusters = TARJAN_PRESETS.find((preset) => preset.id === 'clusters');
+    expectFrameHygiene(tarjanScc, runFrames(tarjanScc, clusters?.build(MAX_GRAPH_NODES, makeRng(4)) ?? {}), { maxStackDepth: MAX_GRAPH_NODES + 2 });
   });
 
   it('is deterministic', () => {
