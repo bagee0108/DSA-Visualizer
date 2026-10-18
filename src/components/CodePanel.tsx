@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { usePrefersReducedMotion } from '../hooks/useMotion';
+import { followScrollTop } from './codeFollow';
 import { FOCUS_RING, PanelHeader } from './ui';
 
 /** Row height in px. The sliding highlight is positioned off it, so the row
@@ -52,7 +53,7 @@ export interface CodePanelProps {
 
 export function CodePanel({ lines, activeLine, title = 'source' }: CodePanelProps): ReactNode {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const userScrolledAt = useRef(0);
+  const userScrolledAt = useRef<number | null>(null);
   const reduced = usePrefersReducedMotion();
 
   // A scroll the reader started wins for a while; following the active line
@@ -63,18 +64,17 @@ export function CodePanel({ lines, activeLine, title = 'source' }: CodePanelProp
 
   useEffect(() => {
     const box = scrollRef.current;
-    if (box === null || activeLine <= 0) return;
-    if (performance.now() - userScrolledAt.current < 1500) return;
-
-    const top = (activeLine - 1) * LINE_H;
-    const viewTop = box.scrollTop;
-    const viewBottom = viewTop + box.clientHeight;
-    if (top >= viewTop + LINE_H && top + LINE_H <= viewBottom - LINE_H) return;
-
-    box.scrollTo({
-      top: Math.max(0, top - box.clientHeight / 2 + LINE_H / 2),
-      behavior: reduced ? 'auto' : 'smooth',
+    if (box === null) return;
+    const target = followScrollTop({
+      activeLine,
+      lineHeight: LINE_H,
+      viewTop: box.scrollTop,
+      viewHeight: box.clientHeight,
+      now: performance.now(),
+      readerScrolledAt: userScrolledAt.current,
     });
+    if (target === null) return;
+    box.scrollTo({ top: target, behavior: reduced ? 'auto' : 'smooth' });
   }, [activeLine, reduced]);
 
   return (
