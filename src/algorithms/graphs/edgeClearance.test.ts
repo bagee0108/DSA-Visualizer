@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { RegisteredAlgorithm } from '../../core/define';
 import { makeRng } from '../../core/random';
+import { clearanceOf, EDGE_CLEARANCE_VIEW, minNodeGap } from '../../renderers/graphClearance';
 import { graphBandBottom, graphGeometry } from '../../renderers/GraphRenderer';
 import { graphOf } from '../frameHygiene';
 import { bfs } from './bfs';
@@ -21,44 +22,15 @@ import { unionFind } from './unionFind';
 
 const LEVELS: readonly RegisteredAlgorithm[] = [bfs, dfs, dijkstra, unionFind, tarjanScc, topologicalSort, bellmanFord, kruskal];
 const SIZES = [6, 12, 40, 150] as const;
-/** Clearance beyond the rim, in view units. */
-const CLEARANCE = 2;
-/** Points per quadratic curve; the polyline stays within a fraction of a unit of the curve. */
-const CURVE_STEPS = 48;
-
-interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-
-function segmentDistance(p: Point, a: Point, b: Point): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
-/** The edge as drawn: its trimmed straight segment, or its quadratic curve as a fine polyline. */
-function drawnPath(edge: ReturnType<typeof graphGeometry>['edges'][number]): Point[] {
-  const start = { x: edge.x1, y: edge.y1 };
-  const end = { x: edge.x2, y: edge.y2 };
-  if (edge.curve === null) return [start, end];
-  const c = edge.curve;
-  return Array.from({ length: CURVE_STEPS + 1 }, (_, i) => {
-    const t = i / CURVE_STEPS;
-    const u = 1 - t;
-    return { x: u * u * start.x + 2 * u * t * c.x + t * t * end.x, y: u * u * start.y + 2 * u * t * c.y + t * t * end.y };
-  });
-}
 
 interface ClearanceCase {
   readonly level: string;
   readonly preset: string;
   readonly size: number;
   readonly layout: string;
-  /** Edge/node pairs closer than radius + CLEARANCE. */
+  /** Edge/node pairs closer than radius + EDGE_CLEARANCE_VIEW. */
   readonly violations: number;
-  /** Closest two node centres, in view units, against a diameter plus CLEARANCE. */
+  /** Closest two node centres, in view units, against a diameter plus EDGE_CLEARANCE_VIEW. */
   readonly minGap: number;
   readonly needGap: number;
 }
@@ -73,27 +45,9 @@ function clearanceCases(): ClearanceCase[] {
         if (!built.ok) throw new Error(`${level.meta.id}/${preset.id}@${size}: ${built.error}`);
         const first = graphOf(built.frames[0]);
         const geometry = graphGeometry(first.graph, graphBandBottom(first.strips.length));
-        const limit = geometry.radius + CLEARANCE;
-        let violations = 0;
-        for (const edge of geometry.edges) {
-          const path = drawnPath(edge);
-          for (const [id, at] of geometry.positions) {
-            if (id === edge.from || id === edge.to) continue;
-            let nearest = Number.POSITIVE_INFINITY;
-            for (let i = 1; i < path.length && nearest >= limit; i++) nearest = Math.min(nearest, segmentDistance(at, path[i - 1] as Point, path[i] as Point));
-            if (nearest < limit) violations += 1;
-          }
-        }
-        const placed = [...geometry.positions.values()];
-        let minGap = Number.POSITIVE_INFINITY;
-        for (let i = 0; i < placed.length; i++) {
-          for (let j = i + 1; j < placed.length; j++) {
-            const p = placed[i] as Point;
-            const q = placed[j] as Point;
-            minGap = Math.min(minGap, Math.hypot(p.x - q.x, p.y - q.y));
-          }
-        }
-        out.push({ level: level.meta.id, preset: preset.id, size, layout: params.layout ?? 'auto', violations, minGap, needGap: 2 * geometry.radius + CLEARANCE });
+        const violations = clearanceOf(geometry).pairs;
+        const minGap = minNodeGap(geometry);
+        out.push({ level: level.meta.id, preset: preset.id, size, layout: params.layout ?? 'auto', violations, minGap, needGap: 2 * geometry.radius + EDGE_CLEARANCE_VIEW });
       }
     }
   }

@@ -1,6 +1,12 @@
 /** Test-only helpers for the graph family: reference algorithms over a plain adjacency list. */
 
-import { parseEdgeList, type EdgeListEdge } from '../../core/graphInput';
+import { expect } from 'vitest';
+
+import type { RegisteredAlgorithm } from '../../core/define';
+import { buildGraph, parseDirected, parseEdgeList, parseLayout, type EdgeListEdge } from '../../core/graphInput';
+import { makeRng } from '../../core/random';
+import { clearanceOf, EDGE_CLEARANCE_VIEW, minNodeGap } from '../../renderers/graphClearance';
+import { graphBandBottom, graphGeometry } from '../../renderers/GraphRenderer';
 import type { Frame, Strip } from '../../core/types';
 import { graphOf } from '../frameHygiene';
 
@@ -119,4 +125,61 @@ export function fingerprint(frames: readonly Frame[]): string {
   const graph = first === undefined ? null : graphOf(first).graph;
   const body = JSON.stringify(frames, (key, value: unknown) => (key === 'graph' ? undefined : value));
   return `${frames.length}:${hash53(JSON.stringify(graph))}:${hash53(body)}`;
+}
+
+/** Seeds every clearance sweep uses, fixed so the sweep is deterministic. */
+export const SWEEP_SEEDS: readonly number[] = Array.from({ length: 20 }, (_, i) => i + 1);
+export const SWEEP_SIZES = [6, 12, 40, 150] as const;
+
+export interface SweepRow {
+  readonly level: string;
+  readonly preset: string;
+  readonly size: number;
+  /** Seeds, of SWEEP_SEEDS, whose layout has an edge too close to a node it does not join. */
+  readonly failing: number;
+  readonly worstPairs: number;
+  /** Seeds whose force-directed layout puts two nodes closer than a diameter plus the clearance. */
+  readonly crowded: number;
+}
+
+/**
+ * Lays out every preset of a level at every sweep size and seed, the way the
+ * level would (same parser, same buildGraph, same strip band), and counts
+ * clearance failures. Only the layout is built, not the run, so it stays fast.
+ */
+export function clearanceSweep(level: RegisteredAlgorithm): SweepRow[] {
+  const sample = level.build(level.defaults);
+  if (!sample.ok) throw new Error(sample.error);
+  const bottom = graphBandBottom(graphOf(sample.frames[0]).strips.length);
+  const rows: SweepRow[] = [];
+  for (const preset of level.presets) {
+    for (const size of SWEEP_SIZES) {
+      let failing = 0;
+      let worstPairs = 0;
+      let crowded = 0;
+      for (const seed of SWEEP_SEEDS) {
+        const params = { ...level.defaults, ...preset.build(size, makeRng(seed * 7919 + size)) };
+        const directed = parseDirected(params.directed);
+        const list = parseEdgeList(params.g ?? '', { directed });
+        if (!list.ok) throw new Error(`${level.meta.id}/${preset.id}@${size}#${seed}: ${list.error}`);
+        const layout = parseLayout(params.layout);
+        const geometry = graphGeometry(buildGraph(list.value, directed, layout), bottom);
+        const { pairs } = clearanceOf(geometry);
+        if (pairs > 0) failing += 1;
+        worstPairs = Math.max(worstPairs, pairs);
+        if (layout === 'auto' && minNodeGap(geometry) < 2 * geometry.radius + EDGE_CLEARANCE_VIEW) crowded += 1;
+      }
+      rows.push({ level: level.meta.id, preset: preset.id, size, failing, worstPairs, crowded });
+    }
+  }
+  return rows;
+}
+
+/** Asserts a level's sweep is clean: no seed leaves an edge too close to a node, or crowds nodes together. CLEARANCE_REPORT=1 prints the table. */
+export function expectCleanSweep(level: RegisteredAlgorithm): void {
+  const rows = clearanceSweep(level);
+  if (import.meta.env.CLEARANCE_REPORT !== undefined) {
+    console.log(rows.map((row) => `SWEEPROW ${row.level} ${row.preset} ${row.size} ${row.failing} ${row.worstPairs} ${row.crowded}`).join('\n'));
+  }
+  expect(rows.filter((row) => row.failing > 0 || row.crowded > 0)).toEqual([]);
 }
