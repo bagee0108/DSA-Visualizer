@@ -26,6 +26,7 @@ import { kmp } from './strings/kmp';
 import { segmentTree } from './trees/segmentTree';
 import { fenwick } from './trees/fenwick';
 import { nQueens } from './backtracking/nQueens';
+import { sudoku } from './backtracking/sudoku';
 
 register(quicksort);
 register(mergesort);
@@ -63,5 +64,6 @@ register(fenwick);
 
 // Phase 4 - backtracking
 register(nQueens);
+register(sudoku);
 
 export { getAlgorithm, listAlgorithms, isRegistered } from '../core/registry';

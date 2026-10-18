@@ -20,6 +20,9 @@ export interface GridSceneOptions {
   readonly colHeaders: readonly string[];
   readonly piece: GridSnapshot['piece'];
   readonly checkered?: boolean;
+  readonly boxes?: { readonly rows: number; readonly cols: number };
+  /** Draw pencil marks on empty squares. */
+  readonly marks?: boolean;
   /** Keep a search tree to draw beside the board. */
   readonly searchTree?: boolean;
 }
@@ -43,9 +46,14 @@ export class GridScene {
   private readonly colHeaders: readonly string[];
   private readonly piece: GridSnapshot['piece'];
   private readonly checkered: boolean;
+  private readonly boxes: { readonly rows: number; readonly cols: number } | null;
 
-  private readonly values: (string | null)[];
+  private values: (string | null)[];
   private cellsCache: readonly (string | null)[] | null = null;
+  private marks: (string | null)[] | null;
+  private marksCache: readonly (string | null)[] | null = null;
+  private readonly fixed: boolean[];
+  private fixedCache: readonly boolean[] | null = null;
 
   private readonly stack: CallStackEntry[] = [];
   private stackCache: readonly CallStackEntry[] | null = null;
@@ -65,8 +73,13 @@ export class GridScene {
     this.colHeaders = Object.freeze([...options.colHeaders]);
     this.piece = options.piece;
     this.checkered = options.checkered ?? false;
+    const boxes = options.boxes;
+    if (boxes !== undefined && (rows % boxes.rows !== 0 || cols % boxes.cols !== 0)) throw new RangeError('Boxes must tile the board');
+    this.boxes = boxes === undefined ? null : { rows: boxes.rows, cols: boxes.cols };
     this.tree = options.searchTree === true ? new TreeScene('nary') : null;
     this.values = new Array<string | null>(rows * cols).fill(null);
+    this.marks = options.marks === true ? new Array<string | null>(rows * cols).fill(null) : null;
+    this.fixed = new Array<boolean>(rows * cols).fill(false);
   }
 
   private index(row: number, col: number): number {
@@ -92,6 +105,37 @@ export class GridScene {
     this.values[this.index(row, col)] = value;
     this.writes += 1;
     this.cellsCache = null;
+  }
+
+  /** A square the puzzle gives: set once, before the run starts working, and drawn heavier. */
+  give(row: number, col: number, value: string): void {
+    this.set(row, col, value);
+    this.fixed[this.index(row, col)] = true;
+    this.fixedCache = null;
+  }
+
+  /** Pencil marks on a square, or null to clear them. Uncounted: the algorithm's own bookkeeping is counted where it happens. */
+  mark(row: number, col: number, marks: string | null): void {
+    if (this.marks === null) throw new Error('This board was made without pencil marks');
+    this.marks[this.index(row, col)] = marks;
+    this.marksCache = null;
+  }
+
+  peekMark(row: number, col: number): string | null {
+    return this.marks?.[this.index(row, col)] ?? null;
+  }
+
+  /** Everything on the board, to go back to after a guess fails. */
+  save(): { readonly values: readonly (string | null)[]; readonly marks: readonly (string | null)[] | null } {
+    return { values: [...this.values], marks: this.marks === null ? null : [...this.marks] };
+  }
+
+  /** Put the board back as `save` found it. Uncounted: it is the picture of an undo. */
+  restore(saved: ReturnType<GridScene['save']>): void {
+    this.values = [...saved.values];
+    this.marks = saved.marks === null ? null : [...saved.marks];
+    this.cellsCache = null;
+    this.marksCache = null;
   }
 
   countComparison(count = 1): void {
@@ -132,6 +176,18 @@ export class GridScene {
     return this.cellsCache;
   }
 
+  private marksSnapshot(): readonly (string | null)[] | null {
+    if (this.marks === null) return null;
+    if (this.marksCache === null) this.marksCache = Object.freeze([...this.marks]);
+    return this.marksCache;
+  }
+
+  private fixedSnapshot(): readonly boolean[] | null {
+    if (!this.fixed.includes(true)) return null;
+    if (this.fixedCache === null) this.fixedCache = Object.freeze([...this.fixed]);
+    return this.fixedCache;
+  }
+
   private stackSnapshot(): readonly CallStackEntry[] {
     if (this.stack.length === 0) return NO_STACK;
     if (this.stackCache === null) this.stackCache = Object.freeze([...this.stack]);
@@ -146,6 +202,9 @@ export class GridScene {
       cells: this.cells(),
       piece: this.piece,
       checkered: this.checkered,
+      boxes: this.boxes,
+      fixed: this.fixedSnapshot(),
+      marks: this.marksSnapshot(),
       rowHeaders: this.rowHeaders,
       colHeaders: this.colHeaders,
       lines: input.lines === undefined ? NO_LINES : Object.freeze([...input.lines]),

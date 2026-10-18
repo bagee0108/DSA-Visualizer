@@ -210,6 +210,12 @@ export interface GridSnapshot {
   readonly piece: 'queen' | 'text';
   /** Alternate square shading, as on a chessboard. */
   readonly checkered: boolean;
+  /** Heavier lines around boxes of this shape, as on a Sudoku grid; null for none. */
+  readonly boxes: { readonly rows: number; readonly cols: number } | null;
+  /** Squares the puzzle gave, drawn heavier than the ones the run fills in; null when nothing is given. */
+  readonly fixed: readonly boolean[] | null;
+  /** Pencil marks on empty squares, such as the digits still possible there ("137"); null for none. */
+  readonly marks: readonly (string | null)[] | null;
   readonly rowHeaders: readonly string[];
   readonly colHeaders: readonly string[];
   /** Lines drawn this frame only, such as the attack that rules a square out. */

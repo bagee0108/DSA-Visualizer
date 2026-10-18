@@ -88,4 +88,44 @@ describe('GridScene', () => {
     expect(tree?.rootId).toBe(root);
     expect(tree?.strips).toHaveLength(0);
   });
+
+  it('draws boxes only when they tile the board', () => {
+    const make = (box: { rows: number; cols: number }) => () =>
+      new GridScene({ rows: 4, cols: 4, rowHeaders: headers(4), colHeaders: headers(4), piece: 'text', boxes: box });
+    expect(make({ rows: 3, cols: 2 })).toThrow(RangeError);
+    expect(gridOf(make({ rows: 2, cols: 2 })().frame({ explanation: 'x', codeLine: 1 })).boxes).toEqual({ rows: 2, cols: 2 });
+    expect(gridOf(board().frame({ explanation: 'x', codeLine: 1 })).boxes).toBeNull();
+  });
+
+  it('keeps givens fixed, pencil marks per square, and nothing of either unless asked', () => {
+    const plain = board();
+    expect(() => plain.mark(0, 0, '12')).toThrow();
+    const empty = gridOf(plain.frame({ explanation: 'x', codeLine: 1 }));
+    expect([empty.fixed, empty.marks]).toEqual([null, null]);
+
+    const marked = new GridScene({ rows: 2, cols: 3, rowHeaders: headers(2), colHeaders: headers(3), piece: 'text', marks: true });
+    marked.give(0, 0, '1');
+    marked.set(0, 1, '2');
+    marked.mark(1, 2, '13');
+    expect(marked.peekMark(1, 2)).toBe('13');
+    const shot = gridOf(marked.frame({ explanation: 'x', codeLine: 1 }));
+    expect(shot.fixed).toEqual([true, false, false, false, false, false]);
+    expect(shot.marks).toEqual([null, null, null, null, null, '13']);
+    expect(Object.isFrozen(shot.marks)).toBe(true);
+  });
+
+  it('restores the values and marks it saved, and leaves the givens alone', () => {
+    const scene = new GridScene({ rows: 2, cols: 3, rowHeaders: headers(2), colHeaders: headers(3), piece: 'text', marks: true });
+    scene.give(0, 0, '1');
+    scene.mark(1, 1, '23');
+    const saved = scene.save();
+    scene.set(1, 1, '2');
+    scene.mark(1, 1, null);
+    scene.mark(1, 2, '3');
+    scene.restore(saved);
+    const back = gridOf(scene.frame({ explanation: 'x', codeLine: 1 }));
+    expect(back.cells).toEqual(['1', null, null, null, null, null]);
+    expect(back.marks).toEqual([null, null, null, null, '23', null]);
+    expect(back.fixed?.[0]).toBe(true);
+  });
 });

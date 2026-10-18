@@ -475,12 +475,14 @@ function expectGridFrame(structure: GridSnapshot, frame: Frame, where: string, p
   expect(cols, `${where}: cols`).toBeGreaterThan(0);
   const before = previous?.structure.kind === 'grid' ? previous.structure : null;
   if (before !== null) {
-    expect([rows, cols, structure.piece, structure.checkered], `${where}: the board is fixed for the run`).toEqual([
+    expect([rows, cols, structure.piece, structure.checkered, structure.boxes], `${where}: the board is fixed for the run`).toEqual([
       before.rows,
       before.cols,
       before.piece,
       before.checkered,
+      before.boxes,
     ]);
+    expect(structure.fixed, `${where}: the givens are fixed for the run`).toEqual(before.fixed);
     expect(structure.tree === null, `${where}: a search tree is there for the whole run or not at all`).toBe(before.tree === null);
   }
 
@@ -493,6 +495,22 @@ function expectGridFrame(structure: GridSnapshot, frame: Frame, where: string, p
     firstBad(structure.cells, (value) => value === null || (value.length >= 1 && value.length <= MAX_LETTER_LENGTH)),
     `${where}: square value`,
   ).toBeNull();
+
+  if (structure.boxes !== null) {
+    expect([rows % structure.boxes.rows, cols % structure.boxes.cols], `${where}: boxes tile the board`).toEqual([0, 0]);
+  }
+  if (structure.fixed !== null) {
+    expect(structure.fixed.length, `${where}: one given flag per square`).toBe(rows * cols);
+    expect(firstBad(structure.fixed.map((given, at) => !given || structure.cells[at] !== null), (ok) => ok), `${where}: a given square is empty`).toBeNull();
+  }
+  if (structure.marks !== null) {
+    expect(Object.isFrozen(structure.marks), `${where}: marks frozen`).toBe(true);
+    expect(structure.marks.length, `${where}: one mark slot per square`).toBe(rows * cols);
+    expect(
+      firstBad(structure.marks.map((mark, at) => mark === null || (structure.cells[at] === null && mark.length >= 1 && mark.length <= Math.max(rows, cols))), (ok) => ok),
+      `${where}: pencil marks on a filled square, or too many`,
+    ).toBeNull();
+  }
 
   const square = (cell: { readonly row: number; readonly col: number }): boolean =>
     Number.isInteger(cell.row) && Number.isInteger(cell.col) && cell.row >= 0 && cell.col >= 0 && cell.row < rows && cell.col < cols;

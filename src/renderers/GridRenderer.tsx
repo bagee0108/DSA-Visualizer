@@ -81,7 +81,7 @@ function tagsByTarget(pointers: Pointers): ReadonlyMap<string, string[]> {
 }
 
 function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: GridRendererProps): ReactNode {
-  const { rows, cols, cells, piece, checkered, rowHeaders, colHeaders, lines, tree, strips } = snapshot;
+  const { rows, cols, cells, piece, checkered, boxes, fixed, marks, rowHeaders, colHeaders, lines, tree, strips } = snapshot;
   const layout = useMemo(() => gridLayout(rows, cols, strips.length, tree !== null), [rows, cols, strips.length, tree]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const tags = useMemo(() => tagsByTarget(pointers), [pointers]);
@@ -95,6 +95,9 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
   const fade = animate ? `fill ${moveMs}ms ease-out` : 'none';
   const centre = (row: number, col: number): { x: number; y: number } => ({ x: x0 + (col + 0.5) * square, y: y0 + (row + 0.5) * square });
   const font = Math.min(26, square * 0.5);
+  // Pencil marks sit in a small grid inside the square, each digit always in its own place.
+  const markSide = Math.ceil(Math.sqrt(Math.max(rows, cols)));
+  const markFont = Math.min(11, (square / markSide) * 0.72);
 
   return (
     <svg
@@ -189,6 +192,42 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
         );
       })}
 
+      {boxes !== null &&
+        [
+          ...Array.from({ length: rows / boxes.rows + 1 }, (_, at) => {
+            const y = y0 + at * boxes.rows * square;
+            return <line key={`box-h-${at}`} x1={x0} x2={x0 + cols * square} y1={y} y2={y} stroke="var(--viz-text-dim)" strokeWidth={2} />;
+          }),
+          ...Array.from({ length: cols / boxes.cols + 1 }, (_, at) => {
+            const x = x0 + at * boxes.cols * square;
+            return <line key={`box-v-${at}`} x1={x} x2={x} y1={y0} y2={y0 + rows * square} stroke="var(--viz-text-dim)" strokeWidth={2} />;
+          }),
+        ]}
+
+      {marks !== null &&
+        markFont >= 6 &&
+        marks.map((mark, at) => {
+          if (mark === null) return null;
+          const row = Math.floor(at / cols);
+          const col = at % cols;
+          const role = roles.get(cellRef(row, col));
+          const cell = square / markSide;
+          return (
+            <g key={`mk-${at}`}>
+              {[...mark].map((digit) => {
+                const slot = Number(digit) - 1;
+                const x = x0 + col * square + ((slot % markSide) + 0.5) * cell;
+                const y = y0 + row * square + (Math.floor(slot / markSide) + 0.5) * cell + markFont * 0.36;
+                return (
+                  <text key={digit} x={x} y={y} textAnchor="middle" fontSize={markFont} fill={role === undefined ? 'var(--viz-text-dim)' : ink[role]} className="font-mono">
+                    {digit}
+                  </text>
+                );
+              })}
+            </g>
+          );
+        })}
+
       {cells.map((value, at) => {
         if (value === null) return null;
         const row = Math.floor(at / cols);
@@ -201,7 +240,16 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
             <Queen size={square * 0.62} fill={ink[fillName]} />
           </g>
         ) : (
-          <text key={`pc-${at}`} x={x} y={y + font * 0.36} textAnchor="middle" fontSize={font} fontWeight={600} fill={role === undefined ? 'var(--viz-text)' : ink[fillName]} className="font-mono">
+          <text
+            key={`pc-${at}`}
+            x={x}
+            y={y + font * 0.36}
+            textAnchor="middle"
+            fontSize={font}
+            fontWeight={fixed?.[at] === true ? 700 : 500}
+            fill={role !== undefined ? ink[fillName] : fixed === null || fixed[at] === true ? 'var(--viz-text)' : 'var(--viz-text-dim)'}
+            className="font-mono"
+          >
             {value}
           </text>
         );
