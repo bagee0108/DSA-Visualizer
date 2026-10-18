@@ -15,6 +15,9 @@ import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
 export const GRAPH_TOP = 12;
 
+/** Peak offset, in view units, of a reciprocal directed edge from the straight line. */
+export const RECIPROCAL_BOW_MAX = 14;
+
 export interface GraphRendererProps {
   readonly snapshot: GraphSnapshot;
   readonly ink: InkMap;
@@ -42,6 +45,8 @@ interface Geometry {
     readonly y2: number;
     readonly mx: number;
     readonly my: number;
+    /** Control point of the bow for one edge of a reciprocal pair; null for a straight edge. */
+    readonly curve: Placed | null;
     readonly weight: string | null;
   }[];
 }
@@ -63,7 +68,7 @@ export function graphBandBottom(strips: number): number {
   return VIEW_H - strips * STRIP_HEIGHT - 10;
 }
 
-function geometryFor(graph: Graph, bottom: number): Geometry {
+export function graphGeometry(graph: Graph, bottom: number): Geometry {
   const { scale, x0, y0 } = graphBox(bottom);
 
   const n = graph.nodes.length;
@@ -72,7 +77,10 @@ function geometryFor(graph: Graph, bottom: number): Geometry {
   const positions = new Map<string, Placed>();
   for (const node of graph.nodes) positions.set(node.id, { x: x0 + node.x * scale, y: y0 + node.y * scale });
 
-  const edges = graph.edges.flatMap((edge) => {
+  // u->v and v->u in a directed graph would draw as one line; each bows to its own left instead.
+  const directedPairs = new Set(graph.directed ? graph.edges.map((edge) => `${edge.from}>${edge.to}`) : []);
+
+  const edges = graph.edges.flatMap((edge): Geometry['edges'][number][] => {
     const a = positions.get(edge.from);
     const b = positions.get(edge.to);
     if (a === undefined || b === undefined) return [];
@@ -83,6 +91,36 @@ function geometryFor(graph: Graph, bottom: number): Geometry {
     const uy = dy / length;
     // Stop short of the circles so arrowheads sit on the rim.
     const trim = radius + 1;
+    if (edge.from !== edge.to && directedPairs.has(`${edge.to}>${edge.from}`)) {
+      // Left of the direction of travel, so the two edges of a pair bow apart.
+      const bow = Math.min(RECIPROCAL_BOW_MAX, length * 0.2);
+      const cx = (a.x + b.x) / 2 + uy * bow * 2;
+      const cy = (a.y + b.y) / 2 - ux * bow * 2;
+      const toward = (from: Placed, by: number): Placed => {
+        const ox = cx - from.x;
+        const oy = cy - from.y;
+        const d = Math.hypot(ox, oy) || 1;
+        return { x: from.x + (ox / d) * by, y: from.y + (oy / d) * by };
+      };
+      const start = toward(a, trim);
+      const end = toward(b, trim + 4);
+      return [
+        {
+          id: edge.id,
+          from: edge.from,
+          to: edge.to,
+          x1: start.x,
+          y1: start.y,
+          x2: end.x,
+          y2: end.y,
+          // The curve's own midpoint, where its weight sits.
+          mx: 0.25 * start.x + 0.5 * cx + 0.25 * end.x,
+          my: 0.25 * start.y + 0.5 * cy + 0.25 * end.y,
+          curve: { x: cx, y: cy },
+          weight: edge.weight === undefined ? null : String(edge.weight),
+        },
+      ];
+    }
     return [
       {
         id: edge.id,
@@ -94,6 +132,7 @@ function geometryFor(graph: Graph, bottom: number): Geometry {
         y2: b.y - uy * (graph.directed ? trim + 4 : trim),
         mx: (a.x + b.x) / 2,
         my: (a.y + b.y) / 2,
+        curve: null,
         weight: edge.weight === undefined ? null : String(edge.weight),
       },
     ];
@@ -116,7 +155,7 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
 function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: GraphRendererProps): ReactNode {
   const { graph } = snapshot;
   const bottom = graphBandBottom(snapshot.strips.length);
-  const geometry = useMemo(() => geometryFor(graph, bottom), [graph, bottom]);
+  const geometry = useMemo(() => graphGeometry(graph, bottom), [graph, bottom]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
   const visited = useMemo(() => new Set(snapshot.visited), [snapshot.visited]);
@@ -152,17 +191,29 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
         const width = role !== undefined ? 3.5 : tree ? 2.5 : 1.4;
         return (
           <g key={edge.id}>
-            <line
-              x1={edge.x1}
-              y1={edge.y1}
-              x2={edge.x2}
-              y2={edge.y2}
-              stroke={stroke}
-              strokeWidth={width}
-              strokeOpacity={role === undefined && !tree ? 0.9 : 1}
-              markerEnd={graph.directed ? 'url(#arrow)' : undefined}
-              style={{ transition: paint }}
-            />
+            {edge.curve === null ? (
+              <line
+                x1={edge.x1}
+                y1={edge.y1}
+                x2={edge.x2}
+                y2={edge.y2}
+                stroke={stroke}
+                strokeWidth={width}
+                strokeOpacity={role === undefined && !tree ? 0.9 : 1}
+                markerEnd={graph.directed ? 'url(#arrow)' : undefined}
+                style={{ transition: paint }}
+              />
+            ) : (
+              <path
+                d={`M ${edge.x1} ${edge.y1} Q ${edge.curve.x} ${edge.curve.y} ${edge.x2} ${edge.y2}`}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={width}
+                strokeOpacity={role === undefined && !tree ? 0.9 : 1}
+                markerEnd="url(#arrow)"
+                style={{ transition: paint }}
+              />
+            )}
             {showWeights && edge.weight !== null && (
               <text
                 x={edge.mx}
