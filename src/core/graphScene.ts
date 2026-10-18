@@ -4,7 +4,7 @@
  * snapshotted, each as a frozen value reused until it changes.
  */
 
-import type { CallStackEntry, Counters, Frame, Graph, GraphEdge, GraphLink, GraphNode, GraphSnapshot, Highlights, Pointers, Strip } from './types';
+import type { CallStackEntry, Counters, Frame, Graph, GraphComponent, GraphEdge, GraphLink, GraphNode, GraphSnapshot, Highlights, Pointers, Strip } from './types';
 
 const NO_STRIPS: readonly Strip[] = Object.freeze([]);
 const NO_STACK: readonly CallStackEntry[] = Object.freeze([]);
@@ -12,6 +12,7 @@ const NO_POINTERS: Pointers = Object.freeze({});
 const NO_LABELS: Readonly<Record<string, string>> = Object.freeze({});
 const NO_IDS: readonly string[] = Object.freeze([]);
 const NO_LINKS: readonly GraphLink[] = Object.freeze([]);
+const NO_COMPONENTS: readonly GraphComponent[] = Object.freeze([]);
 
 export interface Neighbour {
   readonly edge: GraphEdge;
@@ -50,6 +51,7 @@ export class GraphScene {
   private labelCache: Readonly<Record<string, string>> | null = NO_LABELS;
   private readonly linkMap = new Map<string, string>();
   private linkCache: readonly GraphLink[] | null = NO_LINKS;
+  private components: readonly GraphComponent[] = NO_COMPONENTS;
 
   private readonly stack: CallStackEntry[] = [];
   private stackCache: readonly CallStackEntry[] | null = null;
@@ -157,6 +159,17 @@ export class GraphScene {
     return this.linkMap.get(from);
   }
 
+  /** Close a group of nodes; it is drawn as an outline tagged C1, C2, ... in closing order. Returns its id. */
+  addComponent(nodes: readonly string[]): string {
+    const id = `C${this.components.length + 1}`;
+    this.components = Object.freeze([...this.components, Object.freeze({ id, nodes: Object.freeze([...nodes]) })]);
+    return id;
+  }
+
+  get componentCount(): number {
+    return this.components.length;
+  }
+
   countComparison(count = 1): void {
     this.comparisons += count;
   }
@@ -243,6 +256,7 @@ export class GraphScene {
       treeEdges: this.treeSnapshot(),
       labels: this.labelSnapshot(),
       links: this.linkSnapshot(),
+      components: this.components,
       strips: input.strips ?? NO_STRIPS,
     };
     return {

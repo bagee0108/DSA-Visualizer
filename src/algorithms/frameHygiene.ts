@@ -349,6 +349,14 @@ function expectGraphFrame(structure: GraphSnapshot, frame: Frame, where: string,
   expect(new Set(structure.links.map((link) => link.from)).size, `${where}: one link per node`).toBe(structure.links.length);
   expect(firstBad(structure.links, (link) => nodeIds.has(link.from) && nodeIds.has(link.to)), `${where}: link off the graph`).toBeNull();
 
+  // Components are disjoint groups of real nodes, tagged C1, C2, ... in closing order.
+  expect(Object.isFrozen(structure.components), `${where}: components frozen`).toBe(true);
+  expect(firstBad(structure.components, (component) => component.nodes.length > 0), `${where}: empty component`).toBeNull();
+  expect(structure.components.map((component) => component.id).join(), `${where}: component tags`).toBe(structure.components.map((_, i) => `C${i + 1}`).join());
+  const grouped = structure.components.flatMap((component) => component.nodes);
+  expect(new Set(grouped).size, `${where}: node in two components`).toBe(grouped.length);
+  expect(firstBad(grouped, (id) => nodeIds.has(id)), `${where}: component has unknown node`).toBeNull();
+
   expect(
     firstBad(Object.entries(frame.pointers), ([, target]) => typeof target === 'string' && nodeIds.has(target)),
     `${where}: pointer to unknown node`,

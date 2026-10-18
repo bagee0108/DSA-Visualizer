@@ -20,7 +20,7 @@ frame.
 | --- | --- | --- |
 | 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 7 algorithms, 133 tests |
 | 2 | Trees: BST, AVL, red-black, heap, trie, traversals | **Complete** — 6 algorithms, 88 tests |
-| 3 | Graphs: BFS, DFS, Dijkstra, Union-Find | **First slice complete** — 4 algorithms, 49 tests. A*, Bellman-Ford, toposort, Kruskal, Prim, Tarjan and the graph editor are deferred |
+| 3 | Graphs: BFS, DFS, Dijkstra, Union-Find, Tarjan SCC | **In progress** — 5 algorithms, 61 tests. Toposort, Bellman-Ford, Kruskal, Prim, A* and the graph editor are next |
 | 4 | DP tables (LIS, LCS, edit distance, 0/1 knapsack), KMP, segment tree, Fenwick tree, N-Queens, Sudoku | **Complete** — 9 algorithms, 104 tests. Race mode follows on its own |
 
 ## Quick start

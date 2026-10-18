@@ -7,7 +7,7 @@
 import { memo, useMemo, type ReactNode } from 'react';
 
 import { LAYOUT_ASPECT } from '../core/graphLayout';
-import type { Graph, GraphSnapshot, Highlights, Pointers } from '../core/types';
+import type { Graph, GraphComponent, GraphSnapshot, Highlights, Pointers } from '../core/types';
 import type { FillName, InkMap } from './ink';
 import { counted, VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
@@ -17,6 +17,9 @@ export const GRAPH_TOP = 12;
 
 /** Peak offset, in view units, of a reciprocal directed edge from the straight line. */
 export const RECIPROCAL_BOW_MAX = 14;
+
+/** Gap, in view units, between a component's outline and the rims of its nodes. */
+export const OUTLINE_PAD = 7;
 
 export interface GraphRendererProps {
   readonly snapshot: GraphSnapshot;
@@ -141,6 +144,83 @@ export function graphGeometry(graph: Graph, bottom: number): Geometry {
   return { positions, radius, edges };
 }
 
+/**
+ * How a closed component is drawn: a padded convex hull around its nodes, with
+ * its tag under the lowest point, or, when that hull would take in or graze a
+ * node of another component, a tag beside each of its own nodes instead.
+ */
+export type ComponentOutline =
+  | { readonly id: string; readonly mode: 'outline'; readonly points: readonly Placed[]; readonly tag: Placed }
+  | { readonly id: string; readonly mode: 'tags'; readonly nodes: readonly string[] };
+
+const OUTLINE_SAMPLES = 24;
+
+function cross(o: Placed, a: Placed, b: Placed): number {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+/** Andrew's monotone chain; counter-clockwise in view space, no repeated end point. */
+function convexHull(points: readonly Placed[]): Placed[] {
+  const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (sorted.length < 3) return sorted;
+  const lower: Placed[] = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2] as Placed, lower[lower.length - 1] as Placed, p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: Placed[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i] as Placed;
+    while (upper.length >= 2 && cross(upper[upper.length - 2] as Placed, upper[upper.length - 1] as Placed, p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+
+function segmentDistance(p: Placed, a: Placed, b: Placed): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** True when a circle at p of radius r lies inside the convex polygon or touches its boundary. */
+function touchesHull(p: Placed, r: number, hull: readonly Placed[]): boolean {
+  let inside = true;
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i] as Placed;
+    const b = hull[(i + 1) % hull.length] as Placed;
+    if (segmentDistance(p, a, b) < r) return true;
+    if (cross(a, b, p) < 0) inside = false;
+  }
+  return inside;
+}
+
+export function componentOutlines(geometry: Pick<Geometry, 'positions' | 'radius'>, components: readonly GraphComponent[]): ComponentOutline[] {
+  const { positions, radius } = geometry;
+  const reach = radius + OUTLINE_PAD;
+  return components.map((component): ComponentOutline => {
+    const own = new Set(component.nodes);
+    const samples: Placed[] = [];
+    for (const id of component.nodes) {
+      const at = positions.get(id);
+      if (at === undefined) continue;
+      for (let k = 0; k < OUTLINE_SAMPLES; k++) {
+        const angle = (2 * Math.PI * k) / OUTLINE_SAMPLES;
+        samples.push({ x: at.x + reach * Math.cos(angle), y: at.y + reach * Math.sin(angle) });
+      }
+    }
+    const hull = convexHull(samples);
+    // Another component's node inside the outline, or under its stroke, would read as a member.
+    for (const [id, at] of positions) {
+      if (own.has(id)) continue;
+      if (touchesHull(at, radius + 1, hull)) return { id: component.id, mode: 'tags', nodes: component.nodes };
+    }
+    const lowest = hull.reduce((best, p) => (p.y > best.y ? p : best), hull[0] ?? { x: 0, y: 0 });
+    return { id: component.id, mode: 'outline', points: hull, tag: lowest };
+  });
+}
+
 function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   const out = new Map<string, string[]>();
   for (const [label, target] of Object.entries(pointers)) {
@@ -159,6 +239,12 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
   const visited = useMemo(() => new Set(snapshot.visited), [snapshot.visited]);
+  const outlines = useMemo(() => componentOutlines(geometry, snapshot.components), [geometry, snapshot.components]);
+  const nodeTags = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const outline of outlines) if (outline.mode === 'tags') for (const id of outline.nodes) out.set(id, outline.id);
+    return out;
+  }, [outlines]);
   const treeEdges = useMemo(() => new Set(snapshot.treeEdges), [snapshot.treeEdges]);
 
   const ms = Math.min(220, Math.max(60, durationMs * 0.6));
@@ -183,6 +269,35 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
           <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
         </marker>
       </defs>
+
+      {/* closed components, under everything else */}
+      {outlines.map((outline) =>
+        outline.mode === 'outline' ? (
+          <g key={`component-${outline.id}`}>
+            <path
+              d={`${outline.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} Z`}
+              fill="none"
+              stroke="var(--viz-text-dim)"
+              strokeWidth={1.25}
+              strokeLinejoin="round"
+            />
+            <text
+              x={outline.tag.x}
+              y={outline.tag.y + 11}
+              textAnchor="middle"
+              fontSize={9.5}
+              fontWeight={600}
+              fill="var(--viz-text-dim)"
+              stroke="var(--viz-bg)"
+              strokeWidth={3}
+              paintOrder="stroke"
+              className="font-mono"
+            >
+              {outline.id}
+            </text>
+          </g>
+        ) : null,
+      )}
 
       {geometry.edges.map((edge) => {
         const role = roles.get(`edge:${edge.id}`);
@@ -312,6 +427,21 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
                 className="font-mono"
               >
                 {label}
+              </text>
+            )}
+            {nodeTags.has(node.id) && (
+              <text
+                x={radius * 0.75}
+                y={radius + 10}
+                fontSize={radius >= 10 ? 9.5 : 8}
+                fontWeight={600}
+                fill="var(--viz-text-dim)"
+                stroke="var(--viz-bg)"
+                strokeWidth={3}
+                paintOrder="stroke"
+                className="font-mono"
+              >
+                {nodeTags.get(node.id)}
               </text>
             )}
             {tags !== undefined && (

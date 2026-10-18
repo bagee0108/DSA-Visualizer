@@ -18,6 +18,7 @@ import { bfs } from './graphs/bfs';
 import { dfs } from './graphs/dfs';
 import { dijkstra } from './graphs/dijkstra';
 import { unionFind } from './graphs/unionFind';
+import { tarjanScc } from './graphs/tarjan';
 import { lcs } from './dp/lcs';
 import { editDistance } from './dp/editDistance';
 import { knapsack } from './dp/knapsack';
@@ -48,6 +49,7 @@ register(bfs);
 register(dfs);
 register(dijkstra);
 register(unionFind);
+register(tarjanScc);
 
 // Phase 4 - dynamic programming
 register(lcs);

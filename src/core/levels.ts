@@ -65,7 +65,7 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
       { id: 'prim', tier: 2 },
       { id: 'bellman-ford', tier: 3, ops: ['relax'] },
       { id: 'astar', tier: 2 },
-      { id: 'tarjan-scc', tier: 3 },
+      { id: 'tarjan-scc', tier: 3, ops: ['lowlink'] },
     ],
   },
   {

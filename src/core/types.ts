@@ -110,6 +110,13 @@ export interface GraphLink {
   readonly to: string;
 }
 
+/** A finished group of nodes, such as a strongly connected component, drawn as one outline. */
+export interface GraphComponent {
+  /** Stable for the run, and the tag drawn on the outline: "C1", "C2", ... */
+  readonly id: string;
+  readonly nodes: readonly string[];
+}
+
 export interface GraphSnapshot {
   readonly kind: 'graph';
   /** The same object in every frame of a run; never mutated. */
@@ -119,6 +126,8 @@ export interface GraphSnapshot {
   readonly treeEdges: readonly string[];
   /** Algorithm-owned pointers drawn as arrows; empty for algorithms that have none. */
   readonly links: readonly GraphLink[];
+  /** Groups found so far, in the order they closed; empty for algorithms that have none. */
+  readonly components: readonly GraphComponent[];
   /** Text beside each node: a distance, a discovery time, a set representative. */
   readonly labels: Readonly<Record<string, string>>;
   readonly strips: readonly Strip[];
