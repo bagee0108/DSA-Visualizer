@@ -19,6 +19,9 @@ const FIELD_CLASS =
 export function InputPanel({ algorithm, params, error, onApply }: InputPanelProps): ReactNode {
   const [draft, setDraft] = useState<Record<string, string>>(() => ({ ...algorithm.defaults, ...params }));
   const [size, setSize] = useState(() => Math.max(algorithm.sizeRange.min, algorithm.sizeOf(params)));
+  // The preset behind the current run, so its description can say what it shows; any other run clears it.
+  const [appliedPreset, setAppliedPreset] = useState<string | null>(null);
+  useEffect(() => setAppliedPreset(null), [algorithm]);
 
   useEffect(() => {
     setDraft({ ...algorithm.defaults, ...params });
@@ -35,7 +38,13 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
     if (preset === undefined) return;
     const capped = Math.min(size, preset.maxSize ?? size);
     setSize(capped);
+    setAppliedPreset(preset.id);
     onApply({ ...draft, ...preset.build(capped, makeRng(randomSeed())) });
+  };
+  const described = algorithm.presets.find((preset) => preset.id === appliedPreset && preset.description !== undefined);
+  const runOwn = (next: ParamMap): void => {
+    setAppliedPreset(null);
+    onApply(next);
   };
   // Presets that will build fewer than n, and why; shown under the size control while it is past their cap.
   const capped = algorithm.presets.filter((preset) => preset.maxSize !== undefined && preset.maxSize < size);
@@ -131,6 +140,11 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
                 {size}
               </span>
             </div>
+            {described !== undefined && (
+              <p className="text-micro leading-snug text-fg-dim">
+                {described.label}: {described.description}
+              </p>
+            )}
             {capped.map((preset) => (
               <p key={preset.id} className="text-micro leading-snug text-fg-mute">
                 {preset.label}: up to {preset.maxSize} {algorithm.meta.structureKind === 'graph' ? 'nodes' : 'elements'}, {preset.capReason}.
@@ -146,10 +160,10 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
         )}
 
         <div className="flex gap-1">
-          <Button variant="primary" className="flex-1" onClick={() => onApply(draft)} disabled={!dirty}>
+          <Button variant="primary" className="flex-1" onClick={() => runOwn(draft)} disabled={!dirty}>
             {dirty ? 'Run this input' : 'Running'}
           </Button>
-          <Button variant="secondary" onClick={() => onApply({ ...algorithm.defaults })}>
+          <Button variant="secondary" onClick={() => runOwn({ ...algorithm.defaults })}>
             Defaults
           </Button>
         </div>

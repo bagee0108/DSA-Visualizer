@@ -74,6 +74,11 @@ export function graphBandBottom(strips: number): number {
   return VIEW_H - strips * STRIP_HEIGHT - 10;
 }
 
+/** A number as drawn: a true minus sign (U+2212), which stays legible at label size where a hyphen thins to a dot. */
+export function signed(value: number): string {
+  return value < 0 ? `−${-value}` : String(value);
+}
+
 export function graphGeometry(graph: Graph, bottom: number): Geometry {
   const { scale, x0, y0 } = graphBox(bottom);
 
@@ -123,7 +128,7 @@ export function graphGeometry(graph: Graph, bottom: number): Geometry {
           mx: 0.25 * start.x + 0.5 * cx + 0.25 * end.x,
           my: 0.25 * start.y + 0.5 * cy + 0.25 * end.y,
           curve: { x: cx, y: cy },
-          weight: edge.weight === undefined ? null : String(edge.weight),
+          weight: edge.weight === undefined ? null : signed(edge.weight),
         },
       ];
     }
@@ -139,7 +144,7 @@ export function graphGeometry(graph: Graph, bottom: number): Geometry {
         mx: (a.x + b.x) / 2,
         my: (a.y + b.y) / 2,
         curve: null,
-        weight: edge.weight === undefined ? null : String(edge.weight),
+        weight: edge.weight === undefined ? null : signed(edge.weight),
       },
     ];
   });

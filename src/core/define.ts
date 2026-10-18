@@ -72,6 +72,8 @@ export interface PresetSpec {
   readonly maxSize?: number;
   /** Why the cap exists, finishing "<label>: up to N nodes, ..." in the size hint. */
   readonly capReason?: string;
+  /** What this preset shows, said under the size control once it has been applied. */
+  readonly description?: string;
 }
 
 export interface AlgorithmDefinition<TInput> {

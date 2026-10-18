@@ -15,9 +15,10 @@ import { dfs } from './dfs';
 import { dijkstra } from './dijkstra';
 import { tarjanScc } from './tarjan';
 import { topologicalSort } from './topoSort';
+import { bellmanFord } from './bellmanFord';
 import { unionFind } from './unionFind';
 
-const LEVELS: readonly RegisteredAlgorithm[] = [bfs, dfs, dijkstra, unionFind, tarjanScc, topologicalSort];
+const LEVELS: readonly RegisteredAlgorithm[] = [bfs, dfs, dijkstra, unionFind, tarjanScc, topologicalSort, bellmanFord];
 const SIZES = [6, 12, 40, 150] as const;
 /** Clearance beyond the rim, in view units. */
 const CLEARANCE = 2;
