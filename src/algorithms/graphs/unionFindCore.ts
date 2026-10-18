@@ -6,7 +6,7 @@
  */
 
 import type { GraphScene } from '../../core/graphScene';
-import type { Frame, Strip } from '../../core/types';
+import type { Frame, Highlights, Strip } from '../../core/types';
 
 export interface UnionFindLines {
   readonly findEnter: number;
@@ -29,6 +29,17 @@ export interface UnionFindOptions {
    * already done, for a level where finds are frequent but not the point.
    */
   readonly findFrames?: 'every-step' | 'one-per-find';
+  /** Highlights the level adds to every find frame, such as the edge being considered. */
+  readonly also?: () => Highlights;
+}
+
+/** The find frame's own highlights, followed by the level's, role by role. Unchanged when the level adds none. */
+function withAlso(own: Highlights, also: (() => Highlights) | undefined): Highlights {
+  if (also === undefined) return own;
+  const merged: Record<string, readonly string[]> = {};
+  for (const [role, ids] of Object.entries(own)) merged[role] = [...(ids ?? [])] as string[];
+  for (const [role, ids] of Object.entries(also())) merged[role] = [...(merged[role] ?? []), ...((ids ?? []) as string[])];
+  return merged as Highlights;
 }
 
 export interface Merge {
@@ -83,7 +94,7 @@ export class DisjointSets {
         yield scene.frame({
           codeLine: lines.climb,
           explanation: `find(${scene.label(x)}): ${scene.label(root)} is not its own parent, so climb to ${scene.label(next)}.`,
-          highlights: { active: [root], candidate: [next, `link:${root}`], visited: [...path] },
+          highlights: withAlso({ active: [root], candidate: [next, `link:${root}`], visited: [...path] }, options.also),
           pointers: { x, root },
           strips: options.strips(),
           phase,
@@ -102,7 +113,7 @@ export class DisjointSets {
           path.length === 0
             ? `find(${scene.label(x)}) = ${scene.label(x)}: it is its own root.`
             : `find(${scene.label(x)}) = ${scene.label(root)}, ${path.length} hop${path.length === 1 ? '' : 's'} up${compressed.length === 0 ? '' : `; ${compressed.length} pointer${compressed.length === 1 ? '' : 's'} on the way now point straight at it`}.`,
-        highlights: { pivot: [root], visited: [...path] },
+        highlights: withAlso({ pivot: [root], visited: [...path] }, options.also),
         pointers: { x, root },
         strips: options.strips(),
         phase,
@@ -117,7 +128,7 @@ export class DisjointSets {
         path.length === 0
           ? `find(${scene.label(x)}): ${scene.label(x)} is its own parent, so it is the root of its set.`
           : `${scene.label(root)} is its own parent: the root of ${scene.label(x)}'s set, ${path.length} hop${path.length === 1 ? '' : 's'} up.`,
-      highlights: { pivot: [root], visited: [...path] },
+      highlights: withAlso({ pivot: [root], visited: [...path] }, options.also),
       pointers: { x, root },
       strips: options.strips(),
       phase,
@@ -127,7 +138,7 @@ export class DisjointSets {
       yield scene.frame({
         codeLine: lines.compressSet,
         explanation: `Path compression: ${scene.label(node)} now points straight at ${scene.label(root)}, so the next find from here is one hop.`,
-        highlights: { pivot: [root], candidate: [node, `link:${node}`], visited: [...path] },
+        highlights: withAlso({ pivot: [root], candidate: [node, `link:${node}`], visited: [...path] }, options.also),
         pointers: { x, root },
         strips: options.strips(),
         phase,

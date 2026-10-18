@@ -21,6 +21,7 @@ import { unionFind } from './graphs/unionFind';
 import { tarjanScc } from './graphs/tarjan';
 import { topologicalSort } from './graphs/topoSort';
 import { bellmanFord } from './graphs/bellmanFord';
+import { kruskal } from './graphs/kruskal';
 import { lcs } from './dp/lcs';
 import { editDistance } from './dp/editDistance';
 import { knapsack } from './dp/knapsack';
@@ -53,6 +54,7 @@ register(dijkstra);
 register(unionFind);
 register(topologicalSort);
 register(bellmanFord);
+register(kruskal);
 register(tarjanScc);
 
 // Phase 4 - dynamic programming
