@@ -10,7 +10,7 @@ import { LAYOUT_ASPECT, nodeRadius } from '../core/graphLayout';
 import type { Graph, GraphComponent, GraphSnapshot, Highlights, Pointers } from '../core/types';
 import type { FillName, InkMap } from './ink';
 import { counted, VIEW_H, VIEW_W } from './canvas';
-import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
+import { circleMark, markFor, ROLE_COLOR, resolveRoles, type RoleMark } from './roles';
 import { bandHeight, PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
 export const GRAPH_TOP = 12;
@@ -246,6 +246,162 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
+type DrawnEdge = Geometry['edges'][number];
+
+interface EdgeViewProps {
+  readonly edge: DrawnEdge;
+  readonly stroke: string;
+  readonly width: number;
+  /** Neither highlighted nor a tree edge: drawn a little faint. */
+  readonly faint: boolean;
+  readonly directed: boolean;
+  readonly paint: string;
+  /** Font size of the weight label, or null when weights are not shown. */
+  readonly weightSize: number | null;
+  readonly weightFill: string;
+}
+
+/** One edge. Memoised on plain values, so a step re-renders only the edges it recolours. */
+const EdgeView = memo(function EdgeView({ edge, stroke, width, faint, directed, paint, weightSize, weightFill }: EdgeViewProps): ReactNode {
+  return (
+    <g>
+      {edge.curve === null ? (
+        <line
+          x1={edge.x1}
+          y1={edge.y1}
+          x2={edge.x2}
+          y2={edge.y2}
+          stroke={stroke}
+          strokeWidth={width}
+          strokeOpacity={faint ? 0.9 : 1}
+          markerEnd={directed ? 'url(#arrow)' : undefined}
+          style={{ transition: paint }}
+        />
+      ) : (
+        <path
+          d={`M ${edge.x1} ${edge.y1} Q ${edge.curve.x} ${edge.curve.y} ${edge.x2} ${edge.y2}`}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={width}
+          strokeOpacity={faint ? 0.9 : 1}
+          markerEnd="url(#arrow)"
+          style={{ transition: paint }}
+        />
+      )}
+      {weightSize !== null && edge.weight !== null && (
+        <text
+          x={edge.mx}
+          y={edge.my + 3.5}
+          textAnchor="middle"
+          fontSize={weightSize}
+          fill={weightFill}
+          stroke="var(--viz-bg)"
+          strokeWidth={3}
+          paintOrder="stroke"
+          className="font-mono"
+        >
+          {edge.weight}
+        </text>
+      )}
+    </g>
+  );
+});
+
+interface NodeViewProps {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly name: string;
+  readonly fill: string;
+  /** Colour of the text and of the role's mark on this fill. */
+  readonly ink: string;
+  readonly mark: RoleMark | null;
+  readonly showText: boolean;
+  /** The algorithm's label beside the node (a distance, a low-link). */
+  readonly label: string | undefined;
+  /** The component it belongs to, when components are tagged rather than outlined. */
+  readonly tag: string | undefined;
+  /** Pointer names above it. */
+  readonly pointers: string | undefined;
+  readonly paint: string;
+}
+
+/** One node. Memoised on plain values, so a step re-renders only the nodes it changes. */
+const NodeView = memo(function NodeView({ x, y, radius, name, fill, ink, mark, showText, label, tag, pointers, paint }: NodeViewProps): ReactNode {
+  const stroke = mark === null ? null : circleMark(mark, radius);
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={radius} fill={fill} stroke="var(--viz-bg)" strokeWidth={1.5} style={{ transition: paint }} />
+      {stroke !== null && (
+        <circle
+          r={stroke.radius}
+          fill="none"
+          stroke={ink}
+          strokeWidth={stroke.width}
+          strokeDasharray={stroke.dash}
+        />
+      )}
+      {showText && (
+        <text
+          y={radius * 0.36}
+          textAnchor="middle"
+          fontSize={Math.min(11, radius * 0.95)}
+          fontWeight={600}
+          fill={ink}
+          className="font-mono"
+        >
+          {name}
+        </text>
+      )}
+      {label !== undefined && (
+        <text
+          x={radius + 2}
+          y={-radius * 0.35}
+          fontSize={radius >= 10 ? 10 : 8.5}
+          fontWeight={600}
+          fill="var(--viz-text)"
+          stroke="var(--viz-bg)"
+          strokeWidth={3}
+          paintOrder="stroke"
+          className="font-mono"
+        >
+          {label}
+        </text>
+      )}
+      {tag !== undefined && (
+        <text
+          x={radius * 0.75}
+          y={radius + 10}
+          fontSize={radius >= 10 ? 9.5 : 8}
+          fontWeight={600}
+          fill="var(--viz-text-dim)"
+          stroke="var(--viz-bg)"
+          strokeWidth={3}
+          paintOrder="stroke"
+          className="font-mono"
+        >
+          {tag}
+        </text>
+      )}
+      {pointers !== undefined && (
+        <text
+          y={-radius - 4}
+          textAnchor="middle"
+          fontSize={10}
+          fontWeight={600}
+          fill="var(--viz-active)"
+          stroke="var(--viz-bg)"
+          strokeWidth={3}
+          paintOrder="stroke"
+          className="font-mono"
+        >
+          {pointers}
+        </text>
+      )}
+    </g>
+  );
+});
+
 function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs, stripsApart = false }: GraphRendererProps): ReactNode {
   const { graph } = snapshot;
   const bottom = graphBandBottom(snapshot.strips.length);
@@ -316,49 +472,18 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
       {geometry.edges.map((edge) => {
         const role = roles.get(`edge:${edge.id}`);
         const tree = treeEdges.has(edge.id);
-        const stroke = role !== undefined ? ROLE_COLOR[role] : tree ? 'var(--viz-active)' : 'var(--viz-grid)';
-        const width = role !== undefined ? 3.5 : tree ? 2.5 : 1.4;
         return (
-          <g key={edge.id}>
-            {edge.curve === null ? (
-              <line
-                x1={edge.x1}
-                y1={edge.y1}
-                x2={edge.x2}
-                y2={edge.y2}
-                stroke={stroke}
-                strokeWidth={width}
-                strokeOpacity={role === undefined && !tree ? 0.9 : 1}
-                markerEnd={graph.directed ? 'url(#arrow)' : undefined}
-                style={{ transition: paint }}
-              />
-            ) : (
-              <path
-                d={`M ${edge.x1} ${edge.y1} Q ${edge.curve.x} ${edge.curve.y} ${edge.x2} ${edge.y2}`}
-                fill="none"
-                stroke={stroke}
-                strokeWidth={width}
-                strokeOpacity={role === undefined && !tree ? 0.9 : 1}
-                markerEnd="url(#arrow)"
-                style={{ transition: paint }}
-              />
-            )}
-            {showWeights && edge.weight !== null && (
-              <text
-                x={edge.mx}
-                y={edge.my + 3.5}
-                textAnchor="middle"
-                fontSize={radius >= 10 ? 10 : 8.5}
-                fill={role !== undefined ? ROLE_COLOR[role] : 'var(--viz-text-dim)'}
-                stroke="var(--viz-bg)"
-                strokeWidth={3}
-                paintOrder="stroke"
-                className="font-mono"
-              >
-                {edge.weight}
-              </text>
-            )}
-          </g>
+          <EdgeView
+            key={edge.id}
+            edge={edge}
+            stroke={role !== undefined ? ROLE_COLOR[role] : tree ? 'var(--viz-active)' : 'var(--viz-grid)'}
+            width={role !== undefined ? 3.5 : tree ? 2.5 : 1.4}
+            faint={role === undefined && !tree}
+            directed={graph.directed}
+            paint={paint}
+            weightSize={showWeights ? (radius >= 10 ? 10 : 8.5) : null}
+            weightFill={role !== undefined ? ROLE_COLOR[role] : 'var(--viz-text-dim)'}
+          />
         );
       })}
 
@@ -399,81 +524,22 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
         if (placed === undefined) return null;
         const role = roles.get(node.id);
         const fillName: FillName = role ?? (visited.has(node.id) ? 'visited' : 'default');
-        const mark = markFor(role);
-        const stroke = mark === null ? null : circleMark(mark, radius);
-        const fill = role !== undefined ? ROLE_COLOR[role] : visited.has(node.id) ? 'var(--viz-visited)' : 'var(--viz-default)';
-        const tags = labels.get(node.id);
-        const label = snapshot.labels[node.id];
         return (
-          <g key={node.id} transform={`translate(${placed.x} ${placed.y})`}>
-            <circle r={radius} fill={fill} stroke="var(--viz-bg)" strokeWidth={1.5} style={{ transition: paint }} />
-            {stroke !== null && (
-              <circle
-                r={stroke.radius}
-                fill="none"
-                stroke={ink[fillName]}
-                strokeWidth={stroke.width}
-                strokeDasharray={stroke.dash}
-              />
-            )}
-            {showText && (
-              <text
-                y={radius * 0.36}
-                textAnchor="middle"
-                fontSize={Math.min(11, radius * 0.95)}
-                fontWeight={600}
-                fill={ink[fillName]}
-                className="font-mono"
-              >
-                {node.label}
-              </text>
-            )}
-            {label !== undefined && (
-              <text
-                x={radius + 2}
-                y={-radius * 0.35}
-                fontSize={radius >= 10 ? 10 : 8.5}
-                fontWeight={600}
-                fill="var(--viz-text)"
-                stroke="var(--viz-bg)"
-                strokeWidth={3}
-                paintOrder="stroke"
-                className="font-mono"
-              >
-                {label}
-              </text>
-            )}
-            {nodeTags.has(node.id) && (
-              <text
-                x={radius * 0.75}
-                y={radius + 10}
-                fontSize={radius >= 10 ? 9.5 : 8}
-                fontWeight={600}
-                fill="var(--viz-text-dim)"
-                stroke="var(--viz-bg)"
-                strokeWidth={3}
-                paintOrder="stroke"
-                className="font-mono"
-              >
-                {nodeTags.get(node.id)}
-              </text>
-            )}
-            {tags !== undefined && (
-              <text
-                y={-radius - 4}
-                textAnchor="middle"
-                fontSize={10}
-                fontWeight={600}
-                fill="var(--viz-active)"
-                stroke="var(--viz-bg)"
-                strokeWidth={3}
-                paintOrder="stroke"
-                className="font-mono"
-              >
-                {tags.join(',')}
-              </text>
-            )}
-          </g>
+          <NodeView
+            key={node.id}
+            x={placed.x}
+            y={placed.y}
+            radius={radius}
+            name={node.label}
+            fill={role !== undefined ? ROLE_COLOR[role] : visited.has(node.id) ? 'var(--viz-visited)' : 'var(--viz-default)'}
+            ink={ink[fillName]}
+            mark={markFor(role)}
+            showText={showText}
+            label={snapshot.labels[node.id]}
+            tag={nodeTags.get(node.id)}
+            pointers={labels.get(node.id)?.join(',')}
+            paint={paint}
+          />
         );
       })}
 
