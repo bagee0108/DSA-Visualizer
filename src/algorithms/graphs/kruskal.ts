@@ -13,6 +13,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  regenerating,
   seedField,
   type EdgeListEdge,
 } from '../../core/graphInput';
@@ -135,7 +136,7 @@ function connected(from: number, to: number, extra: number, rng: () => number, w
   return edges;
 }
 
-export const KRUSKAL_PRESETS: readonly PresetSpec[] = [
+export const KRUSKAL_PRESETS: readonly PresetSpec[] = regenerating([
   {
     id: 'textbook',
     label: 'Textbook graph',
@@ -170,7 +171,7 @@ export const KRUSKAL_PRESETS: readonly PresetSpec[] = [
     },
     description: 'three separate islands and, from 8 nodes, one node on its own: no spanning tree exists, so Kruskal builds a spanning forest, one tree per piece.',
   },
-];
+]);
 
 /** Number of connected pieces, isolated nodes included. */
 function componentsOf(graph: Graph): number {

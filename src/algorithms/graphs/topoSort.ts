@@ -13,6 +13,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  regenerating,
   seedField,
   type EdgeListEdge,
 } from '../../core/graphInput';
@@ -191,12 +192,12 @@ function withCycle(size: number, rng: () => number): EdgeListEdge[] {
   return [...edges, { from: first.to, to: first.from }];
 }
 
-export const TOPO_PRESETS: readonly PresetSpec[] = [
+export const TOPO_PRESETS: readonly PresetSpec[] = regenerating([
   { id: 'courses', label: 'Course prerequisites', build: (size, rng) => finish(courses(size, rng), size, rng) },
   { id: 'wide', label: 'Wide and shallow', build: (size, rng) => finish(wide(size, rng), size, rng) },
   { id: 'chain', label: 'Long chain', build: (size, rng) => finish(chain(size, rng), size, rng) },
   { id: 'cycle', label: 'With a cycle', build: (size, rng) => finish(withCycle(size, rng), size, rng) },
-];
+]);
 
 /** Phase of the closing frame when the graph has a cycle. */
 export const NOT_A_DAG = 'not a DAG';

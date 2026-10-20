@@ -13,6 +13,7 @@ import {
   parseEdgeList,
   parseLayout,
   parseStart,
+  regenerating,
   seedField,
   startField,
   type EdgeListEdge,
@@ -178,7 +179,7 @@ function correctAfterOnePass(size: number, rng: () => number): EdgeListEdge[] {
   return forward(size, 1, rng, () => randomInt(rng, -3, 9)).sort((x, y) => x.from - y.from || x.to - y.to);
 }
 
-export const BELLMAN_FORD_PRESETS: readonly PresetSpec[] = [
+export const BELLMAN_FORD_PRESETS: readonly PresetSpec[] = regenerating([
   { id: 'negative', label: 'Negative edges', build: (size, rng) => finish(negativeNoCycle(size, rng), size, rng), description: 'some weights are negative, but no cycle exists, so every shortest path is defined.' },
   {
     id: 'dijkstra-fails',
@@ -193,7 +194,7 @@ export const BELLMAN_FORD_PRESETS: readonly PresetSpec[] = [
     build: (size, rng) => finish(correctAfterOnePass(size, rng), size, rng),
     description: 'edges are listed source-first, so pass 1 already finds every distance. Pass 2 is what proves it: it changes nothing, and the run stops there.',
   },
-];
+]);
 
 /** Phase of the closing frame when a negative cycle is reachable. */
 export const NEGATIVE_CYCLE = 'negative cycle';

@@ -2,7 +2,7 @@
 
 import { seedField } from './arrayInput';
 import type { FieldSpec, ParamMap, ParseResult, PresetSpec } from './define';
-import { gridColumns, layoutGraph, ringMaxNodes, type EdgePair, type LayoutKind } from './graphLayout';
+import { gridColumns, layoutGraph, layoutViolations, ringMaxNodes, type EdgePair, type LayoutKind } from './graphLayout';
 import { randomInt, shuffle } from './random';
 import type { Graph, GraphEdge, GraphNode } from './types';
 
@@ -171,6 +171,44 @@ export function graphSizeOf(params: ParamMap): number {
 
 /* ---------------- presets ---------------- */
 
+/** Graphs a preset builds, at most, looking for one whose layout is clear. */
+export const PRESET_TRIES = 5;
+
+/** layoutViolations of the graph these params describe, laid out as the level will lay it out. */
+export function presetViolations(params: ParamMap): number {
+  const list = parseEdgeList(params.g ?? '', { directed: parseDirected(params.directed) });
+  if (!list.ok) return 0;
+  const pairs: EdgePair[] = list.value.edges.map((edge) => [edge.from, edge.to]);
+  return layoutViolations(layoutGraph(list.value.nodeCount, pairs, parseLayout(params.layout)), pairs);
+}
+
+/**
+ * The presets, each regenerated until its layout is clear: if the graph a
+ * preset builds leaves an edge too close to a node or two nodes crowded, it
+ * builds another, drawing on from the same seeded stream, up to PRESET_TRIES
+ * graphs in all. If none is clear, the one with the fewest violations is used.
+ * The first graph is exactly what the preset built before, so a preset that
+ * was already clear builds the same graph from the same seed.
+ */
+export function regenerating(presets: readonly PresetSpec[]): readonly PresetSpec[] {
+  return presets.map((preset) => ({
+    ...preset,
+    build: (size: number, rng: () => number): ParamMap => {
+      let best = preset.build(size, rng);
+      let fewest = presetViolations(best);
+      for (let attempt = 1; attempt < PRESET_TRIES && fewest > 0; attempt++) {
+        const next = preset.build(size, rng);
+        const violations = presetViolations(next);
+        if (violations < fewest) {
+          best = next;
+          fewest = violations;
+        }
+      }
+      return best;
+    },
+  }));
+}
+
 export interface GraphPresetOptions {
   readonly weighted: boolean;
   /** Presets that pick a start node write it here. */
@@ -231,7 +269,7 @@ export function graphPresets(options: GraphPresetOptions): readonly PresetSpec[]
     };
   };
 
-  return [
+  return regenerating([
     {
       id: 'random',
       label: 'Random sparse',
@@ -279,7 +317,7 @@ export function graphPresets(options: GraphPresetOptions): readonly PresetSpec[]
         return finish([...left, ...right], size, rng, 'auto');
       },
     },
-  ];
+  ]);
 }
 
 export { seedField };

@@ -7,7 +7,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RegisteredAlgorithm } from '../../core/define';
-import { makeRng } from '../../core/random';
+import { buildGraph, parseEdgeList } from '../../core/graphInput';
+import { layoutViolations, type EdgePair } from '../../core/graphLayout';
+import { makeRng, randomInt } from '../../core/random';
 import { clearanceOf, EDGE_CLEARANCE_VIEW, minNodeGap } from '../../renderers/graphClearance';
 import { graphBandBottom, graphGeometry } from '../../renderers/GraphRenderer';
 import { graphOf } from '../frameHygiene';
@@ -72,5 +74,45 @@ describe('graph layout: edge clearance', () => {
     // Ring presets are capped (RING_MAX_NODES) so a ring can hold this spacing too.
     const crowded = rows().filter((row) => row.minGap < row.needGap);
     expect(crowded).toEqual([]);
+  }, 120000);
+});
+
+describe('layoutViolations, the check presets regenerate on', () => {
+  /** Too many edges for the box, so most layouts break clearance; directed ones with two-way pairs. */
+  function crowdedGraph(nodes: number, edges: number, directed: boolean, seed: number): string {
+    const rng = makeRng(seed);
+    const out: string[] = [];
+    for (let i = 0; i < edges; i++) {
+      const a = randomInt(rng, 0, nodes - 1);
+      const b = randomInt(rng, 0, nodes - 1);
+      if (a === b) continue;
+      out.push(`${a}-${b}`);
+      if (directed && i % 4 === 0) out.push(`${b}-${a}`);
+    }
+    return out.join(',');
+  }
+
+  it('is never more lenient than the renderer: whatever the canvas measures as too close, it counts', () => {
+    let rendererCaught = 0;
+    for (const directed of [false, true]) {
+      for (const nodes of [12, 40, 150]) {
+        for (let seed = 1; seed <= 6; seed++) {
+          const list = parseEdgeList(crowdedGraph(nodes, nodes * 3, directed, seed * 31 + nodes), { directed });
+          if (!list.ok) throw new Error(list.error);
+          const graph = buildGraph(list.value, directed, 'auto');
+          const pairs: EdgePair[] = list.value.edges.map((edge) => [edge.from, edge.to]);
+          const counted = layoutViolations(graph.nodes, pairs);
+          // One and two strip rows: the two band heights graph levels draw in.
+          for (const strips of [1, 2]) {
+            const geometry = graphGeometry(graph, graphBandBottom(strips));
+            const bad = clearanceOf(geometry).pairs > 0 || minNodeGap(geometry) < 2 * geometry.radius + EDGE_CLEARANCE_VIEW;
+            if (bad) rendererCaught += 1;
+            if (bad) expect(counted, `${directed ? 'directed' : 'undirected'} ${nodes}#${seed}, ${strips} strips`).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+    // The graphs are crowded enough that the comparison means something.
+    expect(rendererCaught).toBeGreaterThan(20);
   }, 120000);
 });

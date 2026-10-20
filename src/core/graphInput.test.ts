@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildGraph, formatEdgeList, graphPresets, graphSizeOf, MAX_GRAPH_NODES, parseEdgeList, parseStart, RING_MAX_NODES } from './graphInput';
+import type { ParamMap, PresetSpec } from './define';
+import {
+  buildGraph,
+  formatEdgeList,
+  graphPresets,
+  graphSizeOf,
+  MAX_GRAPH_NODES,
+  parseEdgeList,
+  parseStart,
+  PRESET_TRIES,
+  presetViolations,
+  regenerating,
+  RING_MAX_NODES,
+} from './graphInput';
 import { makeRng } from './random';
 
 describe('edge list parsing', () => {
@@ -92,5 +105,71 @@ describe('graph presets', () => {
       expect(node.y).toBeLessThanOrEqual(1);
     }
     expect(new Set(graph.edges.map((edge) => edge.id)).size).toBe(graph.edges.length);
+  });
+});
+
+describe('preset regeneration', () => {
+  // On a grid layout three nodes sit in one row, so 0-2 runs straight under node 1.
+  const UNDER = 'g=0-2,1';
+  const CLEAR = 'g=0-1,1-2';
+  const through = (count: number): ParamMap => ({ g: Array.from({ length: count }, (_, i) => `${i * 3}-${i * 3 + 2},${i * 3 + 1}`).join(','), layout: 'grid' });
+
+  /** A preset that builds the given graphs in turn, and counts its builds. */
+  function scripted(graphs: readonly ParamMap[]): { preset: PresetSpec; builds: () => number } {
+    let calls = 0;
+    const preset: PresetSpec = {
+      id: 'scripted',
+      label: 'Scripted',
+      build: () => {
+        const params = graphs[Math.min(calls, graphs.length - 1)] ?? {};
+        calls += 1;
+        return params;
+      },
+    };
+    return { preset, builds: () => calls };
+  }
+
+  const grid = (text: string): ParamMap => ({ g: text.slice(2), layout: 'grid' });
+
+  it('counts an edge under a node, and nothing on a clear layout', () => {
+    expect(presetViolations(grid(UNDER))).toBeGreaterThan(0);
+    expect(presetViolations(grid(CLEAR))).toBe(0);
+  });
+
+  it('keeps the first graph, built once, when its layout is clear', () => {
+    const { preset, builds } = scripted([grid(CLEAR), grid(UNDER)]);
+    const [wrapped] = regenerating([preset]);
+    expect(wrapped?.build(3, makeRng(1))).toEqual(grid(CLEAR));
+    expect(builds()).toBe(1);
+  });
+
+  it('builds again until a layout is clear', () => {
+    const { preset, builds } = scripted([grid(UNDER), grid(UNDER), grid(CLEAR)]);
+    const [wrapped] = regenerating([preset]);
+    expect(wrapped?.build(3, makeRng(1))).toEqual(grid(CLEAR));
+    expect(builds()).toBe(3);
+  });
+
+  it('stops after PRESET_TRIES graphs and keeps the one with the fewest violations', () => {
+    // A clear graph comes sixth, one past the limit, so it is never built.
+    const attempts = [through(3), through(2), through(1), through(2), through(3), grid(CLEAR)];
+    const counts = attempts.slice(0, PRESET_TRIES).map(presetViolations);
+    expect(counts.every((count) => count > 0)).toBe(true);
+    // Not the first graph, so this tests the choice, not just the fallback.
+    expect(counts.indexOf(Math.min(...counts))).toBeGreaterThan(0);
+    const fewest = attempts[counts.indexOf(Math.min(...counts))];
+    const { preset, builds } = scripted(attempts);
+    const [wrapped] = regenerating([preset]);
+    expect(wrapped?.build(9, makeRng(1))).toEqual(fewest);
+    expect(builds()).toBe(PRESET_TRIES);
+  });
+
+  it('leaves a preset that is already clear building the same graph from the same seed', () => {
+    for (const preset of graphPresets({ weighted: true })) {
+      for (const size of [6, 40]) {
+        const first = preset.build(size, makeRng(size));
+        expect(presetViolations(first), `${preset.id} @ ${size}`).toBe(0);
+      }
+    }
   });
 });

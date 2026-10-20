@@ -15,6 +15,7 @@ import {
   parseLayout,
   RING_CAP_REASON,
   RING_MAX_NODES,
+  regenerating,
   seedField,
   type EdgeListEdge,
 } from '../../core/graphInput';
@@ -151,7 +152,7 @@ function dag(size: number, rng: () => number): EdgeListEdge[] {
   return edges;
 }
 
-export const TARJAN_PRESETS: readonly PresetSpec[] = [
+export const TARJAN_PRESETS: readonly PresetSpec[] = regenerating([
   { id: 'clusters', label: 'Cycles in a chain', build: (size, rng) => finish(clusters(size, rng), size, rng, 'auto') },
   { id: 'random', label: 'Random directed', build: (size, rng) => finish(randomDirected(size, rng), size, rng, 'auto') },
   {
@@ -165,7 +166,7 @@ export const TARJAN_PRESETS: readonly PresetSpec[] = [
     },
   },
   { id: 'dag', label: 'No cycles', build: (size, rng) => finish(dag(size, rng), size, rng, 'auto') },
-];
+]);
 
 type Gen = Generator<Frame, void, undefined>;
 

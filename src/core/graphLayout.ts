@@ -236,6 +236,96 @@ function forceDirected(nodeCount: number, edges: readonly EdgePair[]): Point[] {
   return repair(fit(xs.map((x, i) => ({ x, y: ys[i] ?? 0 }))), edges);
 }
 
+function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const ex = bx - ax;
+  const ey = by - ay;
+  const length2 = ex * ex + ey * ey;
+  const t = length2 < 1e-18 ? 0 : Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / length2));
+  return Math.hypot(px - ax - t * ex, py - ay - t * ey);
+}
+
+/** Points per bow when measuring one; the polyline stays within a fraction of a view unit of the curve. */
+const BOW_STEPS = 48;
+
+/**
+ * The edge from p to q of a two-way pair as the renderer draws it, in view
+ * units: a quadratic bowing to the left of travel, its control point twice the
+ * bow off the chord's middle, its ends trimmed toward that control point by the
+ * radius + 1 at the start and + 5 at the arrowhead.
+ */
+function bowPath(p: Point, q: Point, radiusView: number): Point[] {
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const bow = Math.min(BOW_MAX, length * BOW_SHARE);
+  const c = { x: (p.x + q.x) / 2 + (dy / length) * bow * 2, y: (p.y + q.y) / 2 - (dx / length) * bow * 2 };
+  const toward = (from: Point, by: number): Point => {
+    const d = Math.hypot(c.x - from.x, c.y - from.y) || 1;
+    return { x: from.x + ((c.x - from.x) / d) * by, y: from.y + ((c.y - from.y) / d) * by };
+  };
+  const start = toward(p, radiusView + 1);
+  const end = toward(q, radiusView + 5);
+  return Array.from({ length: BOW_STEPS + 1 }, (_, i) => {
+    const t = i / BOW_STEPS;
+    const u = 1 - t;
+    return { x: u * u * start.x + 2 * u * t * c.x + t * t * end.x, y: u * u * start.y + 2 * u * t * c.y + t * t * end.y };
+  });
+}
+
+/**
+ * Pairs in a laid-out graph that break what the renderer is held to: an edge
+ * within EDGE_CLEARANCE of the rim of a node it does not join, or two nodes
+ * closer than a diameter plus that clearance. Measured at the smallest scale
+ * the renderer draws, where clearance is hardest to keep: a straight edge to
+ * its full centre-to-centre chord (the drawn edge is shorter), each edge of a
+ * two-way pair to its curve as drawn. No repair slack: this is the guarantee,
+ * not the margin the repair aims past.
+ */
+export function layoutViolations(layout: readonly Point[], edges: readonly EdgePair[]): number {
+  const n = layout.length;
+  const radiusView = nodeRadius(n);
+  const limit = radiusView + EDGE_CLEARANCE;
+  const points = layout.map((p) => ({ x: p.x * LAYOUT_MIN_VIEW_SCALE, y: p.y * LAYOUT_MIN_VIEW_SCALE }));
+  const keys = new Set(edges.map(([a, b]) => `${a}>${b}`));
+  let count = 0;
+  for (const [a, b] of edges) {
+    const p = points[a];
+    const q = points[b];
+    if (a === b || p === undefined || q === undefined) continue;
+    const path = keys.has(`${b}>${a}`) ? bowPath(p, q, radiusView) : [p, q];
+    let left = Number.POSITIVE_INFINITY;
+    let right = Number.NEGATIVE_INFINITY;
+    let top = Number.POSITIVE_INFINITY;
+    let bottom = Number.NEGATIVE_INFINITY;
+    for (const at of path) {
+      left = Math.min(left, at.x);
+      right = Math.max(right, at.x);
+      top = Math.min(top, at.y);
+      bottom = Math.max(bottom, at.y);
+    }
+    for (let w = 0; w < n; w++) {
+      const at = points[w] as Point;
+      if (w === a || w === b || at.x < left - limit || at.x > right + limit || at.y < top - limit || at.y > bottom + limit) continue;
+      let nearest = Number.POSITIVE_INFINITY;
+      for (let i = 1; i < path.length && nearest >= limit; i++) {
+        const s0 = path[i - 1] as Point;
+        const s1 = path[i] as Point;
+        nearest = Math.min(nearest, distanceToSegment(at.x, at.y, s0.x, s0.y, s1.x, s1.y));
+      }
+      if (nearest < limit) count += 1;
+    }
+  }
+  const apart = 2 * radiusView + EDGE_CLEARANCE;
+  for (let i = 0; i < n; i++) {
+    const p = points[i] as Point;
+    for (let j = i + 1; j < n; j++) {
+      const q = points[j] as Point;
+      if (Math.abs(p.x - q.x) < apart && Math.abs(p.y - q.y) < apart && Math.hypot(p.x - q.x, p.y - q.y) < apart) count += 1;
+    }
+  }
+  return count;
+}
+
 /**
  * Moves any node that sits within clearance of an edge it is not on, straight
  * away from that edge, until none does or the rounds run out. Works in the
@@ -411,14 +501,6 @@ function repair(points: Point[], edges: readonly EdgePair[]): Point[] {
     return moved;
   };
 
-  const distanceToEdge = (px: number, py: number, ax: number, ay: number, bx: number, by: number): number => {
-    const ex = bx - ax;
-    const ey = by - ay;
-    const length2 = ex * ex + ey * ey;
-    const t = length2 < 1e-18 ? 0 : Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / length2));
-    return Math.hypot(px - ax - t * ex, py - ay - t * ey);
-  };
-
   /** Edge and node pairs still within clearance, edges in order and nodes in index order within each. */
   const stuckPairs = (): [number, number][] => {
     const pairs: [number, number][] = [];
@@ -430,7 +512,7 @@ function repair(points: Point[], edges: readonly EdgePair[]): Point[] {
       const by = ys[b] ?? 0;
       const need = needFor(e, Math.hypot(bx - ax, by - ay));
       for (const w of nodesIn(Math.min(ax, bx) - need, Math.min(ay, by) - need, Math.max(ax, bx) + need, Math.max(ay, by) + need)) {
-        if (w !== a && w !== b && distanceToEdge(xs[w] ?? 0, ys[w] ?? 0, ax, ay, bx, by) < need) pairs.push([e, w]);
+        if (w !== a && w !== b && distanceToSegment(xs[w] ?? 0, ys[w] ?? 0, ax, ay, bx, by) < need) pairs.push([e, w]);
       }
     }
     return pairs;
@@ -441,7 +523,7 @@ function repair(points: Point[], edges: readonly EdgePair[]): Point[] {
     const ay = ys[a] ?? 0;
     const bx = xs[b] ?? 0;
     const by = ys[b] ?? 0;
-    return distanceToEdge(xs[w] ?? 0, ys[w] ?? 0, ax, ay, bx, by) < needFor(e, Math.hypot(bx - ax, by - ay));
+    return distanceToSegment(xs[w] ?? 0, ys[w] ?? 0, ax, ay, bx, by) < needFor(e, Math.hypot(bx - ax, by - ay));
   };
 
   const incident = Array.from({ length: n }, () => [] as number[]);
@@ -498,7 +580,7 @@ function repair(points: Point[], edges: readonly EdgePair[]): Point[] {
       const ay = ys[a] ?? 0;
       const bx = xs[b] ?? 0;
       const by = ys[b] ?? 0;
-      if (distanceToEdge(px, py, ax, ay, bx, by) < needFor(e, Math.hypot(bx - ax, by - ay))) return false;
+      if (distanceToSegment(px, py, ax, ay, bx, by) < needFor(e, Math.hypot(bx - ax, by - ay))) return false;
     }
     for (const e of incident[w] ?? []) {
       const [a, b] = list[e] ?? [0, 0];
@@ -506,7 +588,7 @@ function repair(points: Point[], edges: readonly EdgePair[]): Point[] {
       const ox = xs[other] ?? 0;
       const oy = ys[other] ?? 0;
       const need = needFor(e, Math.hypot(ox - px, oy - py));
-      const near = (v: number): boolean => v !== w && v !== other && distanceToEdge(xs[v] ?? 0, ys[v] ?? 0, px, py, ox, oy) < need;
+      const near = (v: number): boolean => v !== w && v !== other && distanceToSegment(xs[v] ?? 0, ys[v] ?? 0, px, py, ox, oy) < need;
       if (anyNodeIn(Math.min(px, ox) - need, Math.min(py, oy) - need, Math.max(px, ox) + need, Math.max(py, oy) + need, near)) return false;
     }
     return true;

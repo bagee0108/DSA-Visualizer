@@ -265,6 +265,18 @@ Layout is part of topology. Positions are computed once at parse time by
 when asked), so generators stay pure and the renderer only ever reads
 `node.x` / `node.y`.
 
+Built-in presets go through `regenerating()` in `graphInput.ts`. After a
+preset builds a graph, `layoutViolations()` lays it out and counts edges within
+the clearance of a node they don't join, and nodes closer than a diameter plus
+that clearance. It measures at the smallest scale any graph level draws, so a
+layout it passes is clear as drawn. If it counts any, the preset builds
+another graph from the same seeded stream, up to `PRESET_TRIES` (5), and keeps
+the one with the fewest. A preset that was already clear builds the same graph
+as before. This is checked, not proven: the sweep tests in
+`src/algorithms/graphs/sweep/` hold every preset at 6, 12, 40 and 150 nodes
+over 20 fixed seeds, and a seed outside them can still use up its tries. A
+new graph preset joins the sweep and goes through `regenerating()`.
+
 ### 2. Interaction is an explicit mode machine
 
 `src/playback/mode.ts` defines the modes and the only legal moves between
