@@ -41,7 +41,8 @@ export function AboutPage(): ReactNode {
 
         <Section id="about-privacy" title="Privacy">
           <p>
-            Treewidth sets no cookies and stores only your light or dark theme choice in your browser. It uses Vercel Web
+            Treewidth sets no cookies. It stores two things in your browser, and nowhere else: your light or dark theme
+            choice, and the panel sizes you set on a visualizer page (the reset layout control clears them). It uses Vercel Web
             Analytics and Speed Insights to count page views and measure load times, without cookies or ad tracking.
           </p>
         </Section>

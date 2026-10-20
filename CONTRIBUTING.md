@@ -670,7 +670,48 @@ resolves to nothing. Check the built CSS if a token appears to do nothing.
 `.viz-range` in `src/index.css` styles the transport and size sliders. Range
 inputs keep their track and thumb in shadow DOM that utility classes cannot
 reach, so they are styled once there and driven by a `--viz-range-progress`
-percentage set inline. It is the only component-shaped CSS in the project.
+percentage set inline. Besides it there is one more, `.panel-layout[data-resizing]`,
+which switches transitions off on the visualize page while a splitter is held
+(see Layout).
+
+---
+
+# Layout
+
+The visualize page is split into panes by two splitters (`src/pages/PanelLayout.tsx`,
+`src/components/Splitter.tsx`, the arithmetic in `src/layout/panels.ts`):
+
+- **Beside:** the canvas and the side panel (code, call stack, counters,
+  input). **Above:** the canvas and the area under it (the strips, the
+  clearance notice and the explanation). The transport stays where it is.
+- **Every splitter sizes the canvas.** Its `aria-valuenow` is the canvas's
+  share in whole percent, `aria-controls` names the canvas and the pane on the
+  other side, and Enter collapses or restores that pane: the side panel, or
+  the strips. The canvas never collapses: at least 40% of the width and 45% of
+  the height. The side panel keeps 272 px, the area under the canvas 64 px.
+- **The stylesheet holds the limits** (min and max sizes in CSS), so a window
+  resize can never squeeze the canvas past them. The code only turns keys and
+  drags into sizes. During a drag the size is written to the element once per
+  animation frame, and React hears of it on release.
+- **Keys:** arrows along the splitter's axis move it 16 px (Shift: 64);
+  forwards, right or down, grows the canvas. Home and End go to the limits.
+  Double-click resets one splitter; "reset layout" in the status line resets
+  them all. A focused splitter keeps its keys from the playback shortcuts.
+- **Below 900 px** the panes stack and the page scrolls. Both splitters are
+  horizontal and set the canvas's height, between 45% of the window under the
+  top bar and all of it.
+- **Strips are drawn apart.** On this page renderers get `stripsApart`: they
+  leave the strips out and crop their viewBox where the strips would start
+  (`bandHeight()`); `StripsPanel` draws the same rows under the canvas. The
+  layout is computed exactly as before, so no position, band or clearance
+  figure depends on whether the strips are apart.
+- **Refitting** is the SVG's own: every renderer lays out in view units from
+  the run's bound, so a resize rescales the drawing and moves no node.
+  Nothing transitions while a splitter is held.
+- **Sizes are saved per viewer** in localStorage under `treewidth.layout.v1`,
+  read and written inside try/catch; anything missing or malformed falls back
+  to the default. A default layout removes the key. The /about privacy note
+  lists it.
 
 ---
 

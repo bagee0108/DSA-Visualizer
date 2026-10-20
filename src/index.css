@@ -397,3 +397,12 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* While a splitter is held, nothing on the page animates: the canvas rescales
+   and every node stays put, with no transition to catch up with. */
+.panel-layout[data-resizing] {
+  user-select: none;
+}
+.panel-layout[data-resizing] * {
+  transition: none !important;
+}

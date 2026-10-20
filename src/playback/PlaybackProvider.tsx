@@ -193,7 +193,8 @@ export function PlaybackProvider({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
-      if (isEditableTarget(event.target)) return;
+      // A focused control that used the key (a splitter's arrows, Home and End) has the last word.
+      if (event.defaultPrevented || isEditableTarget(event.target)) return;
 
       switch (event.key) {
         case ' ':

@@ -25,6 +25,7 @@ import { ZERO_COUNTERS } from '../core/types';
 import { PlaybackProvider, usePlayback } from '../playback/PlaybackProvider';
 import { useChunkedBuild } from '../playback/useChunkedBuild';
 import { StripsPanel, stripsOf, StructureCanvas } from '../renderers';
+import { PanelLayout } from './PanelLayout';
 import { useRouter } from '../router/router';
 import { CATEGORY_LABEL } from '../catalog';
 
@@ -106,28 +107,48 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
 
   return (
     <PlaybackProvider frames={frames} building={building} progress={progress}>
-      <div className="flex h-full min-h-0 flex-col">
-        <AlgorithmHeader algorithm={algorithm} shareable={unshareable === null} />
-
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
-          <div className="flex min-h-0 flex-col lg:border-r lg:border-line">
-            <Canvas error={error} />
-            <StripsView error={error} />
-            <LayoutNotice error={error} />
-            <Commentary />
-            <Player />
-            <StatusLine />
-          </div>
-
-          <aside className="flex min-h-0 flex-col overflow-y-auto border-t border-line bg-panel lg:border-t-0">
+      <Layout
+        algorithm={algorithm}
+        error={error}
+        header={<AlgorithmHeader algorithm={algorithm} shareable={unshareable === null} />}
+        side={
+          <>
             <SourceView algorithm={algorithm} />
             <StackView />
             <CountersView algorithm={algorithm} />
             <InputPanel algorithm={algorithm} params={merged} error={error} onApply={onApply} />
-          </aside>
-        </div>
-      </div>
+          </>
+        }
+      />
     </PlaybackProvider>
+  );
+}
+
+function Layout({ algorithm, error, header, side }: { algorithm: RegisteredAlgorithm; error: string | null; header: ReactNode; side: ReactNode }): ReactNode {
+  const { frame } = usePlayback();
+  // Whether this level draws strips at all, so the strips toggle only appears where there is something to hide.
+  const hasStrips = error === null && stripsOf(frame).length > 0;
+  return (
+    <PanelLayout
+      key={algorithm.meta.id}
+      header={header}
+      canvas={<Canvas error={error} />}
+      strips={<StripsView error={error} />}
+      hasStrips={hasStrips}
+      commentary={
+        <>
+          <LayoutNotice error={error} />
+          <Commentary />
+        </>
+      }
+      transport={(controls) => (
+        <>
+          <Player />
+          <StatusLine controls={controls} />
+        </>
+      )}
+      side={side}
+    />
   );
 }
 
@@ -299,17 +320,18 @@ const SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
   ['R', 'reset'],
 ];
 
-function StatusLine(): ReactNode {
+function StatusLine({ controls }: { controls: ReactNode }): ReactNode {
   const { frameDurationMs } = usePlayback();
 
   return (
-    <div className="hidden shrink-0 items-center gap-3 border-t border-line bg-panel px-3 py-1 font-mono text-micro text-fg-mute sm:flex">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-panel px-3 py-1 font-mono text-micro text-fg-mute">
       {SHORTCUTS.map(([keys, action]) => (
-        <span key={keys} className="flex items-center gap-1">
+        <span key={keys} className="hidden items-center gap-1 sm:flex">
           <Kbd>{keys}</Kbd>
           {action}
         </span>
       ))}
+      {controls}
       <span className="ml-auto tabular-nums" title="How long the current frame stays on screen">
         {(frameDurationMs / 1000).toFixed(1)}s per frame
       </span>
