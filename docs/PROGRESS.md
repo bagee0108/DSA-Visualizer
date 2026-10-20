@@ -6,7 +6,7 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Next item:** 2 (layout step 5, notice for user-entered graphs).
+- **Next item:** 3 (layout step 6, restore Kruskal's dense preset).
 
 ## Done before this run
 
@@ -42,6 +42,36 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### Item 2: clearance notice under the canvas (done)
+
+Commit: `b08d3ea`.
+
+- `ClearanceNotice` (src/components) shows one line under the canvas, above
+  the explanation: "N edges pass close to nodes they don't connect to in this
+  layout." For one edge: "1 edge passes close to a node it doesn't connect
+  to" (one node) or "... to nodes it doesn't connect to" (several).
+- It shows for any graph run that has them: typed in the field, opened from a
+  link, or a preset that used up its 5 tries. It counts with the renderer's
+  own `clearanceOf()` on the drawn geometry, once per run.
+- Accessibility: a `role="status"` paragraph that stays mounted and is empty,
+  with no height, when there is nothing to say, so a new graph's notice is
+  announced. Not focusable.
+- Checked at 1366x768, 1x, dark and light: axe clean (WCAG 2.0-2.2 A/AA plus
+  best practice) on BFS and Dijkstra with typed graphs that trigger it, the
+  BFS default and quicksort. A 40-stop tab walk never lands on it; applying a
+  clear graph in place empties it. Screenshots looked right in both themes:
+  small, aligned with the explanation bar's inset.
+- Tests: wording for 0, 1 and many edges; a typed BFS grid graph gives the
+  expected sentence from the level's real first frame; every graph level's
+  default run is silent.
+
+**Narrower than it might sound / for the owner:**
+
+- It reports edges only. Two nodes laid on top of each other in a typed graph
+  get no notice. The spec named only edges, so I kept to it.
+- The sentence uses "don't", the owner's wording. It is the first contraction
+  in the UI copy, which otherwise says "does not". Left as specified.
 
 ### Item 1: preset regeneration (done)
 
