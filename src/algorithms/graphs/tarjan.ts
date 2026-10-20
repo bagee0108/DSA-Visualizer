@@ -13,6 +13,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  parsePositions,
   RING_CAP_REASON,
   RING_MAX_NODES,
   regenerating,
@@ -65,7 +66,7 @@ function parse(params: ParamMap): ParseResult<TarjanInput> {
   if (!parseDirected(params.directed)) return { ok: false, error: UNDIRECTED_ERROR };
   const list = parseEdgeList(params.g ?? '', { directed: true });
   if (!list.ok) return list;
-  return { ok: true, value: { graph: buildGraph(list.value, true, parseLayout(params.layout)) } };
+  return { ok: true, value: { graph: buildGraph(list.value, true, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)) } };
 }
 
 /* ---------------- presets: directed, with real cycles ---------------- */

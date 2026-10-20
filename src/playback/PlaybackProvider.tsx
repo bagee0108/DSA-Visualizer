@@ -48,6 +48,8 @@ export interface PlaybackValue {
   readonly setSpeed: (speed: number) => void;
 }
 
+const NO_FRAMES: readonly Frame[] = [];
+
 const PlaybackContext = createContext<PlaybackValue | null>(null);
 
 function clamp(value: number, low: number, high: number): number {
@@ -66,6 +68,8 @@ export interface PlaybackProviderProps {
   readonly building?: boolean;
   /** Fraction of that build drained so far. */
   readonly progress?: number;
+  /** The structure is being edited: frames are discarded until it ends, and the run is built again. */
+  readonly editing?: boolean;
   readonly children: ReactNode;
 }
 
@@ -73,6 +77,7 @@ export function PlaybackProvider({
   frames,
   building = false,
   progress = 0,
+  editing = false,
   children,
 }: PlaybackProviderProps): ReactNode {
   const [index, setIndexState] = useState(0);
@@ -109,6 +114,28 @@ export function PlaybackProvider({
       return step(step(step(current, 'invalidate'), 'precompute'), 'ready');
     });
   }, [building, progress, frames]);
+
+  // Editing goes through the machine: invalidate (so a build in flight is dropped too), then edit. Leaving
+  // commits back to idle and precomputes again; a new build drives that itself, an unchanged run is ready at once.
+  const editingRef = useRef(editing);
+  const buildRef = useRef({ building, progress, frames });
+  buildRef.current = { building, progress, frames };
+  useEffect(() => {
+    if (editingRef.current === editing) return;
+    editingRef.current = editing;
+    setState((current) => {
+      if (editing) return step(step(current, 'invalidate'), 'edit');
+      if (current.mode !== 'editing') return current;
+      const left = step(current, 'commit');
+      const build = buildRef.current;
+      if (build.building) return step(left, 'precompute', build.progress);
+      if (build.frames.length === 0) return left;
+      return step(step(left, 'precompute'), 'ready');
+    });
+    indexRef.current = 0;
+    setIndexState(0);
+    setJumped(true);
+  }, [editing]);
 
   const moveTo = useCallback(
     (next: number, viaJump: boolean) => {
@@ -193,6 +220,8 @@ export function PlaybackProvider({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
+      // While the structure is being edited its keys belong to the editor.
+      if (mode === 'editing') return;
       // A focused control that used the key (a splitter's arrows, Home and End) has the last word.
       if (event.defaultPrevented || isEditableTarget(event.target)) return;
 
@@ -238,20 +267,21 @@ export function PlaybackProvider({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [reset, setSpeed, speed, stepBack, stepForward, toEnd, toggle]);
+  }, [mode, reset, setSpeed, speed, stepBack, stepForward, toEnd, toggle]);
 
   const value = useMemo<PlaybackValue>(
     () => ({
-      frames,
-      frame: frames[index] ?? null,
+      frames: mode === 'editing' ? NO_FRAMES : frames,
+      frame: mode === 'editing' ? null : (frames[index] ?? null),
       index,
-      count: frames.length,
+      count: mode === 'editing' ? 0 : frames.length,
       mode,
       progress: state.progress,
       playing,
       speed,
-      atStart: index <= 0,
-      atEnd: index >= lastIndex,
+      // Nothing to move through while the structure is edited.
+      atStart: mode === 'editing' || index <= 0,
+      atEnd: mode === 'editing' || index >= lastIndex,
       jumped,
       frameDurationMs: frameDwellMs(frames[index], speed),
       play,

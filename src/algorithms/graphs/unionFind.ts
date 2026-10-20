@@ -1,7 +1,7 @@
 /** Union-Find with path compression and union by rank, the forest redrawn as parent arrows. */
 
 import { defineAlgorithm, type FieldSpec, type ParamMap, type ParseResult, type PresetSpec } from '../../core/define';
-import { buildGraph, edgesField, formatEdgeList, graphPresets, graphSizeOf, layoutField, MAX_GRAPH_NODES, parseEdgeList, parseLayout, regenerating, seedField, type EdgeListEdge } from '../../core/graphInput';
+import { buildGraph, edgesField, formatEdgeList, graphPresets, graphSizeOf, layoutField, MAX_GRAPH_NODES, parseEdgeList, parseLayout, parsePositions, regenerating, seedField, type EdgeListEdge } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import { DisjointSets } from './unionFindCore';
 import type { Frame, Graph, GraphEdge, Strip } from '../../core/types';
@@ -80,7 +80,7 @@ function parse(params: ParamMap): ParseResult<UnionFindInput> {
   return {
     ok: true,
     value: {
-      graph: buildGraph(list.value, false, parseLayout(params.layout)),
+      graph: buildGraph(list.value, false, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)),
       finds,
       byRank: params.rank !== '0',
       compress: params.compress !== '0',

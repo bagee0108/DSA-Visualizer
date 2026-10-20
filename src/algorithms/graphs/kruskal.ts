@@ -11,6 +11,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  parsePositions,
   seedField,
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
@@ -56,7 +57,7 @@ function parse(params: ParamMap): ParseResult<KruskalInput> {
   if (parseDirected(params.directed)) return { ok: false, error: DIRECTED_ERROR };
   const list = parseEdgeList(params.g ?? '', { requireWeights: true });
   if (!list.ok) return list;
-  return { ok: true, value: { graph: buildGraph(list.value, false, parseLayout(params.layout)) } };
+  return { ok: true, value: { graph: buildGraph(list.value, false, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)) } };
 }
 
 /** Cheapest first; equal weights by (smaller endpoint, larger endpoint), so every run sorts the same way. */

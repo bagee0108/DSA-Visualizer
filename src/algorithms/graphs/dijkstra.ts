@@ -12,6 +12,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  parsePositions,
   parseStart,
   seedField,
   startField,
@@ -55,7 +56,7 @@ function parse(params: ParamMap): ParseResult<DijkstraInput> {
   }
   const start = parseStart(params.start, list.value.nodeCount);
   if (!start.ok) return start;
-  return { ok: true, value: { graph: buildGraph(list.value, directed, parseLayout(params.layout)), start: String(start.value) } };
+  return { ok: true, value: { graph: buildGraph(list.value, directed, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)), start: String(start.value) } };
 }
 
 function fmt(value: number): string {

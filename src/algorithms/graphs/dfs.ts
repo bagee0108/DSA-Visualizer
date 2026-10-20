@@ -12,6 +12,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  parsePositions,
   parseStart,
   seedField,
   startField,
@@ -62,7 +63,7 @@ function parse(params: ParamMap): ParseResult<DfsInput> {
   if (!start.ok) return start;
   return {
     ok: true,
-    value: { graph: buildGraph(list.value, directed, parseLayout(params.layout)), start: String(start.value), forest: params.forest === '1' },
+    value: { graph: buildGraph(list.value, directed, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)), start: String(start.value), forest: params.forest === '1' },
   };
 }
 

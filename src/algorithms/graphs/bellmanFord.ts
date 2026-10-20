@@ -12,6 +12,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  parsePositions,
   parseStart,
   regenerating,
   seedField,
@@ -80,7 +81,7 @@ function parse(params: ParamMap): ParseResult<BellmanFordInput> {
   if (!list.ok) return list;
   const start = parseStart(params.start, list.value.nodeCount);
   if (!start.ok) return start;
-  return { ok: true, value: { graph: buildGraph(list.value, true, parseLayout(params.layout)), start: String(start.value) } };
+  return { ok: true, value: { graph: buildGraph(list.value, true, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)), start: String(start.value) } };
 }
 
 /** Distances and weights as shown: ∞ until reached, and a true minus sign, which stays legible where a hyphen thins out. */

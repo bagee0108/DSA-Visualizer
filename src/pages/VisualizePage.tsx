@@ -16,7 +16,10 @@ import { InputPanel } from '../components/InputPanel';
 import { Player } from '../components/Player';
 import { PrecomputeBar } from '../components/PrecomputeBar';
 import { ProgressStars, TierLabel } from '../components/level';
-import { Button, ButtonLink, Kbd } from '../components/ui';
+import { GraphEditor } from '../components/GraphEditor';
+import { Button, ButtonLink, Chip, Kbd } from '../components/ui';
+import { editorDrawing, editorGraphFrom, editorParams, type EditorGraph } from '../core/graphEdit';
+import { parseEdgeList, POSITIONS_PARAM } from '../core/graphInput';
 import { levelFor, neighbour, type Level } from '../core/levels';
 import { getAlgorithm } from '../core/registry';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -41,10 +44,13 @@ export function searchToParams(search: string): ParamMap {
   return params;
 }
 
+/** Params a run may carry that never go in the URL: hand-placed node positions, so a link shares topology only. */
+const LOCAL_PARAMS: ReadonlySet<string> = new Set([POSITIONS_PARAM]);
+
 export function paramsToSearch(params: ParamMap, defaults: ParamMap): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value === defaults[key]) continue;
+    if (value === defaults[key] || LOCAL_PARAMS.has(key)) continue;
     query.set(key, value);
   }
   const text = query.toString().replace(/%2C/g, ',').replace(/%3A/g, ':').replace(/%2F/g, '/');
@@ -78,6 +84,13 @@ function UnknownAlgorithm({ id }: { id: string }): ReactNode {
   );
 }
 
+/** A graph being edited: where it started, the params the run was built from, and the band it is drawn in. */
+interface EditSession {
+  readonly initial: EditorGraph;
+  readonly frozen: ParamMap;
+  readonly strips: number;
+}
+
 function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNode {
   const { search, navigate } = useRouter();
 
@@ -85,38 +98,100 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   const [unshareable, setUnshareable] = useState<ParamMap | null>(null);
   useEffect(() => setUnshareable(null), [search, algorithm]);
 
-  const params = useMemo(() => unshareable ?? searchToParams(search), [search, unshareable]);
+  // Params that ride along with one URL but are never written into it (hand-placed positions).
+  const [local, setLocal] = useState<{ readonly search: string; readonly params: ParamMap } | null>(null);
+
+  const params = useMemo(
+    () => unshareable ?? { ...searchToParams(search), ...(local !== null && local.search === search ? local.params : {}) },
+    [search, unshareable, local],
+  );
   const merged = useMemo<ParamMap>(() => ({ ...algorithm.defaults, ...params }), [algorithm, params]);
 
-  const { frames, error, building, progress } = useChunkedBuild(algorithm, params);
+  // While the graph is edited the run stays as it was built; leaving builds it again from the edited params.
+  const [session, setSession] = useState<EditSession | null>(null);
+  const [edited, setEdited] = useState<EditorGraph | null>(null);
+  useEffect(() => {
+    setSession(null);
+    setEdited(null);
+    setLocal(null);
+  }, [algorithm]);
+
+  const { frames, error, building, progress } = useChunkedBuild(algorithm, session?.frozen ?? params);
 
   usePageMeta(`${algorithm.meta.name} - Treewidth`);
 
-  const onApply = useCallback(
-    (next: ParamMap) => {
+  /** Writes params as the run's own: into the URL, or held here when too long for one. Positions never go in the URL. */
+  const write = useCallback(
+    (next: ParamMap, replace: boolean) => {
       const query = paramsToSearch(next, algorithm.defaults);
       if (query.length > MAX_QUERY_LENGTH) {
         setUnshareable(next);
         return;
       }
       setUnshareable(null);
-      navigate(`/visualize/${algorithm.meta.id}${query}`);
+      const kept = next[POSITIONS_PARAM];
+      setLocal(kept === undefined ? null : { search: query, params: { [POSITIONS_PARAM]: kept } });
+      navigate(`/visualize/${algorithm.meta.id}${query}`, { replace });
     },
     [algorithm.defaults, algorithm.meta.id, navigate],
   );
 
+  const onApply = useCallback(
+    (next: ParamMap) => {
+      setSession(null);
+      setEdited(null);
+      // Hand-placed positions belong to one graph: they stay only while the edges and their direction do.
+      const sameGraph = next.g === merged.g && next.directed === merged.directed;
+      const { [POSITIONS_PARAM]: positions, ...rest } = next;
+      write(sameGraph && positions !== undefined ? { ...rest, [POSITIONS_PARAM]: positions } : rest, false);
+    },
+    [merged.g, merged.directed, write],
+  );
+
+  const weightedLevel = useMemo(() => {
+    const list = parseEdgeList(algorithm.defaults.g ?? '');
+    return list.ok && list.value.weighted;
+  }, [algorithm]);
+
+  const startEditing = useCallback(
+    (strips: number) => {
+      const initial = editorGraphFrom(merged, weightedLevel);
+      setSession({ initial, frozen: params, strips });
+      setEdited(initial);
+    },
+    [merged, params, weightedLevel],
+  );
+  const onEdit = useCallback(
+    (graph: EditorGraph) => {
+      setEdited(graph);
+      write({ ...merged, ...editorParams(graph) }, true);
+    },
+    [merged, write],
+  );
+  const stopEditing = useCallback(() => {
+    setSession(null);
+    setEdited(null);
+  }, []);
+
+  const editing = useMemo<Editing | null>(
+    () => (session === null ? null : { session, graph: edited ?? session.initial, onEdit, onDone: stopEditing }),
+    [session, edited, onEdit, stopEditing],
+  );
+
   return (
-    <PlaybackProvider frames={frames} building={building} progress={progress}>
+    <PlaybackProvider frames={frames} building={building} progress={progress} editing={session !== null}>
       <Layout
         algorithm={algorithm}
-        error={error}
+        error={session === null ? error : null}
+        editing={editing}
+        onStartEditing={algorithm.meta.structureKind === 'graph' ? startEditing : null}
         header={<AlgorithmHeader algorithm={algorithm} shareable={unshareable === null} />}
         side={
           <>
             <SourceView algorithm={algorithm} />
             <StackView />
             <CountersView algorithm={algorithm} />
-            <InputPanel algorithm={algorithm} params={merged} error={error} onApply={onApply} />
+            <InputPanel algorithm={algorithm} params={merged} error={session === null ? error : null} onApply={onApply} />
           </>
         }
       />
@@ -124,21 +199,48 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   );
 }
 
-function Layout({ algorithm, error, header, side }: { algorithm: RegisteredAlgorithm; error: string | null; header: ReactNode; side: ReactNode }): ReactNode {
+interface Editing {
+  readonly session: EditSession;
+  readonly graph: EditorGraph;
+  readonly onEdit: (graph: EditorGraph) => void;
+  readonly onDone: () => void;
+}
+
+interface LayoutProps {
+  readonly algorithm: RegisteredAlgorithm;
+  readonly error: string | null;
+  readonly editing: Editing | null;
+  /** Graph levels: open the editor, drawn in the band of this many strip rows. */
+  readonly onStartEditing: ((strips: number) => void) | null;
+  readonly header: ReactNode;
+  readonly side: ReactNode;
+}
+
+function Layout({ algorithm, error, editing, onStartEditing, header, side }: LayoutProps): ReactNode {
   const { frame } = usePlayback();
   // Whether this level draws strips at all, so the strips toggle only appears where there is something to hide.
   const hasStrips = error === null && stripsOf(frame).length > 0;
+  const noticeGraph = useMemo(
+    () => (editing === null ? null : { graph: editorDrawing(editing.graph), strips: editing.session.strips }),
+    [editing],
+  );
   return (
     <PanelLayout
       key={algorithm.meta.id}
       header={header}
-      canvas={<Canvas error={error} />}
+      canvas={
+        editing !== null ? (
+          <GraphEditor initial={editing.session.initial} strips={editing.session.strips} onChange={editing.onEdit} onDone={editing.onDone} />
+        ) : (
+          <Canvas error={error} onEdit={onStartEditing === null ? null : () => onStartEditing(Math.max(1, stripsOf(frame).length))} />
+        )
+      }
       strips={<StripsView error={error} />}
       hasStrips={hasStrips}
       commentary={
         <>
-          <LayoutNotice error={error} />
-          <Commentary />
+          <ClearanceNotice frame={error === null ? frame : null} editing={noticeGraph} />
+          <Commentary editing={editing !== null} />
         </>
       }
       transport={(controls) => (
@@ -242,11 +344,16 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
   );
 }
 
-function Canvas({ error }: { error: string | null }): ReactNode {
+function Canvas({ error, onEdit }: { error: string | null; onEdit: (() => void) | null }): ReactNode {
   const { frame, frames, jumped, frameDurationMs } = usePlayback();
 
   return (
-    <div className="min-h-0 flex-1 bg-ground p-1">
+    <div className="relative min-h-0 flex-1 bg-ground p-1">
+      {onEdit !== null && (
+        <Chip onClick={onEdit} className="absolute top-2 left-2 z-10 bg-ground" title="Add, move, join and delete nodes on the canvas; the run is built again when you are done">
+          edit graph
+        </Chip>
+      )}
       {error !== null ? (
         <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
           <p className="text-meta font-medium text-danger">Could not run this input</p>
@@ -278,17 +385,16 @@ function StripsView({ error }: { error: string | null }): ReactNode {
   );
 }
 
-function LayoutNotice({ error }: { error: string | null }): ReactNode {
-  const { frame } = usePlayback();
-  return <ClearanceNotice frame={error === null ? frame : null} />;
-}
-
-function Commentary(): ReactNode {
+function Commentary({ editing }: { editing: boolean }): ReactNode {
   const { frame, frameDurationMs, jumped } = usePlayback();
   // Below a quarter of a second the fade never finishes and reads as flicker.
   return (
     <>
-      <ExplanationBar frame={frame} animate={!jumped && frameDurationMs >= 250} />
+      <ExplanationBar
+        frame={frame}
+        animate={!jumped && frameDurationMs >= 250}
+        idle={editing ? 'Editing the graph. The run was set aside; Done builds it again from the graph as it is then.' : undefined}
+      />
       <FrameAnnouncer />
     </>
   );

@@ -5,17 +5,19 @@ import type { Frame } from '../core/types';
 export interface ExplanationBarProps {
   readonly frame: Frame | null;
   readonly animate: boolean;
+  /** Said instead of "No frame to show." when there is a reason there is no frame. */
+  readonly idle?: string | undefined;
 }
 
 /** Two lines of body text plus padding. Held open so the panel does not jump
  *  between a one-line and a two-line explanation. */
 const RESERVED = 'min-h-15';
 
-export function ExplanationBar({ frame, animate }: ExplanationBarProps): ReactNode {
+export function ExplanationBar({ frame, animate, idle }: ExplanationBarProps): ReactNode {
   if (frame === null) {
     return (
       <div className={`flex ${RESERVED} shrink-0 items-center border-t border-line bg-panel px-3 py-2 text-body text-fg-mute`}>
-        No frame to show.
+        {idle ?? 'No frame to show.'}
       </div>
     );
   }

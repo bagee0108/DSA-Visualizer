@@ -315,8 +315,26 @@ frames: no structural edits mid-run, ever.
 
 `precomputing` is a real state with a real duration: the build is drained a
 slice at a time (see "Precompute" below) and carries a `progress` fraction.
-Nothing in the UI sends `edit` yet - the graph editor is deferred - but the
-state exists so it slots in without touching the machine.
+
+The graph editor (`src/components/GraphEditor.tsx`, model in
+`src/core/graphEdit.ts`) is what sends `edit`. "edit graph" on a graph level's
+canvas sends `invalidate` then `edit`, so a build in flight is dropped too; the
+page holds the params the run was built from, so nothing rebuilds while the
+graph changes. Done sends `commit` and the run is built again from the edited
+params; a level's own refusal (directed-only and so on) then shows as for any
+input. While editing, playback keys are off and the transport is disabled.
+
+Every edit is a new immutable snapshot, and undo/redo walk the list (200
+steps). Every committed edit rewrites the edge-list field and the URL (replacing
+the history entry) and the clearance notice measures the edited graph. Node ids
+stay 0..n-1: deleting a node renumbers the ones after it. Pointer gestures
+depend on the tool (select/move drags, add node clicks, add edge drags or
+clicks node to node, delete clicks); every one has a key: Tab walks the nodes
+in id order and then the edges, N adds a node at the free spot, E then Enter
+on another node joins them, arrows move, Enter on an edge edits its weight,
+Delete removes, Ctrl+Z / Ctrl+Y undo and redo. New edges weigh 1 on a level
+whose default graph is weighted. Caps as for typed graphs: 150 nodes, 600
+edges.
 
 ### 3. Graphs travel in the URL as a compact edge list, with a cap
 
@@ -345,6 +363,15 @@ works, but the page holds the params in memory instead of the URL: the header
 shows **custom graph - not shareable**, Copy link is disabled, and a reload
 or any navigation returns to the URL's run. A link is never produced that
 would fail to reproduce its run.
+
+**Hand-placed positions never go in the URL.** The editor carries them in a
+`pos` param (`x,y;x,y;...` in layout units) that `paramsToSearch` always
+leaves out; the page keeps it beside the URL it was made for and drops it on
+any other navigation. Every graph level's parse passes it to `buildGraph`,
+which uses it only when it has exactly one point per node. So a link, a
+reload or a new tab shares topology only and lays the graph out again; the
+editor says so in its hint. A run from the input panel keeps the positions
+only while the edges and their direction are unchanged.
 
 A* is drawn on the board scene, not the graph canvas, and its map travels the
 same way: the `map` param is the rows of S, G, # and . joined with "/"

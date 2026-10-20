@@ -2,7 +2,7 @@
 
 import { seedField } from './arrayInput';
 import type { FieldSpec, ParamMap, ParseResult, PresetSpec } from './define';
-import { gridColumns, layoutGraph, layoutViolations, ringMaxNodes, type EdgePair, type LayoutKind, type Point } from './graphLayout';
+import { gridColumns, LAYOUT_ASPECT, layoutGraph, layoutViolations, ringMaxNodes, type EdgePair, type LayoutKind, type Point } from './graphLayout';
 import { randomInt, shuffle } from './random';
 import type { Graph, GraphEdge, GraphNode } from './types';
 
@@ -97,9 +97,38 @@ function layoutOf(nodeCount: number, pairs: readonly EdgePair[], layout: LayoutK
   return points;
 }
 
-export function buildGraph(list: EdgeList, directed: boolean, layout: LayoutKind): Graph {
+/**
+ * Positions placed by hand in the graph editor, in layout units (x across 0..1,
+ * y down 0..1 / LAYOUT_ASPECT). The `pos` param carries them within a tab but
+ * is never written to the URL: a link shares topology only. See CONTRIBUTING
+ * "Graphs".
+ */
+export const POSITIONS_PARAM = 'pos';
+
+export function formatPositions(points: readonly Point[]): string {
+  const round = (value: number): string => String(Math.round(value * 10000) / 10000);
+  return points.map((point) => `${round(point.x)},${round(point.y)}`).join(';');
+}
+
+/** One point per node, each inside the layout box, or null: a list for another graph is ignored, not half-used. */
+export function parsePositions(raw: string | undefined, nodeCount: number): readonly Point[] | null {
+  if (raw === undefined || raw === '' || nodeCount === 0) return null;
+  const parts = raw.split(';');
+  if (parts.length !== nodeCount) return null;
+  const points: Point[] = [];
+  for (const part of parts) {
+    const [x, y, extra] = part.split(',').map(Number);
+    if (extra !== undefined || x === undefined || y === undefined || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (x < 0 || x > 1 || y < 0 || y > 1 / LAYOUT_ASPECT) return null;
+    points.push({ x, y });
+  }
+  return points;
+}
+
+/** The run's graph: laid out by `layout`, unless hand-placed positions for exactly these nodes come with it. */
+export function buildGraph(list: EdgeList, directed: boolean, layout: LayoutKind, placed: readonly Point[] | null = null): Graph {
   const pairs: EdgePair[] = list.edges.map((edge) => [edge.from, edge.to]);
-  const points = layoutOf(list.nodeCount, pairs, layout);
+  const points = placed !== null && placed.length === list.nodeCount ? placed : layoutOf(list.nodeCount, pairs, layout);
   const nodes: GraphNode[] = points.map((point, i) => ({ id: String(i), label: String(i), x: point.x, y: point.y }));
   const edges: GraphEdge[] = list.edges.map((edge, i) => ({
     id: `e${i}`,

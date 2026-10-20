@@ -13,6 +13,7 @@ import {
   parseDirected,
   parseEdgeList,
   parseLayout,
+  parsePositions,
   regenerating,
   seedField,
   type EdgeListEdge,
@@ -107,7 +108,7 @@ function parse(params: ParamMap): ParseResult<TopoInput> {
   if (!list.ok) return list;
   return {
     ok: true,
-    value: { graph: buildGraph(list.value, true, parseLayout(params.layout)), method: params.method === 'dfs' ? 'dfs' : 'kahn' },
+    value: { graph: buildGraph(list.value, true, parseLayout(params.layout), parsePositions(params.pos, list.value.nodeCount)), method: params.method === 'dfs' ? 'dfs' : 'kahn' },
   };
 }
 

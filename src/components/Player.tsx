@@ -173,6 +173,7 @@ function Scrubber(): ReactNode {
 
 export function Player(): ReactNode {
   const {
+    mode,
     playing,
     speed,
     atStart,
@@ -204,6 +205,7 @@ export function Player(): ReactNode {
           label={playing ? 'Pause' : 'Play'}
           shortcut="space"
           onClick={playing ? pause : play}
+          disabled={mode === 'editing'}
           primary
         >
           <path d={playing ? SHAPE.pauseLeft : SHAPE.playLeft} style={morph} />
