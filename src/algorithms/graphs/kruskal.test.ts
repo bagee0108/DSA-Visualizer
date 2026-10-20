@@ -5,7 +5,8 @@ import { makeRng } from '../../core/random';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, graphOf, lastFrame, runFrames } from '../frameHygiene';
 import { adjacencyOf, stripIds, type Adjacency } from './graphTestkit';
-import { DIRECTED_ERROR, KRUSKAL_PRESETS, kruskal } from './kruskal';
+import { KRUSKAL_PRESETS, kruskal } from './kruskal';
+import { DIRECTED_ERROR } from './mst';
 
 const TEXTBOOK = '0-1:4,0-7:8,1-2:8,1-7:11,2-3:7,2-5:4,2-8:2,3-4:9,3-5:14,4-5:10,5-6:2,6-7:1,6-8:6,7-8:7';
 const SIZES = [4, 6, 12, 40, MAX_GRAPH_NODES] as const;
