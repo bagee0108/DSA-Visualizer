@@ -152,6 +152,12 @@ export const KRUSKAL_PRESETS: readonly PresetSpec[] = regenerating([
     description: 'every weight is 1 or 2, so many edges tie; the sort breaks ties by endpoints, and a different tie order could give a different tree of the same weight.',
   },
   {
+    id: 'dense',
+    label: 'Dense',
+    build: (size, rng) => finish(connected(0, size, Math.min(MAX_GRAPH_EDGES - size, Math.round(size * 2.5)), rng, () => randomInt(rng, 1, 20)), size, rng),
+    description: 'about three and a half edges per node, so most edges end up rejected: by the time they come up, their ends are already joined.',
+  },
+  {
     id: 'disconnected',
     label: 'Disconnected',
     build: (size, rng) => {
