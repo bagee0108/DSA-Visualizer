@@ -186,3 +186,37 @@ export function separatorValues(canvas: number, bounds: CanvasRange, collapsed: 
   const max = percent(bounds.max);
   return { now: Math.min(max, Math.max(min, percent(canvas))), min, max };
 }
+
+/** What the strips' scale is worked out from: the canvas's drawing and the strips' own, in px and view units. */
+export interface StripsMeasure {
+  /** The canvas drawing's box, in px. */
+  readonly canvasWidth: number;
+  readonly canvasHeight: number;
+  /** The view's width (both drawings share it) and the canvas view's height, in view units. */
+  readonly viewWidth: number;
+  readonly canvasView: number;
+  /** The strips drawing's height, in px and in view units. */
+  readonly stripsHeight: number;
+  readonly stripsView: number;
+  /** True when the canvas takes whatever height the strips leave, so drawing them smaller gives it back. */
+  readonly coupled: boolean;
+}
+
+/**
+ * Pixels per view unit for the strips: never more than the canvas's own, so
+ * the strips take no more height than they did when they were drawn inside
+ * the canvas's view, and the graph is never drawn smaller than it was then.
+ *
+ * While the canvas takes the height the strips leave, both settle on the
+ * share of their combined height, (canvas + strips) / (canvas view + strips
+ * view); the minimum with the canvas's current scale holds the rule on the
+ * way there and whenever a CSS limit pins the canvas instead. Rounded down,
+ * so rounding never puts the strips above the canvas.
+ */
+export function stripsScale(at: StripsMeasure): number {
+  if (at.viewWidth <= 0 || at.canvasView <= 0) return 0;
+  const byWidth = at.canvasWidth / at.viewWidth;
+  const canvas = Math.min(byWidth, at.canvasHeight / at.canvasView);
+  const shared = at.coupled && at.stripsView > 0 ? Math.min(byWidth, (at.canvasHeight + at.stripsHeight) / (at.canvasView + at.stripsView)) : canvas;
+  return Math.max(0, Math.floor(Math.min(shared, canvas) * 1000) / 1000);
+}

@@ -51,9 +51,9 @@ function StripsPanelImpl({ frame, animate, durationMs }: StripsPanelProps): Reac
     <svg
       viewBox={`0 0 ${VIEW_W} ${height}`}
       preserveAspectRatio="xMinYMin meet"
-      className="block h-auto w-full select-none"
-      // Never drawn larger than a view unit to a pixel: a wide window would otherwise blow the chips up past the canvas's own scale.
-      style={{ aspectRatio: `${VIEW_W} / ${height}`, maxWidth: `${VIEW_W}px` }}
+      className="mx-auto block h-auto w-full select-none"
+      // Never drawn larger than a view unit to a pixel, nor than the canvas's own scale (the layout sets --strips-width), and centred under it as the canvas centres its drawing.
+      style={{ aspectRatio: `${VIEW_W} / ${height}`, maxWidth: `min(${VIEW_W}px, var(--strips-width, ${VIEW_W}px))` }}
       role="img"
       aria-label={describe(strips)}
     >

@@ -17,8 +17,13 @@ import {
   SIDE_MIN,
   stackedRange,
   STEP,
+  stripsScale,
   type LayoutStorage,
 } from './panels';
+import { VIEW_H, VIEW_W } from '../renderers/canvas';
+import { graphBandBottom } from '../renderers/GraphRenderer';
+import { bandHeight, STRIP_HEIGHT } from '../renderers/strips';
+import { stripsHeight } from '../renderers/StripsPanel';
 
 function memoryStore(initial: Record<string, string> = {}): LayoutStorage & { readonly data: Record<string, string> } {
   const data = { ...initial };
@@ -153,5 +158,56 @@ describe('panels: separator values', () => {
   it('keeps now inside min and max even when the measured canvas strays from them', () => {
     const values = separatorValues(10, aboveRange(500), false);
     expect(values.now).toBe(values.min);
+  });
+});
+
+describe('the strips are drawn no larger than the canvas', () => {
+  /**
+   * The page's loop, in numbers: the strips start at their natural width (a
+   * view unit to a pixel at most), the canvas takes the height they leave,
+   * and each resize sets the strips' scale again from what is measured.
+   */
+  function settle(total: number, width: number, canvasView: number, stripsView: number): { strips: number; canvas: number; rounds: number } {
+    const natural = Math.min(1, width / VIEW_W);
+    let strips = natural;
+    for (let rounds = 1; rounds <= 10; rounds++) {
+      const canvasHeight = total - strips * stripsView;
+      const next = Math.min(natural, stripsScale({ canvasWidth: width, canvasHeight, viewWidth: VIEW_W, canvasView, stripsHeight: strips * stripsView, stripsView, coupled: true }));
+      if (Math.abs(next - strips) < 1e-9) return { strips, canvas: Math.min(width / VIEW_W, canvasHeight / canvasView), rounds };
+      strips = next;
+    }
+    throw new Error('did not settle');
+  }
+
+  it('crops graph views so that view and strips together never exceed the old single view', () => {
+    for (const strips of [1, 2, 3]) {
+      const view = bandHeight(graphBandBottom(strips), strips);
+      expect(view + stripsHeight(strips), `${strips} strips`).toBeLessThanOrEqual(VIEW_H);
+      expect(stripsHeight(strips)).toBe(strips * STRIP_HEIGHT);
+    }
+  });
+
+  it('settles within three resizes, never above the canvas, and never draws the canvas smaller than the single view did', () => {
+    for (const strips of [1, 2, 3]) {
+      const canvasView = bandHeight(graphBandBottom(strips), strips);
+      const stripsView = stripsHeight(strips);
+      for (let total = 150; total <= 1400; total += 25) {
+        for (let width = 300; width <= 2600; width += 100) {
+          const result = settle(total, width, canvasView, stripsView);
+          expect(result.rounds).toBeLessThanOrEqual(3);
+          expect(result.strips).toBeLessThanOrEqual(result.canvas + 1e-9);
+          // Before the strips had a panel, the same height held one view of VIEW_H units.
+          const before = Math.min(width / VIEW_W, total / VIEW_H);
+          expect(result.canvas, `total ${total}, width ${width}, ${strips} strips`).toBeGreaterThanOrEqual(before - 1e-9);
+        }
+      }
+    }
+  });
+
+  it("follows the canvas alone when the canvas doesn't depend on them", () => {
+    const at = { canvasWidth: 900, canvasHeight: 300, viewWidth: VIEW_W, canvasView: 424, stripsHeight: 92, stripsView: 92 };
+    expect(stripsScale({ ...at, coupled: false })).toBe(Math.floor((300 / 424) * 1000) / 1000);
+    expect(stripsScale({ ...at, coupled: true })).toBeLessThanOrEqual(300 / 424);
+    expect(stripsScale({ ...at, canvasView: 0, coupled: true })).toBe(0);
   });
 });

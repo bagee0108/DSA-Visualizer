@@ -758,6 +758,19 @@ The visualize page is split into panes by two splitters (`src/pages/PanelLayout.
   (`bandHeight()`); `StripsPanel` draws the same rows under the canvas. The
   layout is computed exactly as before, so no position, band or clearance
   figure depends on whether the strips are apart.
+- **The strips never outscale the canvas.** `stripsScale()` caps the strips
+  panel at the canvas drawing's pixels per view unit (and at one), and the
+  panel centres itself as the canvas centres its drawing. While the canvas
+  takes the height the strips leave, both settle on (canvas + strips height)
+  / (canvas view + strips view); for graphs that is 516 view units, against
+  the 520 the single view had, so the graph is never drawn smaller than it
+  was when the strips were inside its view. PanelLayout writes the cap as
+  `--strips-width` on the bottom area from a ResizeObserver, not React
+  state, so a step never renders twice for it.
+- **Nothing between the canvas and the strips costs height.** The horizontal
+  splitter has no height (its line overlays the panel below), and the status
+  line stays one line: shortcut hints sit in a one-line box and drop from
+  the end, least useful first, when the layout chips leave no room.
 - **Refitting** is the SVG's own: every renderer lays out in view units from
   the run's bound, so a resize rescales the drawing and moves no node.
   Nothing transitions while a splitter is held.

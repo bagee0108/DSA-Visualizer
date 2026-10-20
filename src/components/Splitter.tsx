@@ -77,7 +77,9 @@ export function Splitter({ orientation, label, controls, values, valueText, onAc
   };
 
   return (
-    <div className={`relative z-10 shrink-0 bg-line ${vertical ? 'w-px self-stretch' : 'h-px w-full'}`}>
+    // A horizontal splitter takes no height: its line overlays the panel below, so the canvas keeps the pixel.
+    <div className={`relative z-10 shrink-0 ${vertical ? 'w-px self-stretch bg-line' : 'h-0 w-full'}`}>
+      {!vertical && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-line" />}
       <div
         role="separator"
         tabIndex={0}

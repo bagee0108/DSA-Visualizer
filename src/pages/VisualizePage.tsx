@@ -403,7 +403,7 @@ function StripsView({ error }: { error: string | null }): ReactNode {
   const { frame, jumped, frameDurationMs } = usePlayback();
   if (error !== null || frame === null || stripsOf(frame).length === 0) return null;
   return (
-    <div className="shrink-0 bg-ground px-1 pb-1">
+    <div className="shrink-0 bg-ground px-1">
       <StripsPanel frame={frame} animate={!jumped && frameDurationMs >= 60} durationMs={frameDurationMs} />
     </div>
   );
@@ -452,16 +452,22 @@ const SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
 
 function StatusLine({ controls }: { controls: ReactNode }): ReactNode {
   const { frameDurationMs, phaseJump } = usePlayback();
-  const shortcuts = phaseJump === null ? SHORTCUTS : [...SHORTCUTS, ['shift right', `end of ${phaseJump}`] as const];
+  // Most useful first: when the line is short of room, hints drop from the end.
+  const shortcuts = phaseJump === null ? SHORTCUTS : [SHORTCUTS[0], SHORTCUTS[1], ['shift right', `end of ${phaseJump}`] as const, ...SHORTCUTS.slice(2)];
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-panel px-3 py-1 font-mono text-micro text-fg-mute">
-      {shortcuts.map(([keys, action]) => (
-        <span key={keys} className="hidden items-center gap-1 sm:flex">
-          <Kbd>{keys}</Kbd>
-          {action}
-        </span>
-      ))}
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-panel px-3 py-px font-mono text-micro text-fg-mute">
+      {/* One line high: a hint that doesn't fit wraps onto the clipped second line, so the line never grows and the canvas keeps its height. */}
+      <div className="hidden h-6 min-w-0 flex-1 basis-0 flex-wrap items-center gap-x-3 gap-y-2 overflow-hidden sm:flex">
+        {shortcuts.map((shortcut) =>
+          shortcut === undefined ? null : (
+            <span key={shortcut[0]} className="flex h-6 items-center gap-1 whitespace-nowrap">
+              <Kbd>{shortcut[0]}</Kbd>
+              {shortcut[1]}
+            </span>
+          ),
+        )}
+      </div>
       {controls}
       <span className="ml-auto tabular-nums" title="How long the current frame stays on screen">
         {(frameDurationMs / 1000).toFixed(1)}s per frame

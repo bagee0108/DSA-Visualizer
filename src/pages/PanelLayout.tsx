@@ -17,7 +17,7 @@
  * React hears of it only on release.
  */
 
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Splitter } from '../components/Splitter';
 import { Chip, ChipGroup } from '../components/ui';
@@ -36,6 +36,7 @@ import {
   stackedRange,
   type CanvasRange,
   type PanelLayout,
+  stripsScale,
   type SplitAction,
 } from '../layout/panels';
 
@@ -86,8 +87,65 @@ export function PanelLayout({ header, canvas, strips, hasStrips, commentary, tra
   const stripsShown = hasStrips && !layout.stripsCollapsed;
 
   /**
+   * Holds the strips to the canvas's scale (see stripsScale), so moving them
+   * into a panel of their own never draws the graph smaller than it was when
+   * they shared its view. Written as a CSS variable on the bottom area rather
+   * than as state, so a step never renders twice for it. Re-measured when
+   * either area resizes, and on a render whose drawings changed their views.
+   */
+  const views = useRef('');
+  const fitStrips = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    const canvasNode = canvasRef.current;
+    const bottomNode = bottomRef.current;
+    if (canvasNode === null || bottomNode === null) return;
+    const coupled = !stacked && layout.bottom === null;
+    let frame = 0;
+    const apply = (): void => {
+      frame = 0;
+      const drawing = canvasNode.querySelector<SVGSVGElement>('svg[role="img"]');
+      const stripsDrawing = bottomNode.querySelector<SVGSVGElement>('svg[role="img"]');
+      if (drawing === null || stripsDrawing === null) return;
+      const view = drawing.viewBox.baseVal;
+      const box = drawing.getBoundingClientRect();
+      views.current = `${view.height} ${stripsDrawing.viewBox.baseVal.height}`;
+      const scale = stripsScale({
+        canvasWidth: box.width,
+        canvasHeight: box.height,
+        viewWidth: view.width,
+        canvasView: view.height,
+        stripsHeight: stripsDrawing.getBoundingClientRect().height,
+        stripsView: stripsDrawing.viewBox.baseVal.height,
+        coupled,
+      });
+      const width = `${(scale * view.width).toFixed(1)}px`;
+      if (bottomNode.style.getPropertyValue('--strips-width') !== width) bottomNode.style.setProperty('--strips-width', width);
+    };
+    fitStrips.current = apply;
+    const observer = new ResizeObserver(() => {
+      if (frame === 0) frame = requestAnimationFrame(apply);
+    });
+    observer.observe(canvasNode);
+    observer.observe(bottomNode);
+    apply();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      fitStrips.current = () => {};
+    };
+  }, [stacked, layout.bottom, stripsShown]);
+  useLayoutEffect(() => {
+    // A new run can change a view's height without resizing either area; reading viewBox costs no layout.
+    const drawing = canvasRef.current?.querySelector<SVGSVGElement>('svg[role="img"]');
+    const stripsDrawing = bottomRef.current?.querySelector<SVGSVGElement>('svg[role="img"]');
+    if (drawing == null || stripsDrawing == null) return;
+    if (`${drawing.viewBox.baseVal.height} ${stripsDrawing.viewBox.baseVal.height}` !== views.current) fitStrips.current();
+  });
+
+  /**
    * The range and current canvas size each splitter works on, in this mode.
-   * Totals leave out the splitter's own pixel. Only a collapsed side panel
+   * Totals leave out the vertical splitter's pixel; the horizontal one takes
+   * no height. Only a collapsed side panel
    * beside the canvas leaves it everything; hidden strips still leave the
    * explanation, and stacked, the side panel was never beside it, so those
    * report what they measure.
@@ -96,7 +154,7 @@ export function PanelLayout({ header, canvas, strips, hasStrips, commentary, tra
     const collapsed = !stacked && which === 'beside' && layout.sideCollapsed;
     if (stacked) return { range: stackedRange(root.height), canvas: canvasBox.height, collapsed };
     if (which === 'beside') return { range: besideRange(row.width - 1), canvas: left.width, collapsed };
-    return { range: aboveRange(region.height - 1), canvas: canvasBox.height, collapsed };
+    return { range: aboveRange(region.height), canvas: canvasBox.height, collapsed };
   };
 
   /** The layout that gives the canvas this size, from this splitter. */
