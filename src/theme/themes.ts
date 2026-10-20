@@ -91,6 +91,10 @@ export interface ChromeTokens {
   readonly danger: string;
   /** Canvas hairlines: grid, untraversed edges. Neutral, so it tracks the chrome. */
   readonly vizGrid: string;
+  /** A wall on a board: part of the map, not of the run, so a neutral; 3:1 against an empty square. */
+  readonly vizWall: string;
+  /** The wall's diagonal hatch, one small step further from the ground, so it clears 3:1 as well. */
+  readonly vizWallHatch: string;
 }
 
 export function deriveTokens(preset: ThemePreset, mode: Mode): ChromeTokens {
@@ -112,6 +116,10 @@ export function deriveTokens(preset: ThemePreset, mode: Mode): ChromeTokens {
   // is not - a bright orange is under 3:1 on near-white - so light mode fills
   // with the nearest shade that also works as text, and the whole family is
   // derived from that.
+  // A wall starts halfway between the hairline and the quietest text and moves
+  // only as far as 3:1 against the ground needs: structure, quieter than text.
+  const vizWall = withContrast(mix(base.line, base.fgMute, 0.5), [base.ground], 3);
+
   const accent = dark
     ? withContrast(preset.accent, surfaces, 3)
     : withContrast(preset.accent, surfaces, 4.5);
@@ -142,6 +150,8 @@ export function deriveTokens(preset: ThemePreset, mode: Mode): ChromeTokens {
     focus: withContrast(accent, surfaces, 3),
     danger: DANGER[mode],
     vizGrid: mix(base.line, edge, 0.6),
+    vizWall,
+    vizWallHatch: lighten(vizWall, dark ? 0.05 : -0.05),
   };
 }
 
@@ -165,6 +175,8 @@ export const TOKEN_VARS: Record<keyof ChromeTokens, string> = {
   focus: '--theme-focus',
   danger: '--theme-danger',
   vizGrid: '--theme-viz-grid',
+  vizWall: '--theme-viz-wall',
+  vizWallHatch: '--theme-viz-wall-hatch',
 };
 
 function declarations(tokens: ChromeTokens): string {

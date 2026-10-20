@@ -5,7 +5,7 @@
  * own layer so it looks and moves like every other tree in the app.
  */
 
-import { memo, useMemo, type ReactNode } from 'react';
+import { memo, useId, useMemo, type ReactNode } from 'react';
 
 import { cellRef, colRef, rowRef } from '../core/matrixScene';
 import type { GridSnapshot, Highlights, Pointers } from '../core/types';
@@ -23,6 +23,8 @@ export const SQUARE_MAX = 64;
 /** The board's share of the width when a search tree sits beside it. */
 export const BOARD_SHARE = 0.46;
 const TREE_GAP = 18;
+/** The wall hatch: one line every this many view units, at 45 degrees. */
+const HATCH_GAP = 6;
 
 export interface GridLayout {
   readonly square: number;
@@ -84,6 +86,8 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
   const { rows, cols, cells, piece, checkered, boxes, fixed, marks, walls, notes, rowHeaders, colHeaders, lines, tree, strips } = snapshot;
   const layout = useMemo(() => gridLayout(rows, cols, strips.length, tree !== null), [rows, cols, strips.length, tree]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
+  // An SVG id must not carry React's punctuation into url(#...).
+  const hatchId = `wall-hatch-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const tags = useMemo(() => tagsByTarget(pointers), [pointers]);
   const treeLook = useMemo(
     () => (layout.tree === null ? null : treeScale(bound, layout.tree.width, layout.bottom)),
@@ -110,6 +114,14 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
       role="img"
       aria-label={`Board of ${rows} by ${cols}${tree === null ? '' : ', with its search tree'}`}
     >
+      {walls !== null && (
+        <defs>
+          <pattern id={hatchId} width={HATCH_GAP} height={HATCH_GAP} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width={HATCH_GAP} height={HATCH_GAP} fill="var(--viz-wall)" />
+            <line x1={0} y1={0} x2={0} y2={HATCH_GAP} stroke="var(--viz-wall-hatch)" strokeWidth={2} />
+          </pattern>
+        </defs>
+      )}
       {colHeaders.map((label, col) => {
         const tagged = tags.get(colRef(col));
         return (
@@ -149,11 +161,11 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
         const row = Math.floor(at / cols);
         const col = at % cols;
         const wall = walls?.[at] === true;
-        // A wall is part of the board, not of the run: it takes no role.
+        // A wall is part of the board, not of the run: it takes no role, and a structural neutral with a hatch.
         const role = wall ? undefined : roles.get(cellRef(row, col));
         const dark = checkered && (row + col) % 2 === 1;
         const fill = wall
-          ? 'var(--viz-text-dim)'
+          ? `url(#${hatchId})`
           : role !== undefined
             ? ROLE_COLOR[role]
             : value !== null && piece === 'queen'

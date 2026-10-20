@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import stylesheet from '../index.css?raw';
 import type { HighlightRole } from '../core/types';
 import { contrastRatio } from '../renderers/ink';
-import { deltaE2000, visionDelta, VISIONS } from './color';
+import { deltaE2000, toOklch, visionDelta, VISIONS } from './color';
 import { ACTIVE_THEME, deriveTokens, PRESETS, themeCss, type ChromeTokens, type Mode } from './themes';
 
 /**
@@ -102,6 +102,12 @@ describe('every preset is legible', () => {
         expect(contrastRatio(t.onAccent, t.accent), 'ink on the accent fill').toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.onAccent, t.accentHover), 'ink on the hover fill').toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(t.onAccent, t.accentPress), 'ink on the pressed fill').toBeGreaterThanOrEqual(4.5);
+        // A board's wall against an empty square (the ground), fill and hatch alike: 1.4.11 non-text contrast.
+        expect(contrastRatio(t.vizWall, t.ground), 'wall on an empty square').toBeGreaterThanOrEqual(3);
+        expect(contrastRatio(t.vizWallHatch, t.ground), 'wall hatch on an empty square').toBeGreaterThanOrEqual(3);
+        // Structure, not text: quieter than the dim text walls used to borrow, and a neutral.
+        expect(contrastRatio(t.vizWall, t.ground), 'wall quieter than dim text').toBeLessThan(contrastRatio(t.fgDim, t.ground));
+        expect(toOklch(t.vizWall).c, 'wall is a neutral').toBeLessThan(0.03);
       });
     }
   }

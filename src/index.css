@@ -122,6 +122,8 @@
   --viz-text: var(--color-fg);
   --viz-text-dim: var(--color-fg-dim);
   --viz-grid: var(--theme-viz-grid);
+  --viz-wall: var(--theme-viz-wall);
+  --viz-wall-hatch: var(--theme-viz-wall-hatch);
 
   --viz-default: #64748b;
   --viz-comparing: #fbbf24;
