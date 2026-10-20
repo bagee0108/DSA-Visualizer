@@ -61,6 +61,123 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 (One entry per item and per stop, newest first.)
 
+### Item 6: resizable panels (done)
+
+Commits: `16659ff` (strips drawn in their own panel), `ad87df9` (splitters),
+plus two bug fixes found while testing it, `c4bcf4e` and `f8b61cb` (below).
+
+**Design choices made inside the approved design** (all in CONTRIBUTING
+"Layout"):
+
+- **Strips.** The design puts the strips in "the bottom area (strips +
+  explanation)", but every renderer drew them inside its own SVG. Moving
+  them out by re-laying out the structure without them would have changed
+  the graph band that `LAYOUT_ASPECT` and the clearance check depend on, and
+  that would have been a stop. Instead, on the visualize page renderers
+  get `stripsApart`: they lay out exactly as before and crop their viewBox
+  6 units under the band, where the strips would have started 12 below.
+  A shared `StripsPanel` draws the same rows, with the same motion, under
+  the canvas. No position, band or clearance figure changes (tested: the
+  crop sits between the band and the first row for every renderer and
+  strip count). The hero and any other use of a renderer are unchanged.
+  The strips panel is never drawn larger than 1:1, so a collapsed side
+  panel doesn't blow the chips up past the drawing.
+- **One rule for both splitters.** Each splitter's `aria-valuenow` is the
+  canvas's share, `aria-controls` names the canvas plus the pane on the
+  far side (when it is in the document), forwards (right or down) grows the
+  canvas, and Enter collapses or restores the far pane. Beside: the side
+  panel, which holds the code, call stack, counters and input (the design's
+  "code panel" is that whole column, since collapsing only the code would
+  give the canvas no width). Above: the strips. The explanation and notice
+  never collapse. With strips hidden, the "above" splitter reports what it
+  measures. Only a collapsed side panel, when wide, reports 100%.
+- **Minimums.** Canvas 40% of the row width and 45% of the region height,
+  as specified. Side panel 272 px; strips-and-explanation area 64 px (the
+  explanation's two lines). Defaults are the old fixed sizes (21rem, and
+  23rem from 1280 px), so an untouched page looks as before.
+- **Limits live in CSS** (`min-w-[40%]`, `max-w-[60%]`, `min-h-[45%]`,
+  `max-h-[55%]`). The code only turns keys and drags into sizes, so a window
+  resize can never push the canvas under its minimum.
+- **Moving a collapsed splitter** (keys or drag) opens its pane, starting
+  from the canvas at its largest. Off-axis arrows on a focused splitter do
+  nothing and are kept from the playback shortcuts; so are Home and End. The
+  playback key handler now ignores keys a focused control already handled
+  (`defaultPrevented`).
+- **Drag.** Pointer capture, the size written to the element once per
+  animation frame, React told on release. While held, `data-resizing`
+  switches every transition off on the page.
+- **Refit.** Every renderer draws in view units from its run bound into a
+  fixed viewBox, so a resize is the SVG's own rescale: nothing re-lays out
+  and no node moves.
+- **Stacked (below 900 px).** The page scrolls (the level header with it,
+  so 200% zoom keeps room for the canvas). Both splitters are horizontal and
+  set the canvas height, between 45% of the window under the top bar and
+  all of it. The default is `clamp(45%, 62vw, 100%)`. The beside splitter
+  sits between the transport and the side panel. Before this, the stacked
+  layout gave the canvas almost no height (a sliver at 880 px, nothing at
+  200% zoom).
+- **Visible controls.** Pointer users get chips in the status line: "side
+  panel" and "strips" (pressed = shown; "strips" only on levels that have
+  them) and "reset layout" (disabled when the layout is the default). The
+  status line now shows at every width; the shortcut hints still hide below
+  640 px.
+- **Target and focus.** A 24 px hit area over the one-pixel line, 16 px on
+  the canvas side (letterboxed space) and 8 px on the panel side. Focus and
+  drag show a 3 px line and a grip in the focus colour; hover shows them in
+  the edge colour.
+- **Storage.** `treewidth.layout.v1`, read and written in try/catch. Each
+  field is validated on its own and falls back to its default; a default
+  layout removes the key. The /about note now lists theme and panel sizes.
+
+**Checked:**
+
+- Splitter behaviour in Chrome at 1366x768, 880x768 and 320x640: arrows,
+  Shift+arrows, Home/End, Enter both ways, off-axis arrows (the frame
+  doesn't move), drag, reload (sizes kept), double-click, reset, and a
+  corrupt saved value (defaults, no error).
+- axe (WCAG 2.0-2.2 A/AA plus best practice) clean in both themes at
+  1366x768, at 200% zoom on 1366x768 (683x384 CSS px) and at 320x640, on
+  every scene type: array (quicksort), tree (AVL), graph (Dijkstra), matrix
+  (LCS), split (LIS), board with notes (A*), board with tree (N-Queens),
+  plus /about. No horizontal overflow at any of them.
+- Keyboard walk at 1366: both splitters take focus on every visualizer
+  page; no focus stop is hidden.
+- **Step time**, README method, same cases as items 4-5, baseline build
+  (`c4bcf4e`) against this one, two rounds each: Prim dense 9.4 → 6.3-6.7
+  ms median, Prim ties 8.9-9.1 → 6.6-7.0, Prim disconnected 11.7 → 7.7-7.9,
+  Kruskal dense 9.6-10.4 → 8.4, Dijkstra random 9.0-9.1 → 6.0-6.2, Dijkstra
+  islands 11.2-12.0 → 6.6-7.0. Every p95 is lower too. Arrays at 200:
+  quicksort 4.9-5.4 → 4.8-5.2, heapsort 5.7-6.1 → 5.1-5.6 (noise). I
+  haven't isolated why the graphs got faster; the canvas SVG lost about 150
+  nodes to the strips panel.
+
+**Bugs found and fixed on the way** (each its own commit):
+
+- `c4bcf4e`: stepping fast (about 50 key presses without a pause) threw
+  "Maximum update depth exceeded" on every level with enough frames
+  (quicksort, LCS, edit distance; BFS and knapsack ran out of frames
+  first). The frame announcer copied its text into state from an effect,
+  a second render per step. It now writes the live region through a ref.
+  Present on main too, so worth shipping.
+- `f8b61cb`: the same pattern in the counters' count-up under reduced
+  motion (LCS threw after 55 quick presses with reduced motion emulated).
+  With motion off it now returns the value directly.
+- There's no component test for either: the suite has no DOM environment,
+  and adding one would be a dependency. They were checked in the browser by
+  the same scripted key floods that reproduced them.
+
+**Narrower than it might sound:**
+
+- At 320 px the strips draw at about a third of their size, as they did
+  inside the canvas before; readable only by zooming.
+- Stacked, both splitters set the same quantity (the canvas height). That
+  follows from "splitters become horizontal" with the canvas always the
+  controlled pane, but it means two handles for one size.
+- The 24 px hit area overlaps 16 px of the canvas edge and 8 px of the
+  panel. A press there starts a drag instead of reaching what is under it.
+  Nothing interactive sits in those strips today. The graph editor (item 7)
+  will need its edge margin to stay clear of it.
+
 ### Item 5a: A* follow-ups (done)
 
 Commits: `cc338d1` (the brief into ROADMAP), `1e635c0` (octile and the
