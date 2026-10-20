@@ -661,6 +661,7 @@ percentage set inline. It is the only component-shaped CSS in the project.
   from the environment (or a `.env` file) and defaulting to
   `https://treewidth.dev` in `src/site.ts`. Never write the domain anywhere
   else; `src/seo/siteOrigin.test.ts` checks src/, public/ and the build for
-  the old one. **Before dev is merged to main, `SITE_ORIGIN` must point at a
-  live domain:** treewidth.dev is not registered yet, so either register it
-  or set `SITE_ORIGIN` in the production environment.
+  the old one. **`SITE_ORIGIN` must always be the domain production actually
+  serves.** Until treewidth.dev is registered, it is set in Vercel's
+  production environment to the live vercel.app URL. Once treewidth.dev is
+  live, delete that variable so the default takes over.
