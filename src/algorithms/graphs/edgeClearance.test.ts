@@ -120,9 +120,9 @@ describe('layoutViolations, the check presets regenerate on', () => {
 describe('the clearance notice under the canvas', () => {
   it('counts edges, in words that fit one edge or many', () => {
     expect(clearanceNotice({ pairs: 0, edges: 0 })).toBeNull();
-    expect(clearanceNotice({ pairs: 1, edges: 1 })).toBe("1 edge passes close to a node it doesn't connect to in this layout.");
-    expect(clearanceNotice({ pairs: 3, edges: 1 })).toBe("1 edge passes close to nodes it doesn't connect to in this layout.");
-    expect(clearanceNotice({ pairs: 4, edges: 3 })).toBe("3 edges pass close to nodes they don't connect to in this layout.");
+    expect(clearanceNotice({ pairs: 1, edges: 1 })).toBe('1 edge passes close to a node it does not connect to in this layout.');
+    expect(clearanceNotice({ pairs: 3, edges: 1 })).toBe('1 edge passes close to nodes it does not connect to in this layout.');
+    expect(clearanceNotice({ pairs: 4, edges: 3 })).toBe('3 edges pass close to nodes they do not connect to in this layout.');
   });
 
   /** The notice for a level's run, measured as the canvas measures it. */
@@ -135,8 +135,8 @@ describe('the clearance notice under the canvas', () => {
 
   it('speaks up for a typed graph whose edges run under nodes', () => {
     // Six nodes on the grid put 0 to 3 in one row: 0-2 runs under 1, and 1-3 under 2.
-    expect(noticeFor(bfs, { g: '0-2,1-3,5', layout: 'grid' })).toBe("2 edges pass close to nodes they don't connect to in this layout.");
-    expect(noticeFor(bfs, { g: '0-2,1', layout: 'grid' })).toBe("1 edge passes close to a node it doesn't connect to in this layout.");
+    expect(noticeFor(bfs, { g: '0-2,1-3,5', layout: 'grid' })).toBe('2 edges pass close to nodes they do not connect to in this layout.');
+    expect(noticeFor(bfs, { g: '0-2,1', layout: 'grid' })).toBe('1 edge passes close to a node it does not connect to in this layout.');
   });
 
   it('stays quiet on a clear graph, and on every level default', () => {

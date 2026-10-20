@@ -10,7 +10,7 @@ export interface ClearanceNoticeProps {
 
 /**
  * One line under the canvas when a graph, as drawn, has edges passing close to
- * nodes they don't join. Measured once per run, on the geometry the renderer
+ * nodes they do not join. Measured once per run, on the geometry the renderer
  * draws. The element stays mounted, empty when there is nothing to say, so a
  * screen reader hears the notice when a new graph brings one.
  */

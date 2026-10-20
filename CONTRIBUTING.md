@@ -267,7 +267,7 @@ when asked), so generators stay pure and the renderer only ever reads
 
 Built-in presets go through `regenerating()` in `graphInput.ts`. After a
 preset builds a graph, `layoutViolations()` lays it out and counts edges within
-the clearance of a node they don't join, and nodes closer than a diameter plus
+the clearance of a node they do not join, and nodes closer than a diameter plus
 that clearance. It measures at the smallest scale any graph level draws, so a
 layout it passes is clear as drawn. If it counts any, the preset builds
 another graph from the same seeded stream, up to `PRESET_TRIES` (5), and keeps
@@ -280,7 +280,7 @@ new graph preset joins the sweep and goes through `regenerating()`.
 A graph the user types, or opens from a shared link, is laid out as given; no
 check can regenerate it. For those, and for a preset that used up its tries,
 `ClearanceNotice` puts one line under the canvas: "N edges pass close to nodes
-they don't connect to in this layout." It counts with the renderer's own
+they do not connect to in this layout." It counts with the renderer's own
 `clearanceOf()` on the geometry as drawn, once per run, in a `role="status"`
 element that stays mounted so a screen reader hears it when a new graph brings
 one. It counts edges only; nodes crowded together are not reported.
@@ -350,6 +350,7 @@ would fail to reproduce its run.
 
 - Layered layout for the tree preset, deferred: it depends on the source node, which conflicts with fixed per-run topology.
 - Dijkstra islands at 150 nodes: 17.5 ms median, over target, predates the layout work.
+- Clearance notice for overlapping nodes: in a typed graph, count nodes laid on top of each other too, not only edges passing close to nodes.
 
 # Precompute
 
