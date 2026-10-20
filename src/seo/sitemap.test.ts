@@ -15,9 +15,13 @@ describe('sitemap', () => {
   });
 
   it('never lists a level that is still coming', () => {
-    const soon = LEVELS.filter((level) => !isOpen(level));
-    expect(soon.length).toBeGreaterThan(0);
-    for (const level of soon) expect(paths).not.toContain(`/visualize/${level.id}`);
+    for (const level of LEVELS.filter((candidate) => !isOpen(candidate))) expect(paths).not.toContain(`/visualize/${level.id}`);
+    // Every level is open now, so the rule is also held on a path where one is not.
+    const [first, second] = LEVELS;
+    if (first === undefined || second === undefined) throw new Error('no levels');
+    const withSoon = sitemapPaths([first, second], (level) => level.id === first.id);
+    expect(withSoon).toContain(`/visualize/${first.id}`);
+    expect(withSoon).not.toContain(`/visualize/${second.id}`);
   });
 
   it('writes absolute https URLs on the site origin, one per path', () => {

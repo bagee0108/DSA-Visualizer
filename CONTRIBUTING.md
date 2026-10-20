@@ -703,6 +703,31 @@ which switches transitions off on the visualize page while a splitter is held
 
 ---
 
+# Race mode
+
+`/visualize/race-mode` (`src/pages/RacePage.tsx`, the logic in
+`src/race/race.ts`) races two sorts on one input. It is a level of its own
+rather than a registered algorithm, so `levels.ts` lists it in `PAGE_LEVELS`
+and `App.tsx` routes it.
+
+- **The clock counts operations, not frames:** comparisons plus array
+  writes, as `ArrayScene` counts them. A write is one store into the array or
+  the aux row (a swap is two; copying k values to aux is k).
+  `algorithms/arrays/opCount.test.ts` holds every sort to that against
+  reference implementations; a new racer joins that test.
+- **Each side shows its last frame at or before the clock**; one that has
+  finished holds its final frame, marked done with its total. Play advances
+  the clock by `OPS_PER_SECOND` (40) times the speed; step goes to the next
+  or previous operation boundary on either side; the scrubber is in
+  operations.
+- **The generators are the levels' own, unchanged**, each built with its
+  level's defaults plus the shared input (so quicksort pivots on the last
+  element). Insertion sort exists for the race only: it is not registered
+  and has no level.
+- **Input:** up to 100 elements; the URL carries `a`, `b` and `input`.
+
+---
+
 # Layout
 
 The visualize page is split into panes by two splitters (`src/pages/PanelLayout.tsx`,

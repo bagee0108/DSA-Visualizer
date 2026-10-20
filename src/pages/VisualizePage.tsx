@@ -277,10 +277,34 @@ function LevelStep({ level, direction }: { level: Level | undefined; direction: 
 }
 
 function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgorithm; shareable: boolean }): ReactNode {
+  return (
+    <LevelHeader
+      id={algorithm.meta.id}
+      name={algorithm.meta.name}
+      blurb={algorithm.meta.blurb}
+      folder={CATEGORY_LABEL[algorithm.meta.category].toLowerCase()}
+      what={algorithm.meta.structureKind === 'graph' ? 'graph' : 'input'}
+      shareable={shareable}
+    />
+  );
+}
+
+export interface LevelHeaderProps {
+  readonly id: string;
+  readonly name: string;
+  readonly blurb: string;
+  /** The prompt's folder when the page is not a level on the path. */
+  readonly folder: string;
+  /** What the page runs on, as the not-shareable note names it. */
+  readonly what: string;
+  readonly shareable: boolean;
+}
+
+/** A level page's header: prompt and name, level, tier and stars, the blurb, and the neighbours and Copy link. */
+export function LevelHeader({ id, name, blurb, folder: fallback, what, shareable }: LevelHeaderProps): ReactNode {
   const [copied, setCopied] = useState(false);
-  const what = algorithm.meta.structureKind === 'graph' ? 'graph' : 'input';
-  const level = levelFor(algorithm.meta.id);
-  const folder = level?.lane ?? CATEGORY_LABEL[algorithm.meta.category].toLowerCase();
+  const level = levelFor(id);
+  const folder = level?.lane ?? fallback;
 
   const copyLink = (): void => {
     void navigator.clipboard.writeText(window.location.href).then(
@@ -298,7 +322,7 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
         <span className="font-mono text-meta text-fg-mute" aria-hidden="true">
           <span className="text-accent-ink">$</span> ~/{folder}/
         </span>
-        <h1 className="font-display text-page font-bold text-fg">{algorithm.meta.name}</h1>
+        <h1 className="font-display text-page font-bold text-fg">{name}</h1>
       </div>
 
       {level !== undefined && (
@@ -311,7 +335,7 @@ function AlgorithmHeader({ algorithm, shareable }: { algorithm: RegisteredAlgori
         </div>
       )}
 
-      <p className="hidden min-w-0 flex-1 text-meta text-fg-dim xl:block">{algorithm.meta.blurb}</p>
+      <p className="hidden min-w-0 flex-1 text-meta text-fg-dim xl:block">{blurb}</p>
 
       <div className="ml-auto flex items-center gap-1">
         {!shareable && (

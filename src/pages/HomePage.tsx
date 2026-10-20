@@ -10,7 +10,7 @@ import { Marquee } from '../components/Marquee';
 import { Route } from '../components/Route';
 import { SiteFooter } from '../components/SiteFooter';
 import { ButtonLink } from '../components/ui';
-import { firstOpenLevel, LEVELS } from '../core/levels';
+import { firstOpenLevel, isOpen, LEVELS } from '../core/levels';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 function Hero(): ReactNode {
@@ -44,6 +44,11 @@ function Hero(): ReactNode {
   );
 }
 
+/** Whether any level is still marked soon; the legend and the intro only mention soon when one is. Asked at render, after registration. */
+function anySoon(): boolean {
+  return LEVELS.some((level) => !isOpen(level));
+}
+
 function Legend(): ReactNode {
   const node = 'inline-block h-3 w-3 rounded-full border-2';
   return (
@@ -56,10 +61,12 @@ function Legend(): ReactNode {
         <span className={`${node} border-accent`} aria-hidden="true" />
         open
       </li>
-      <li className="flex items-center gap-1.5">
-        <span className={`${node} border-dashed border-edge`} aria-hidden="true" />
-        soon
-      </li>
+      {anySoon() && (
+        <li className="flex items-center gap-1.5">
+          <span className={`${node} border-dashed border-edge`} aria-hidden="true" />
+          soon
+        </li>
+      )}
       <li className="flex items-center gap-1.5">
         <svg viewBox="0 0 12 12" className="h-3 w-3 text-edge" aria-hidden="true">
           <path d="M6 1.2l1.4 3 3.2.3-2.4 2.2.7 3.2L6 8.3 3.1 9.9l.7-3.2L1.4 4.5l3.2-.3z" fill="none" stroke="currentColor" />
@@ -85,7 +92,7 @@ export function HomePage(): ReactNode {
               The path
             </h2>
             <p className="max-w-[60ch] text-ui text-fg-dim">
-              {LEVELS.length} levels in four tracks, easiest first. Levels marked soon are still being built.
+              {LEVELS.length} levels in four tracks, easiest first.{anySoon() ? ' Levels marked soon are still being built.' : ''}
             </p>
           </div>
           <Legend />

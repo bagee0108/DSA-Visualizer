@@ -9,8 +9,10 @@ import { usePageMeta } from './hooks/usePageMeta';
 import { AboutPage } from './pages/AboutPage';
 import { BrowsePage } from './pages/BrowsePage';
 import { HomePage } from './pages/HomePage';
+import { RacePage } from './pages/RacePage';
 import { VisualizePage } from './pages/VisualizePage';
 import { Link, RouterProvider, useRouter } from './router/router';
+import { RACE_ID } from './race/race';
 import { resolveRoute } from './router/routes';
 import { DevThemeSwitcher } from './theme/DevThemeSwitcher';
 
@@ -26,7 +28,7 @@ function Routes(): ReactNode {
     case 'about':
       return <AboutPage />;
     case 'visualize':
-      return <VisualizePage algorithmId={route.id} />;
+      return route.id === RACE_ID ? <RacePage /> : <VisualizePage algorithmId={route.id} />;
     case 'not-found':
       return <NotFound path={path} />;
   }

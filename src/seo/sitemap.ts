@@ -4,14 +4,14 @@
  * once it is open; a "soon" level never is.
  */
 
-import { isOpen, LEVELS } from '../core/levels';
+import { isOpen, LEVELS, type Level } from '../core/levels';
 import { SITE_ORIGIN, siteUrl } from '../site';
 
 /** Pages that are always there, before the levels. */
 export const STATIC_PATHS: readonly string[] = ['/', '/browse', '/about'];
 
-export function sitemapPaths(): readonly string[] {
-  return [...STATIC_PATHS, ...LEVELS.filter(isOpen).map((level) => `/visualize/${level.id}`)];
+export function sitemapPaths(levels: readonly Level[] = LEVELS, open: (level: Level) => boolean = isOpen): readonly string[] {
+  return [...STATIC_PATHS, ...levels.filter(open).map((level) => `/visualize/${level.id}`)];
 }
 
 export function sitemapXml(paths: readonly string[] = sitemapPaths(), origin: string = SITE_ORIGIN): string {

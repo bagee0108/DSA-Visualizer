@@ -2,7 +2,8 @@
  * The learning path: every algorithm as a numbered level on one route, with a
  * difficulty tier. The order and the tiers live here and nowhere else, so
  * revising either is a one-file change. Whether a level is open is not stored:
- * it is open exactly when its id is registered.
+ * it is open exactly when its id is registered (race mode, a page of its own,
+ * is listed in PAGE_LEVELS).
  *
  * The order and tiers are provisional and expected to be revised.
  */
@@ -121,9 +122,12 @@ export function levelFor(id: string): Level | undefined {
   return levelById.get(id);
 }
 
-/** A level can be opened exactly when its algorithm is registered. */
+/** Levels that are pages of their own rather than one registered algorithm. */
+const PAGE_LEVELS: ReadonlySet<string> = new Set(['race-mode']);
+
+/** A level can be opened exactly when its algorithm is registered, or it is one of the page levels. */
 export function isOpen(level: Level): boolean {
-  return isRegistered(level.id);
+  return isRegistered(level.id) || PAGE_LEVELS.has(level.id);
 }
 
 /** The nearest open level before or after this one on the route. */
