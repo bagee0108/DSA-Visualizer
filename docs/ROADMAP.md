@@ -81,15 +81,82 @@ outside the tree. Push dev only; never push main.
    optimal. Marquee op: heuristic.
    **After item 5, STOP.** Every level on the path is live; launching is the
    owner's decision.
-6. **[DESIGN STOP] Resizable panels.** Keyboard-operable splitters with
-   separator semantics, refit from the run bound with no transition, saved
-   sizes (and the privacy note updated), 200% zoom and 320 px reflow, and how
-   the graph editor will sit in the layout.
-7. **[DESIGN STOP] Interactive graph editor** in the existing `editing` mode.
-   Propose interactions, keyboard equivalents for every pointer action, and
-   how edits feed the URL encoding and the clearance notice.
-8. **[DESIGN STOP] Race mode.** Clocked on operations, not frames; one
-   timeline; presets that show the lesson.
+### Owner brief, 2026-10-20 (evening): 5a, then 6-9
+
+Same rules as above, with one change: items 6-8 are no longer design stops.
+Their designs below are pre-approved; build them directly and stop only to
+deviate from them or on another stop condition. Every design choice made
+while building goes in PROGRESS.md. Never touch main or Vercel. The brief
+said to push dev after every item; the owner then said not to push until a
+big chunk is done, so commits stay local and dev is pushed at milestones
+(5a with 6, then 7, then 8 with 9).
+
+5a. **Item 5 follow-ups** (one commit each).
+   - Octile distance in the heuristic picker (admissible with diagonals,
+     tighter than Euclidean). The found map where Manhattan with diagonals
+     returns 7.4 against a shortest 6.2 becomes a visible preset, "When the
+     heuristic overestimates", with a description of why. Tests: octile is
+     optimal on every preset; the preset reproduces 7.4 vs 6.2.
+   - Walls are part of the map, not algorithm state: board styling, not a
+     palette change. A structural neutral a few steps above the board
+     background with a subtle diagonal hatch; at least 3:1 non-text contrast
+     against empty squares in both themes; 1x screenshots. N-Queens and
+     Sudoku unchanged.
+6. **Resizable panels** (pre-approved).
+   - Hand-rolled, no library (a library would be a dependency stop).
+   - Splitters between canvas and code panel, and between canvas and the
+     bottom area (strips + explanation). The canvas never collapses: at least
+     40% of the width and 45% of the height. Code panel and strips are
+     collapsible. A "reset layout" control.
+   - Each splitter: focusable, `role="separator"`, `aria-orientation`,
+     `aria-valuenow/min/max` as percentages, `aria-controls`. Arrows 16 px,
+     Shift+arrow 64 px, Home/End to min/max, Enter collapses or restores.
+     Visible focus, 24x24 minimum hit area, double-click resets that
+     splitter.
+   - The canvas refits from the RUN BOUND on resize, throttled to animation
+     frames, with no transitions on nodes.
+   - Sizes saved per viewer in localStorage under a namespaced key, in
+     try/catch, falling back to defaults. The /about privacy note says so.
+   - Below ~900 px wide, panels stack and splitters turn horizontal. Verify
+     200% zoom at 1366x768 and reflow at 320 CSS px.
+   - Re-run axe and a keyboard walk on every visualizer scene type.
+7. **Interactive graph editor** (pre-approved).
+   - Graph scene levels only (not the A* board). Entering edit mode pauses
+     and discards frames through the existing mode machine; leaving
+     re-precomputes.
+   - Toolbar: select/move, add node, add edge, delete; the directed toggle as
+     it is. Pointer: click empty space adds a node; drag node to node (or
+     click one, then the other) adds an edge; double-click an edge edits its
+     weight inline; Delete removes the selection.
+   - Keyboard for everything: Tab through nodes in id order; N adds a node at
+     a free spot; E then pick a target to connect; arrows move the selected
+     node; Enter on a selected edge edits its weight; Delete removes.
+   - Undo/redo (Ctrl+Z / Ctrl+Y) over immutable graph snapshots.
+   - Every edit rewrites the edge-list field and the URL; the clearance
+     notice updates after each edit. Hand-placed positions are not shared
+     through URLs (topology only), and a hint says so. Same caps: 150 nodes,
+     600 edges.
+   - Level-specific refusals (directed-only and so on) apply on leaving edit
+     mode, with the established messages.
+8. **Race mode** (pre-approved).
+   - Clocked on operations: comparisons + array writes. Each tick advances N
+     operations by speed; each side shows its last frame at or before its op
+     count. First verify every sorting generator counts these consistently;
+     a wrong counter is a bug, fixed with a test and noted in PROGRESS.
+   - One timeline: scrub, step and speed act on the shared op clock. A side
+     that finishes holds its final frame, marked done with its total.
+   - Two ArrayScenes side by side with live op counters; stacked below
+     ~900 px.
+   - Presets: random, sorted, reversed, nearly sorted, few unique. Quicksort
+     on sorted against insertion sort is one click. Cap 100 elements.
+   - URL: both algorithm ids plus the shared input. Level 33 on the path.
+   - No generator changes.
+9. **Small backlog items** (one commit each).
+   - Bellman-Ford: a "jump to end of pass" control, with a keyboard
+     shortcut, so long runs are studyable.
+   - The clearance notice also counts overlapping nodes (the brief was cut
+     off here: "Clearance notice also counts overlapping"; read as the
+     backlog entry for overlapping nodes in typed graphs).
 
 **Not yet:** the Figma redesign, multi-language code (Java, Python, C++),
 quizzes, accounts. Each comes later with its own brief.

@@ -6,11 +6,10 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **STOPPED after item 5, as planned** (2026-10-20). Items 1-5 are done and
-  pushed. Every algorithm level on the path is live; the only level not open
-  is race mode (roadmap item 8). Launch is the owner's decision.
-- **Resume:** item 6 (resizable panels) is a [DESIGN STOP]: propose, don't
-  build.
+- **Resumed 2026-10-20 evening** on the owner's brief (ROADMAP "Owner brief,
+  2026-10-20 (evening)"): 5a, then 6-9, with 6-8 pre-approved instead of
+  design stops. Commits stay local and dev is pushed at milestones, per the
+  owner's "do not push until a big chunk is done".
 
 ## Done before this run
 
