@@ -6,10 +6,11 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Resumed 2026-10-20 evening** on the owner's brief (ROADMAP "Owner brief,
-  2026-10-20 (evening)"): 5a, then 6-9, with 6-8 pre-approved instead of
-  design stops. Commits stay local and dev is pushed at milestones, per the
-  owner's "do not push until a big chunk is done".
+- **STOPPED after item 9, the end of the owner's brief** (2026-10-20
+  evening). 5a and items 6-9 are done; dev is pushed. main and Vercel are
+  untouched. Every level on the path, race mode included, is open.
+- **Resume:** nothing is queued. See the stop report below for the calls
+  worth a second look before deploy.
 
 ## Done before this run
 
@@ -60,6 +61,70 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### STOP after item 9 (end of the brief)
+
+**Done this session:** 5a and items 6-9, plus two bug fixes found on the
+way. Commits on dev, all signed, typecheck, suite twice and build clean at
+each: `cc338d1` (brief into ROADMAP), `1e635c0` `a8a89fd` (5a), `c4bcf4e`
+`f8b61cb` (update-depth fixes), `16659ff` `ad87df9` (item 6), `24a51a7`
+(item 7), `4df227d` `0233237` (item 8), `8f29ba9` `741d3f7` (item 9), plus
+the PROGRESS updates. Suite: 728 tests (657 at the last stop). No test is on
+`it.fails`. No golden or fingerprint test changed. No dependency added.
+main and Vercel untouched. Pushes went to dev at the milestones the owner
+asked for ("do not push until a big chunk is done"): after 5a+6, after 7,
+and after 8+9.
+
+**Blocked:** nothing.
+
+**Worth a second look before deploy, most important first:**
+
+1. **Insertion sort was added** for race mode's one-click lesson, which the
+   design names but the code didn't have (item 8). It's race-only and
+   touches no existing generator. Keep it, make it a level, or drop the
+   preset.
+2. **`sitemap.test.ts` was restructured** because it assumed some level was
+   still "soon" (item 8). The rule is now tested on a synthetic soon level;
+   nothing is checked less, but it is an existing test that changed.
+3. **The strips moved out of the canvas** into their own panel (item 6),
+   to make them resizable and collapsible without changing any layout
+   geometry. It's the biggest visual change of the run.
+4. **Two crash fixes worth shipping to main on their own** (`c4bcf4e`,
+   `f8b61cb`): stepping fast (about 50 quick key presses) threw "Maximum
+   update depth exceeded" on most levels, and on more with reduced motion.
+   Both are on main's code today.
+5. Thin margins I chose on purpose: walls clear 3:1 by 0.04 (5a); the
+   splitters' 24 px targets overlap 16 px of the canvas edge (6).
+
+**Item 9's brief was cut off** after "Clearance notice also counts
+overlapping". I built the existing backlog entry it matches (overlapping
+nodes). If more items followed, they didn't arrive.
+
+### Item 9: small backlog items (done)
+
+Commits: `8f29ba9` (Bellman-Ford: jump to the end of a pass), `741d3f7`
+(the clearance notice counts overlapping nodes).
+
+- **End of pass.** Frames already carry their pass as `phase` ("pass 2 of
+  6"), so the jump is generic. The control goes to the last frame of the
+  current phase run, or, from a phase's last frame, to the end of the next
+  one, so repeated presses walk the run pass by pass. It lands on the last
+  edge a pass relaxes (the "pass k relaxed n edges" summary frame already
+  belongs to the next pass's phase). A level opts in with `meta.phaseJump`
+  (Bellman-Ford: "pass"); it's a metadata field and no frame changed. The
+  control is an "end of pass" chip after Jump to end, and the shortcut is
+  Shift+Right, listed in the status line. On other levels Shift+Right is
+  still a step. Checked in the browser: frames 11, 22, 33, 44 of 45 on the
+  default run; axe clean in both themes. 3 tests.
+- **Overlapping nodes.** A node overlaps another when their circles
+  overlap (centres closer than two radii). The notice keeps its edge
+  sentence word for word and adds "2 nodes overlap each other in this
+  layout." / "N nodes overlap other nodes in this layout." (without "in
+  this layout" when it follows the edge sentence). It shows for typed and
+  hand-placed graphs and, with the editor, after every edit. Presets can't
+  trigger it (their check already rejects crowded nodes), and every
+  level's default stays silent (tested). Removed from CONTRIBUTING's
+  Deferred list. 2 tests, plus the 4 wording tests given the new field.
 
 ### Item 8: race mode (done)
 
