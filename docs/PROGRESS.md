@@ -10,8 +10,9 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
   hotfix, ruling 1, ruling 3, 9b, 10, then stop with a full summary. main
   and Vercel are untouched.
 - **Done:** the hotfix (`hotfix/step-crash` pushed, main untouched);
-  insertion sort as a level (ruling 1).
-- **Next:** the clearance scale under the strips panel (ruling 3).
+  insertion sort as a level (ruling 1); the clearance scale under the
+  strips panel (ruling 3, which needed a fix).
+- **Next:** 9b, Dijkstra islands at 150 nodes under 17 ms a step.
 
 ## Done before this run
 
@@ -81,6 +82,91 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### Ruling 3: the clearance check's scale and the strips panel (fixed, `73d0aa7`)
+
+**How the check is scaled.** `clearanceOf()` works on the drawn geometry in
+view units, not pixels: an edge must keep `EDGE_CLEARANCE_VIEW` = 2 units
+beyond the rim of every node it does not join, with the node radius also in
+view units (16 at up to 12 nodes, down to 6.5 past 100). Layout, preset
+regeneration and the notice all use that one check. Moving the strips into
+their own panel changed none of its inputs: renderers lay out exactly as
+before and only crop the viewBox where the strips started (graphs: 516 −
+46 × strips units tall, against the 520 view that held the strips). So every
+verdict is identical to main's, for every graph.
+
+**How that relates to the canvas.** On screen everything is the view times
+one factor, pixels per view unit, so the margin is always 2/16 of a default
+node's radius, whatever the size. In pixels the 2-unit margin is
+2 × (px per unit). That is where the new panel could make the check more
+lenient than before: if the canvas drew the same view smaller than main
+did, a pair that passes would sit closer on screen than it could on main.
+
+**Measured, and it did** (`getScreenCTM()` on the canvas drawing, every
+graph level, production builds of main `bd48036` and dev, default layout):
+
+| viewport | main | dev before the fix | dev now |
+| --- | --- | --- | --- |
+| 1100x600 | 0.638 | 0.572 (−10.4%) | 0.644 (+0.8%) |
+| 1280x720 | 0.858 | 0.856 (−0.2%) | 0.864 (+0.8%) |
+| 1366x650 (Dijkstra) | 0.723 | 0.672 (−7.0%) | 0.729 (+0.8%) |
+| 1366x768 | 0.962 | 0.939 (−2.4%) | 0.969 (+0.8%) |
+| 1366x768 (Dijkstra) | 0.950 | 0.925 (−2.6%) | 0.957 (+0.8%) |
+| 1440x900, 1920x1080, 2560x1440 | width-bound | same | same (0.0%) |
+| 800x1000 (stacked) | 0.504 | 0.792 | 0.792 (+57%) |
+| 320x700 (stacked) | 0.065-0.165 | 0.312 | 0.312 (+89% to +377%) |
+
+At 1366x768 the 2-unit margin was 1.88 px on dev against 1.92 px on main,
+and at 1100x600, 1.14 px against 1.28 px: more lenient, which the ruling
+doesn't allow. Three causes, all chrome: the strips panel drew at the
+column's width (up to a pixel a unit) rather than the canvas's scale, so on
+a short window the strips took more height than they had inside the view;
+the status line wrapped to two lines (47 px against 27) once the layout
+chips were in it; and the splitter's line and the strips wrapper's padding
+took 5 px.
+
+**The fix:** the strips panel is capped at the canvas's own scale
+(`stripsScale()` in `panels.ts`) and centred under the drawing, as it sat
+inside the view before. While the canvas takes what the strips leave, both
+settle on (canvas + strips px) / (view + strips view) = T/516 for graphs,
+which is never less than main's T/520. Where a CSS limit pins the canvas,
+the cap is simply the canvas's scale. The horizontal splitter takes no
+height (its line overlays the panel), the strips wrapper lost its bottom
+padding, and the status line stays one line: hints that don't fit drop from
+the end instead of wrapping.
+
+**After the fix,** across 14 viewports from 960x600 to 2560x1440 plus the
+two stacked ones, every graph level (and every tree, table and board level
+checked: tree traversals, BST, A*, LCS, knapsack, KMP, segment tree, trie,
+N-Queens, heapsort, quicksort) draws at 0.0% to +1.1% of main, larger when
+stacked, and the strips never at a larger scale than the canvas. So the
+check is now at least as strict on screen as it was on main, at every size
+measured, and stricter by the 0.8% where the 520 → 516 difference shows.
+
+**Tests (+3):** graph views plus their strips never exceed the old single
+view, for 1, 2 and 3 strips; the page's resize loop, simulated over heights
+150-1400 px, widths 300-2600 px and 1-3 strips, settles within three resizes
+with the strips never above the canvas and the canvas never below main's
+scale; uncoupled, the cap follows the canvas alone.
+
+**What the viewer can still do:** drag the splitters to their limits. At
+1366x768 with both at the limit the canvas is 538x225 and draws at 0.47-0.53
+px a unit, about a 1 px margin. That is the viewer's choice of a smaller
+drawing, the same as main at an 800 px window (0.50), and the margin is
+still the same fraction of a node.
+
+**Design choices:** strips centred under the drawing (before, inside the
+view, they sat where the view's centring put them; left-aligned they would
+now hang off one side of a narrower drawing); the cap as a CSS variable set
+from a ResizeObserver, so stepping renders once; hints ordered play, step,
+end of pass, speed, reset, so a short line keeps the ones that matter.
+
+**Checked:** axe clean on every scene type (array, insertion, BFS,
+Bellman-Ford, traversal, AVL, Dijkstra, LCS, LIS, A*, N-Queens, /about), both
+themes, at 1366x768, 200% zoom and 320 px, no horizontal overflow, keyboard
+walk reaching both splitters with no hidden stops. Screenshots of main and
+dev side by side at 1366x768, 1100x600 and 1366x650 match apart from the
+slightly larger graph.
 
 ### Ruling 1: insertion sort as a level (done)
 
