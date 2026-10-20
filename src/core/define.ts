@@ -43,6 +43,8 @@ export interface AlgorithmMeta {
   readonly trackedCounters: readonly CounterKey[];
   readonly stable?: boolean;
   readonly inPlace?: boolean;
+  /** What a phase of the run is called ("pass"), for a level whose runs are long enough to want "jump to the end of this pass". */
+  readonly phaseJump?: string;
 }
 
 export type FieldKind = 'numbers' | 'number' | 'text' | 'select' | 'edges' | 'map';

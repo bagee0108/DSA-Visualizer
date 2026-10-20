@@ -17,6 +17,7 @@ import {
 
 import type { Frame } from '../core/types';
 import { frameDwellMs } from './dwell';
+import { phaseEndIndex } from './phaseJump';
 import { INITIAL_STATE, step, withProgress, type Mode, type ModeEvent } from './mode';
 
 export const MIN_SPEED = 0.25;
@@ -45,6 +46,10 @@ export interface PlaybackValue {
   readonly seek: (index: number) => void;
   readonly reset: () => void;
   readonly toEnd: () => void;
+  /** What the level calls a phase ("pass"), when it offers jumping to a phase's end; null otherwise. */
+  readonly phaseJump: string | null;
+  /** To the last frame of this phase, or of the next one when already there. */
+  readonly toPhaseEnd: () => void;
   readonly setSpeed: (speed: number) => void;
 }
 
@@ -70,6 +75,8 @@ export interface PlaybackProviderProps {
   readonly progress?: number;
   /** The structure is being edited: frames are discarded until it ends, and the run is built again. */
   readonly editing?: boolean;
+  /** The level's name for a phase, when it offers jumping to a phase's end (Shift+Right). */
+  readonly phaseJump?: string | null;
   readonly children: ReactNode;
 }
 
@@ -78,6 +85,7 @@ export function PlaybackProvider({
   building = false,
   progress = 0,
   editing = false,
+  phaseJump = null,
   children,
 }: PlaybackProviderProps): ReactNode {
   const [index, setIndexState] = useState(0);
@@ -175,6 +183,11 @@ export function PlaybackProvider({
     send('pause');
     moveTo(frames.length - 1, true);
   }, [frames.length, moveTo, send]);
+  const toPhaseEnd = useCallback(() => {
+    if (phaseJump === null) return;
+    send('pause');
+    moveTo(phaseEndIndex(frames, indexRef.current), true);
+  }, [frames, moveTo, phaseJump, send]);
   const setSpeed = useCallback((next: number) => {
     setSpeedState(clamp(next, MIN_SPEED, MAX_SPEED));
   }, []);
@@ -233,7 +246,8 @@ export function PlaybackProvider({
           break;
         case 'ArrowRight':
           event.preventDefault();
-          stepForward();
+          if (event.shiftKey && phaseJump !== null) toPhaseEnd();
+          else stepForward();
           break;
         case 'ArrowLeft':
           event.preventDefault();
@@ -267,7 +281,7 @@ export function PlaybackProvider({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mode, reset, setSpeed, speed, stepBack, stepForward, toEnd, toggle]);
+  }, [mode, phaseJump, reset, setSpeed, speed, stepBack, stepForward, toEnd, toPhaseEnd, toggle]);
 
   const value = useMemo<PlaybackValue>(
     () => ({
@@ -292,6 +306,8 @@ export function PlaybackProvider({
       seek,
       reset,
       toEnd,
+      phaseJump,
+      toPhaseEnd,
       setSpeed,
     }),
     [
@@ -311,6 +327,8 @@ export function PlaybackProvider({
       stepBack,
       stepForward,
       toEnd,
+      phaseJump,
+      toPhaseEnd,
       toggle,
     ],
   );

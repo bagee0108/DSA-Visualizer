@@ -184,6 +184,8 @@ export function Player(): ReactNode {
     stepForward,
     reset,
     toEnd,
+    phaseJump,
+    toPhaseEnd,
     setSpeed,
   } = usePlayback();
 
@@ -222,6 +224,11 @@ export function Player(): ReactNode {
         <ControlButton label="Jump to end" shortcut="End" onClick={toEnd} disabled={atEnd}>
           <IconEnd />
         </ControlButton>
+        {phaseJump !== null && (
+          <Chip onClick={toPhaseEnd} disabled={atEnd} title={`Jump to the end of this ${phaseJump} (Shift + right arrow)`} aria-keyshortcuts="Shift+ArrowRight">
+            end of {phaseJump}
+          </Chip>
+        )}
 
         <div className="mx-2 h-5 w-px bg-line" />
 

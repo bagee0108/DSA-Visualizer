@@ -221,6 +221,7 @@ export const bellmanFord = defineAlgorithm<BellmanFordInput>({
     },
     code: CODE,
     trackedCounters: ['comparisons'],
+    phaseJump: 'pass',
   },
   fields: [edgesField('3-4:2,2-3:-2,1-2:3,0-1:4,0-2:6,1-3:5,4-5:-1,2-5:4,0-6:1,6-5:2', true), directedOnlyField, startField, layoutField, seedField],
   presets: BELLMAN_FORD_PRESETS,

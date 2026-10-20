@@ -179,7 +179,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
   );
 
   return (
-    <PlaybackProvider frames={frames} building={building} progress={progress} editing={session !== null}>
+    <PlaybackProvider frames={frames} building={building} progress={progress} editing={session !== null} phaseJump={algorithm.meta.phaseJump ?? null}>
       <Layout
         algorithm={algorithm}
         error={session === null ? error : null}
@@ -451,11 +451,12 @@ const SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 function StatusLine({ controls }: { controls: ReactNode }): ReactNode {
-  const { frameDurationMs } = usePlayback();
+  const { frameDurationMs, phaseJump } = usePlayback();
+  const shortcuts = phaseJump === null ? SHORTCUTS : [...SHORTCUTS, ['shift right', `end of ${phaseJump}`] as const];
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-panel px-3 py-1 font-mono text-micro text-fg-mute">
-      {SHORTCUTS.map(([keys, action]) => (
+      {shortcuts.map(([keys, action]) => (
         <span key={keys} className="hidden items-center gap-1 sm:flex">
           <Kbd>{keys}</Kbd>
           {action}
