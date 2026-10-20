@@ -6,7 +6,7 @@ import { parseMatrixRef } from '../../core/matrixScene';
 import { makeRng } from '../../core/random';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, gridOf, lastFrame, runFrames } from '../frameHygiene';
-import { ASTAR_PRESETS, astar, heuristicOf, type Heuristic } from './astar';
+import { ASTAR_PRESETS, astar, fmt, heuristicOf, OVERESTIMATE_MAP, type Heuristic } from './astar';
 
 const SIZES = [6, 12, 20] as const;
 const ADMISSIBLE: readonly (readonly [Heuristic, boolean])[] = [
@@ -14,6 +14,8 @@ const ADMISSIBLE: readonly (readonly [Heuristic, boolean])[] = [
   ['zero', true],
   ['euclidean', false],
   ['euclidean', true],
+  ['octile', false],
+  ['octile', true],
   ['manhattan', false],
 ];
 
@@ -135,15 +137,45 @@ describe('astar: the path', () => {
     }
   });
 
-  it('can really miss the shortest path with Manhattan and diagonals, as the run warns', () => {
-    // Found by a random search over small maps; Euclidean, which never overestimates, gets the shortest.
-    const map = '.....S/#...#./....../G...../##..##';
-    const parsed = mapOf({ map });
+  it('really misses the shortest path with Manhattan and diagonals on its preset, 7.4 against 6.2, as the run warns', () => {
+    const preset = ASTAR_PRESETS.find((candidate) => candidate.id === 'overestimate');
+    expect(preset?.label).toBe('When the heuristic overestimates');
+    const params = preset?.build(12, makeRng(1)) ?? {};
+    expect(params).toEqual({ map: OVERESTIMATE_MAP, heuristic: 'manhattan', diagonal: '1' });
+    const parsed = mapOf(params);
     const want = referenceCost(parsed, true);
-    const manhattan = costOf(parsed, pathOf(lastFrame(runFrames(astar, { map, heuristic: 'manhattan', diagonal: '1' }))) ?? [], true);
-    const euclidean = costOf(parsed, pathOf(lastFrame(runFrames(astar, { map, heuristic: 'euclidean', diagonal: '1' }))) ?? [], true);
-    expect(euclidean).toBeCloseTo(want, 9);
-    expect(manhattan).toBeGreaterThan(want + 0.5);
+    expect(fmt(want)).toBe('6.2');
+    const final = lastFrame(runFrames(astar, params));
+    expect(fmt(costOf(parsed, pathOf(final) ?? [], true))).toBe('7.4');
+    expect(final.explanation).toContain('costs 7.4');
+    expect(final.explanation).toContain('not guaranteed to be the shortest');
+    for (const heuristic of ['octile', 'euclidean'] as const) {
+      const fixed = lastFrame(runFrames(astar, { ...params, heuristic }));
+      expect(costOf(parsed, pathOf(fixed) ?? [], true), heuristic).toBeCloseTo(want, 9);
+    }
+  });
+
+  it('estimates with octile between Euclidean and the true open-ground cost, so it is tighter and still admissible', () => {
+    const octile = heuristicOf('octile');
+    const euclidean = heuristicOf('euclidean');
+    const manhattan = heuristicOf('manhattan');
+    const map = mapOf(astar.defaults);
+    const open = { ...map, walls: map.walls.map(() => false) };
+    for (let row = 0; row < map.rows; row++) {
+      for (let col = 0; col < map.cols; col++) {
+        const at = { row, col };
+        expect(octile(at, map.goal)).toBeGreaterThanOrEqual(euclidean(at, map.goal) - 1e-9);
+        expect(octile(at, map.goal)).toBeLessThanOrEqual(manhattan(at, map.goal) + 1e-9);
+        // On open ground it is exact with diagonals: the cost of the shortest way there.
+        expect(octile(at, map.goal)).toBeCloseTo(referenceCost({ ...open, start: at }, true), 9);
+      }
+    }
+    for (const size of SIZES) {
+      const map = presetMap('open', size, 1);
+      const tight = expanded(lastFrame(runFrames(astar, { map, heuristic: 'octile', diagonal: '1' })));
+      const loose = expanded(lastFrame(runFrames(astar, { map, heuristic: 'euclidean', diagonal: '1' })));
+      expect(tight, `open@${size}`).toBeLessThanOrEqual(loose);
+    }
   });
 
   it('knows a sealed goal is unreachable only once the open set is empty', () => {

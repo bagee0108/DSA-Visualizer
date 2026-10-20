@@ -8,7 +8,7 @@ import { randomInt } from '../../core/random';
 import type { EntityId, GridLine, Strip } from '../../core/types';
 import { MinHeap } from './minHeap';
 
-export type Heuristic = 'manhattan' | 'euclidean' | 'zero';
+export type Heuristic = 'manhattan' | 'euclidean' | 'octile' | 'zero';
 
 export interface AStarInput {
   readonly map: GridMap;
@@ -59,6 +59,7 @@ const EPS = 1e-9;
 export const HEURISTIC_LABEL: Readonly<Record<Heuristic, string>> = {
   manhattan: 'Manhattan',
   euclidean: 'Euclidean',
+  octile: 'octile',
   zero: 'zero',
 };
 
@@ -68,6 +69,13 @@ export function heuristicOf(kind: Heuristic): (a: Square, b: Square) => number {
       return (a, b) => Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
     case 'euclidean':
       return (a, b) => Math.hypot(a.row - b.row, a.col - b.col);
+    case 'octile':
+      // The cost of the open-ground way: a diagonal for each step both ways close, then straight.
+      return (a, b) => {
+        const dr = Math.abs(a.row - b.row);
+        const dc = Math.abs(a.col - b.col);
+        return Math.max(dr, dc) + (Math.SQRT2 - 1) * Math.min(dr, dc);
+      };
     case 'zero':
       return () => 0;
   }
@@ -109,13 +117,13 @@ export function fmt(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
-const HEURISTICS: readonly Heuristic[] = ['manhattan', 'euclidean', 'zero'];
+const HEURISTICS: readonly Heuristic[] = ['manhattan', 'euclidean', 'octile', 'zero'];
 
 function parse(params: ParamMap): ParseResult<AStarInput> {
   const map = parseMap(params.map ?? '');
   if (!map.ok) return map;
   const heuristic = HEURISTICS.find((kind) => kind === params.heuristic);
-  if (heuristic === undefined) return { ok: false, error: 'Pick a heuristic: Manhattan, Euclidean or zero.' };
+  if (heuristic === undefined) return { ok: false, error: 'Pick a heuristic: Manhattan, Euclidean, octile or zero.' };
   return { ok: true, value: { map: map.value, heuristic, diagonal: params.diagonal === '1' } };
 }
 
@@ -156,6 +164,9 @@ function connected(map: GridMap): boolean {
   }
   return false;
 }
+
+/** Manhattan with diagonals finds a path of 7.4 here; the shortest is 6.2. */
+export const OVERESTIMATE_MAP = '.....S/#...#./....../G...../##..##';
 
 export const ASTAR_PRESETS: readonly PresetSpec[] = [
   {
@@ -216,6 +227,14 @@ export const ASTAR_PRESETS: readonly PresetSpec[] = [
     },
     description: 'G is walled in on all eight sides. A* runs until the open set is empty, and that is how it knows there is no path.',
   },
+  {
+    id: 'overestimate',
+    label: 'When the heuristic overestimates',
+    // One fixed map, found by a random search over small maps: the size slider does not change it.
+    build: () => ({ map: OVERESTIMATE_MAP, heuristic: 'manhattan', diagonal: '1' }),
+    description:
+      'Manhattan with diagonals, on a fixed 5 × 6 map. Manhattan counts 2 for a diagonal that costs √2, so the squares on the real shortest way, which cuts across diagonally, look dearer than they are (f = 8 along the top). The search goes down the right edge and along row 3 instead, where every step is straight and the estimate is exact, and pops G at a cost of 7.4 without ever expanding a square of the 6.2 path. Switch to octile or Euclidean to get 6.2.',
+  },
 ];
 
 const DEFAULT_MAP = '........../....#...../.S..#...G./....#...../....#...../..........';
@@ -233,7 +252,7 @@ export const astar = defineAlgorithm<AStarInput>({
       notes: [
         'V is the number of open squares; each has at most 8 neighbours, so E is O(V) and the heap work is O(V log V) at worst. The best case, a perfect estimate with ties broken towards the goal, expands only the d squares of the path.',
         'g is the cost of the best way found so far from S; h is the estimate from the square to G; f = g + h orders the open set. With h = 0, A* is Dijkstra on the grid.',
-        'An estimate that never overestimates (admissible) makes the first path popped at G a shortest one. Euclidean and zero are admissible with or without diagonals. Manhattan is admissible only with four directions: with diagonals it counts 2 for a step that costs √2, so the path may not be shortest.',
+        'An estimate that never overestimates (admissible) makes the first path popped at G a shortest one. Euclidean, octile and zero are admissible with or without diagonals; octile, the cost of the way across open ground, is the tightest of them with diagonals. Manhattan is admissible only with four directions: with diagonals it counts 2 for a step that costs √2, so the path may not be shortest.',
         'A step costs 1 and a diagonal √2. A diagonal cannot squeeze past the corner of a wall. On equal f, the square pushed first comes out first.',
       ],
     },
@@ -257,6 +276,7 @@ export const astar = defineAlgorithm<AStarInput>({
       options: [
         { value: 'manhattan', label: 'Manhattan (rows + columns)' },
         { value: 'euclidean', label: 'Euclidean (straight line)' },
+        { value: 'octile', label: 'Octile (diagonals at √2)' },
         { value: 'zero', label: 'Zero (Dijkstra)' },
       ],
     },
