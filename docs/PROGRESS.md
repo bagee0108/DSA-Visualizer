@@ -6,7 +6,11 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Next item:** 5 (A*), then stop as planned.
+- **STOPPED after item 5, as planned** (2026-10-20). Items 1-5 are done and
+  pushed. Every algorithm level on the path is live; the only level not open
+  is race mode (roadmap item 8). Launch is the owner's decision.
+- **Resume:** item 6 (resizable panels) is a [DESIGN STOP]: propose, don't
+  build.
 
 ## Done before this run
 
@@ -57,6 +61,81 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### STOP after item 5 (planned)
+
+**Done this session:** items 1-5. Commits on dev, all signed, typecheck,
+suite twice and build clean at each: `b4dff35` `9c64a7f` `4827d00` `b08d3ea`
+(items 1-2, overnight), `aa253b5` `5fe2add` (item 3), `3e14b29` `36ff85d`
+(item 4), `965d3a7` `b7100e7` `7a7ef55` (item 5), plus PROGRESS updates.
+Suite: 657 tests. No test is on `it.fails`. No golden or fingerprint test
+changed. No dependency added. main untouched.
+
+**Blocked:** nothing. This is the planned stop.
+
+**Decision needed:** whether to launch now that every algorithm level is live
+(race mode is the one level still marked soon). Then item 6's design
+proposal.
+
+**Recommendation:** look at A*'s wall colour in the dark theme first (below).
+It's the one visual call this session made that I'd want a second eye on.
+Otherwise nothing here blocks a launch from the code side.
+
+### Item 5: A* (done)
+
+Commits: `965d3a7` (board scene: walls and notes), `b7100e7` (map format
+and multi-line field), `7a7ef55` (A*).
+
+- **Board scene:** two nullable snapshot fields. `walls` are fixed for the
+  run and shared by reference. `notes` hold up to 3 lines of up to 8
+  characters per square. N-Queens and Sudoku carry null for both and draw as
+  before. Hygiene bars a piece or a note on a wall, and an over-long note.
+- **Map field:** rows of S G # . in a multi-line textarea, held as one line
+  joined with "/" in the param and the URL. Round-trip tests cover field to
+  line, parse to format, and through the query string. "/" now stays literal
+  in the query, like "," and ":"; "#" shows as `%23` (a raw one would start
+  the fragment). Maps are capped at 9 x 20 so f, g and h fit every square.
+  Checked in the browser: typing rows with Enter, Run, the URL
+  (`map=S..%23/.%23../...G`), reload.
+- **A*:** heap keyed on f = g + h with lazy stale skipping, goal tested on
+  pop. Heuristics: Manhattan, Euclidean, zero (= Dijkstra). Diagonal toggle;
+  a diagonal costs √2 and cannot cut a wall's corner (my choice; the spec
+  didn't say). Ties leave the heap in push order. Marquee op: heuristic.
+  Sitemap and README updated.
+- **Correctness:** the path matches an independent grid Dijkstra on every
+  preset at 6/12/20 columns (random walls over 5 seeds) for every admissible
+  combination: zero and Euclidean both ways, Manhattan with 4 directions.
+  With diagonals Manhattan is inadmissible; the run says so in its first and
+  last frames. That warning is backed by a found map where it is really
+  longer (7.4 against 6.2), kept as a test. Over 140 reachable preset maps it
+  was never longer, so on the presets the warning is mostly theoretical.
+- **Worst case** (9 x 20, no walls, zero heuristic, diagonals): 1,297
+  frames, about 3 MB, 9 ms. Step time on 9 x 20 boards, README method:
+  median 6.4-6.6 ms, p95 under 10.
+- axe clean in both themes at 1366x768, mid-run and on the final frame, for
+  the default map, random walls, the pocket and the sealed goal. Tab walk as
+  on every page; screenshots checked in both themes.
+
+**Narrower than it might sound / for the owner:**
+
+- **Wall colour in the dark theme.** Walls use the dim text colour, a
+  neutral token, so they clear the 3:1 non-text contrast without touching
+  the role palette. In dark mode that makes them light grey, the brightest
+  thing on the board. Readable and unambiguous, but heavier than I'd like. A
+  dedicated wall token would be a palette-level change, so I left it for you.
+- f, g and h are rounded to one decimal, so f can differ from g + h by 0.1 on
+  screen (tested to within 0.1).
+- The dashed path line on the final frame runs under the notes on path
+  squares; they stay readable.
+- The size slider means columns for A* (rows follow, 4 to 9). The field help
+  says "up to 9 rows of 20" but the slider itself doesn't say columns.
+- S and G move from the centre of their square to its top-right corner once
+  the square gets a note, so the letter shifts when the search reaches it.
+
+### Housekeeping this session
+
+- `bce9d9c`, the CONTRIBUTING `SITE_ORIGIN` note, was committed by the owner
+  during the overnight run; this run never touched Vercel or main.
 
 ### Item 4: Prim's MST (done)
 
