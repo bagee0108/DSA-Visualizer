@@ -3,6 +3,7 @@
 import { register } from '../core/registry';
 import { binarySearch } from './arrays/binarySearch';
 import { heapsort } from './arrays/heapsort';
+import { insertionSort } from './arrays/insertionSort';
 import { kadane } from './arrays/kadane';
 import { mergesort } from './arrays/mergesort';
 import { quicksort } from './arrays/quicksort';
@@ -37,6 +38,7 @@ import { sudoku } from './backtracking/sudoku';
 register(quicksort);
 register(mergesort);
 register(heapsort);
+register(insertionSort);
 register(binarySearch);
 register(twoPointers);
 register(slidingWindow);

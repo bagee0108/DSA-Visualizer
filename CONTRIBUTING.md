@@ -723,8 +723,8 @@ and `App.tsx` routes it.
   operations.
 - **The generators are the levels' own, unchanged**, each built with its
   level's defaults plus the shared input (so quicksort pivots on the last
-  element). Insertion sort exists for the race only: it is not registered
-  and has no level.
+  element). Insertion sort, added for the race, is a level of its own as
+  well (level 5); the race runs the same generator.
 - **Input:** up to 100 elements; the URL carries `a`, `b` and `input`.
 
 ---

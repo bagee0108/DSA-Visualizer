@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import '..';
 import { presetParams } from '../../core/arrayInput';
+import { isOpen, LEVELS, levelFor } from '../../core/levels';
 import { makeRng } from '../../core/random';
+import { sitemapPaths } from '../../seo/sitemap';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, lastFrame, runFrames, valuesOf } from '../frameHygiene';
 import { insertionSort } from './insertionSort';
 
@@ -74,5 +77,41 @@ describe('insertion sort: frames', () => {
 
   it('honours its input contract', () => {
     expectInputContract(insertionSort);
+  });
+});
+
+describe('insertion sort: the level', () => {
+  it('is open, in the sorting run of the arrays lane, just before merge sort', () => {
+    const level = levelFor('insertion-sort');
+    expect(level).toBeDefined();
+    if (level === undefined) return;
+    expect(isOpen(level)).toBe(true);
+    expect(level.lane).toBe('arrays');
+    expect(level.ops).toEqual(['shift']);
+    expect(LEVELS[level.number]?.id).toBe('mergesort');
+    expect(sitemapPaths()).toContain('/visualize/insertion-sort');
+  });
+
+  it('offers the array presets, nearly sorted among them, and is close to linear on it', () => {
+    expect(insertionSort.presets.map((preset) => preset.id)).toContain('nearly');
+    const n = 100;
+    const nearly = lastFrame(runFrames(insertionSort, presetParams('nearly', n, 5))).counters.comparisons;
+    const random = lastFrame(runFrames(insertionSort, presetParams('random', n, 5))).counters.comparisons;
+    expect(nearly).toBeLessThan(4 * n);
+    expect(random).toBeGreaterThan(nearly * 5);
+  });
+
+  it('names its phase on every frame after the first, and ends like the other sorts', () => {
+    const frames = runFrames(insertionSort, { input: '5, 2, 4, 1, 3' });
+    expect(new Set(frames.slice(1, -1).map((frame) => frame.phase))).toEqual(new Set(['insert']));
+    const last = lastFrame(frames);
+    expect(last.phase).toBe('done');
+    expect(last.codeLine).toBe(0);
+    expect(last.explanation).toMatch(/^Sorted\. \d+ comparisons and \d+ writes/);
+  });
+
+  it('stays inside the frame cap on the largest typed input, 200 reversed', () => {
+    const frames = runFrames(insertionSort, presetParams('reversed', 200, 1));
+    expect(frames.length).toBeLessThan(45000);
   });
 });

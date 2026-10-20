@@ -18,11 +18,11 @@ frame.
 
 | Phase | Scope | State |
 | --- | --- | --- |
-| 1 | Arrays: quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 7 algorithms, 133 tests |
+| 1 | Arrays: insertion sort, quicksort, mergesort, heapsort, binary search, two pointers, sliding window, Kadane | **Complete** — 8 algorithms, 150 tests |
 | 2 | Trees: BST, AVL, red-black, heap, trie, traversals | **Complete** — 6 algorithms, 88 tests |
 | 3 | Graphs: BFS, DFS, Dijkstra, Union-Find, Tarjan SCC, topological sort, Bellman-Ford, Kruskal, Prim, A* | **Complete** — 10 algorithms, 149 tests, and a graph editor on every graph level |
 | 4 | DP tables (LIS, LCS, edit distance, 0/1 knapsack), KMP, segment tree, Fenwick tree, N-Queens, Sudoku | **Complete** — 9 algorithms, 104 tests |
-| Race | Race mode (level 33): two sorts on one input, on a clock of comparisons plus writes | **Complete** — quicksort, merge sort, heapsort and insertion sort |
+| Race | Race mode (level 34): two sorts on one input, on a clock of comparisons plus writes | **Complete** — quicksort, merge sort, heapsort and insertion sort |
 
 ## Quick start
 

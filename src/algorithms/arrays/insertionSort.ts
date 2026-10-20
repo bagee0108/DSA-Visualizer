@@ -1,8 +1,8 @@
 /**
  * Insertion sort, the shifting version: take the next value out, slide every
- * larger value one place right, drop it into the gap. Used by race mode (it is
- * not a level of its own): on sorted input it makes one comparison per element,
- * which is the point of racing it against quicksort.
+ * larger value one place right, drop it into the gap. A level of its own, and
+ * the generator race mode runs: on sorted input it makes one comparison per
+ * element, which is the point of racing it against quicksort.
  */
 
 import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput';
@@ -28,7 +28,6 @@ const CODE = `function insertionSort(a: number[]): void {
 
 const LINE = {
   enter: 1,
-  loop: 2,
   key: 3,
   test: 5,
   shift: 6,
@@ -88,6 +87,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
         highlights: { active: [i] },
         pointers: { i },
         regions: sortedPrefix(i),
+        phase: 'insert',
       });
 
       let j = i - 1;
@@ -98,6 +98,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
             explanation: `j fell off the front: ${key} is the smallest so far.`,
             pointers: { i },
             regions: sortedPrefix(i),
+            phase: 'insert',
           });
           break;
         }
@@ -108,6 +109,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
           highlights: { comparing: [j] },
           pointers: { i, j },
           regions: sortedPrefix(i),
+          phase: 'insert',
         });
         if (!larger) break;
         scene.write(j + 1, scene.read(j));
@@ -117,6 +119,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
           highlights: { swapped: [j + 1] },
           pointers: { i, j },
           regions: sortedPrefix(i),
+          phase: 'insert',
         });
         j -= 1;
       }
@@ -128,15 +131,17 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
         highlights: { sorted: [j + 1] },
         pointers: { i },
         regions: sortedPrefix(i + 1),
+        phase: 'insert',
       });
     }
 
     scene.markSortedRange(0, n - 1);
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: LINE.loop,
-      explanation: `Sorted, with ${counters.comparisons} comparisons and ${counters.writes} writes.`,
+      codeLine: 0,
+      explanation: `Sorted. ${counters.comparisons} comparisons and ${counters.writes} writes, with no extra memory.`,
       regions: sortedPrefix(n),
+      phase: 'done',
     });
   },
 });

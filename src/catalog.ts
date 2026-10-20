@@ -68,6 +68,14 @@ export const CATALOG: readonly CatalogEntry[] = [
     tags: ['heap', 'sift down', 'in place', 'binary tree'],
   },
   {
+    id: 'insertion-sort',
+    name: 'Insertion sort',
+    category: 'sorting',
+    phase: 1,
+    blurb: 'Grow a sorted prefix by sliding each new value back to its place.',
+    tags: ['shift', 'stable', 'in place', 'nearly sorted'],
+  },
+  {
     id: 'binary-search',
     name: 'Binary search',
     category: 'searching',

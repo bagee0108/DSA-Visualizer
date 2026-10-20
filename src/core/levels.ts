@@ -38,6 +38,7 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
       { id: 'two-pointers', tier: 1 },
       { id: 'sliding-window', tier: 1 },
       { id: 'kadane', tier: 2 },
+      { id: 'insertion-sort', tier: 1, ops: ['shift'] },
       { id: 'mergesort', tier: 1, ops: ['split', 'merge'] },
       { id: 'quicksort', tier: 2, ops: ['partition'] },
       { id: 'heapsort', tier: 2, ops: ['heapify', 'sift down'] },
