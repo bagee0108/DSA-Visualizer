@@ -15,7 +15,7 @@ import {
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import type { Frame, Graph, GraphEdge, Strip } from '../../core/types';
-import { DIRECTED_ERROR, fmt, mstPresets } from './mst';
+import { componentsOf, DIRECTED_ERROR, fmt, mstPresets } from './mst';
 import { DisjointSets } from './unionFindCore';
 
 interface KruskalInput {
@@ -81,32 +81,6 @@ export const KRUSKAL_PRESETS: readonly PresetSpec[] = mstPresets({
   dense: 'about three and a half edges per node, so most edges end up rejected: by the time they come up, their ends are already joined.',
   disconnected: 'three separate islands and, from 8 nodes, one node on its own: no spanning tree exists, so Kruskal builds a spanning forest, one tree per piece.',
 });
-
-/** Number of connected pieces, isolated nodes included. */
-function componentsOf(graph: Graph): number {
-  const out = new Map<string, string[]>(graph.nodes.map((node) => [node.id, []]));
-  for (const edge of graph.edges) {
-    out.get(edge.from)?.push(edge.to);
-    out.get(edge.to)?.push(edge.from);
-  }
-  const seen = new Set<string>();
-  let pieces = 0;
-  for (const node of graph.nodes) {
-    if (seen.has(node.id)) continue;
-    pieces += 1;
-    const queue = [node.id];
-    seen.add(node.id);
-    for (let head = 0; head < queue.length; head++) {
-      for (const next of out.get(queue[head] ?? '') ?? []) {
-        if (!seen.has(next)) {
-          seen.add(next);
-          queue.push(next);
-        }
-      }
-    }
-  }
-  return pieces;
-}
 
 type Gen = Generator<Frame, void, undefined>;
 

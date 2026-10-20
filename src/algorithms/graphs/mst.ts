@@ -1,6 +1,7 @@
 /** What Kruskal's and Prim's levels share: the refusal of directed input, the number format, and the presets. */
 
 import type { ParamMap, PresetSpec } from '../../core/define';
+import type { Graph } from '../../core/types';
 import { formatEdgeList, MAX_GRAPH_EDGES, regenerating, type EdgeListEdge } from '../../core/graphInput';
 import { randomInt } from '../../core/random';
 
@@ -11,6 +12,32 @@ export const DIRECTED_ERROR =
 export function fmt(value: number): string {
   const rounded = Math.round(value * 100) / 100;
   return rounded < 0 ? `−${-rounded}` : String(rounded);
+}
+
+/** Number of connected pieces, isolated nodes included. */
+export function componentsOf(graph: Graph): number {
+  const out = new Map<string, string[]>(graph.nodes.map((node) => [node.id, []]));
+  for (const edge of graph.edges) {
+    out.get(edge.from)?.push(edge.to);
+    out.get(edge.to)?.push(edge.from);
+  }
+  const seen = new Set<string>();
+  let pieces = 0;
+  for (const node of graph.nodes) {
+    if (seen.has(node.id)) continue;
+    pieces += 1;
+    const queue = [node.id];
+    seen.add(node.id);
+    for (let head = 0; head < queue.length; head++) {
+      for (const next of out.get(queue[head] ?? '') ?? []) {
+        if (!seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+  }
+  return pieces;
 }
 
 /* ---------------- presets: undirected and weighted ---------------- */

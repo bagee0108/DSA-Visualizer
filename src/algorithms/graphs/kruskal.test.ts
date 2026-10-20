@@ -4,7 +4,7 @@ import { MAX_GRAPH_NODES } from '../../core/graphInput';
 import { makeRng } from '../../core/random';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, graphOf, lastFrame, runFrames } from '../frameHygiene';
-import { adjacencyOf, stripIds, type Adjacency } from './graphTestkit';
+import { adjacencyOf, referenceForest, stripIds } from './graphTestkit';
 import { KRUSKAL_PRESETS, kruskal } from './kruskal';
 import { DIRECTED_ERROR } from './mst';
 
@@ -15,30 +15,6 @@ function presetParams(id: string, size: number, seed: number): Record<string, st
   const preset = KRUSKAL_PRESETS.find((candidate) => candidate.id === id);
   if (preset === undefined) throw new Error(`no preset ${id}`);
   return { ...preset.build(size, makeRng(seed)) };
-}
-
-/** Prim's from every unvisited node in turn: the weight of a minimum spanning forest, and its number of trees. */
-function referenceForest(adj: Adjacency): { weight: number; trees: number } {
-  const done = new Set<number>();
-  let weight = 0;
-  let trees = 0;
-  for (let s = 0; s < adj.nodeCount; s++) {
-    if (done.has(s)) continue;
-    trees += 1;
-    const best = new Map<number, number>([[s, 0]]);
-    while (best.size > 0) {
-      let u = -1;
-      let cost = Number.POSITIVE_INFINITY;
-      for (const [node, c] of best) if (c < cost) [u, cost] = [node, c];
-      best.delete(u);
-      done.add(u);
-      weight += cost;
-      for (const { to, weight: w } of adj.out[u] ?? []) {
-        if (!done.has(to) && w < (best.get(to) ?? Number.POSITIVE_INFINITY)) best.set(to, w);
-      }
-    }
-  }
-  return { weight, trees };
 }
 
 function acceptedOf(final: Frame): string[] {

@@ -78,6 +78,30 @@ export function referenceDfs(adj: Adjacency, start: number, forest: boolean): nu
   return order;
 }
 
+/** Prim's from every unvisited node in turn: the weight of a minimum spanning forest, and its number of trees. */
+export function referenceForest(adj: Adjacency): { weight: number; trees: number } {
+  const done = new Set<number>();
+  let weight = 0;
+  let trees = 0;
+  for (let s = 0; s < adj.nodeCount; s++) {
+    if (done.has(s)) continue;
+    trees += 1;
+    const best = new Map<number, number>([[s, 0]]);
+    while (best.size > 0) {
+      let u = -1;
+      let cost = Number.POSITIVE_INFINITY;
+      for (const [node, c] of best) if (c < cost) [u, cost] = [node, c];
+      best.delete(u);
+      done.add(u);
+      weight += cost;
+      for (const { to, weight: w } of adj.out[u] ?? []) {
+        if (!done.has(to) && w < (best.get(to) ?? Number.POSITIVE_INFINITY)) best.set(to, w);
+      }
+    }
+  }
+  return { weight, trees };
+}
+
 export function finalLabels(frames: readonly Frame[]): Readonly<Record<string, string>> {
   const last = frames[frames.length - 1];
   if (last === undefined) throw new Error('no frames');

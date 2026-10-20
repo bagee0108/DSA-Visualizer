@@ -20,9 +20,10 @@ import { tarjanScc } from './tarjan';
 import { topologicalSort } from './topoSort';
 import { bellmanFord } from './bellmanFord';
 import { kruskal } from './kruskal';
+import { prim } from './prim';
 import { unionFind } from './unionFind';
 
-const LEVELS: readonly RegisteredAlgorithm[] = [bfs, dfs, dijkstra, unionFind, tarjanScc, topologicalSort, bellmanFord, kruskal];
+const LEVELS: readonly RegisteredAlgorithm[] = [bfs, dfs, dijkstra, unionFind, tarjanScc, topologicalSort, bellmanFord, kruskal, prim];
 const SIZES = [6, 12, 40, 150] as const;
 
 interface ClearanceCase {

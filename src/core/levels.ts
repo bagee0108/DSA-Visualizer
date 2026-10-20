@@ -62,7 +62,7 @@ const LANES: ReadonlyArray<{ readonly id: LaneId; readonly levels: readonly Leve
       { id: 'union-find', tier: 2, ops: ['union', 'find'] },
       { id: 'topological-sort', tier: 2, ops: ['in-degree'] },
       { id: 'kruskal', tier: 2, ops: ['union', 'find'] },
-      { id: 'prim', tier: 2 },
+      { id: 'prim', tier: 2, ops: ['extract-min'] },
       { id: 'bellman-ford', tier: 3, ops: ['relax'] },
       { id: 'astar', tier: 2 },
       { id: 'tarjan-scc', tier: 3, ops: ['lowlink'] },
