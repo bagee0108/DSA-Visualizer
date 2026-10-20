@@ -277,6 +277,14 @@ as before. This is checked, not proven: the sweep tests in
 over 20 fixed seeds, and a seed outside them can still use up its tries. A
 new graph preset joins the sweep and goes through `regenerating()`.
 
+A graph the user types, or opens from a shared link, is laid out as given; no
+check can regenerate it. For those, and for a preset that used up its tries,
+`ClearanceNotice` puts one line under the canvas: "N edges pass close to nodes
+they don't connect to in this layout." It counts with the renderer's own
+`clearanceOf()` on the geometry as drawn, once per run, in a `role="status"`
+element that stays mounted so a screen reader hears it when a new graph brings
+one. It counts edges only; nodes crowded together are not reported.
+
 ### 2. Interaction is an explicit mode machine
 
 `src/playback/mode.ts` defines the modes and the only legal moves between

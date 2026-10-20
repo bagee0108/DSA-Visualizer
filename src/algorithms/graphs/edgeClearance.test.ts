@@ -10,7 +10,7 @@ import type { RegisteredAlgorithm } from '../../core/define';
 import { buildGraph, parseEdgeList } from '../../core/graphInput';
 import { layoutViolations, type EdgePair } from '../../core/graphLayout';
 import { makeRng, randomInt } from '../../core/random';
-import { clearanceOf, EDGE_CLEARANCE_VIEW, minNodeGap } from '../../renderers/graphClearance';
+import { clearanceNotice, clearanceOf, EDGE_CLEARANCE_VIEW, minNodeGap } from '../../renderers/graphClearance';
 import { graphBandBottom, graphGeometry } from '../../renderers/GraphRenderer';
 import { graphOf } from '../frameHygiene';
 import { bfs } from './bfs';
@@ -115,4 +115,32 @@ describe('layoutViolations, the check presets regenerate on', () => {
     // The graphs are crowded enough that the comparison means something.
     expect(rendererCaught).toBeGreaterThan(20);
   }, 120000);
+});
+
+describe('the clearance notice under the canvas', () => {
+  it('counts edges, in words that fit one edge or many', () => {
+    expect(clearanceNotice({ pairs: 0, edges: 0 })).toBeNull();
+    expect(clearanceNotice({ pairs: 1, edges: 1 })).toBe("1 edge passes close to a node it doesn't connect to in this layout.");
+    expect(clearanceNotice({ pairs: 3, edges: 1 })).toBe("1 edge passes close to nodes it doesn't connect to in this layout.");
+    expect(clearanceNotice({ pairs: 4, edges: 3 })).toBe("3 edges pass close to nodes they don't connect to in this layout.");
+  });
+
+  /** The notice for a level's run, measured as the canvas measures it. */
+  function noticeFor(level: RegisteredAlgorithm, params: Record<string, string>): string | null {
+    const built = level.build({ ...level.defaults, ...params });
+    if (!built.ok) throw new Error(built.error);
+    const first = graphOf(built.frames[0]);
+    return clearanceNotice(clearanceOf(graphGeometry(first.graph, graphBandBottom(first.strips.length))));
+  }
+
+  it('speaks up for a typed graph whose edges run under nodes', () => {
+    // Six nodes on the grid put 0 to 3 in one row: 0-2 runs under 1, and 1-3 under 2.
+    expect(noticeFor(bfs, { g: '0-2,1-3,5', layout: 'grid' })).toBe("2 edges pass close to nodes they don't connect to in this layout.");
+    expect(noticeFor(bfs, { g: '0-2,1', layout: 'grid' })).toBe("1 edge passes close to a node it doesn't connect to in this layout.");
+  });
+
+  it('stays quiet on a clear graph, and on every level default', () => {
+    expect(noticeFor(bfs, { g: '0-1,1-2', layout: 'grid' })).toBeNull();
+    for (const level of LEVELS) expect(noticeFor(level, {}), level.meta.id).toBeNull();
+  });
 });

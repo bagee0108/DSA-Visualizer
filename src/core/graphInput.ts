@@ -201,7 +201,8 @@ export function presetViolations(params: ParamMap): number {
  * The presets, each regenerated until its layout is clear: if the graph a
  * preset builds leaves an edge too close to a node or two nodes crowded, it
  * builds another, drawing on from the same seeded stream, up to PRESET_TRIES
- * graphs in all. If none is clear, the one with the fewest violations is used.
+ * graphs in all. If none is clear, the one with the fewest violations is used,
+ * and the notice under the canvas (ClearanceNotice) says how many edges pass close.
  * The first graph is exactly what the preset built before, so a preset that
  * was already clear builds the same graph from the same seed.
  */

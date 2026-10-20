@@ -91,3 +91,14 @@ export function minNodeGap(geometry: Pick<Geometry, 'positions'>): number {
   }
   return gap;
 }
+
+/**
+ * The notice under the canvas when edges, as drawn, pass within the clearance
+ * of nodes they don't join, or null when none do. A user-entered graph can lay
+ * out that way; so can a preset that used up its tries (see regenerating()).
+ */
+export function clearanceNotice({ pairs, edges }: Clearance): string | null {
+  if (edges === 0) return null;
+  if (edges === 1) return `1 edge passes close to ${pairs === 1 ? "a node it doesn't" : "nodes it doesn't"} connect to in this layout.`;
+  return `${edges} edges pass close to nodes they don't connect to in this layout.`;
+}

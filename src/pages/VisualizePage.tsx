@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { CallStackPanel } from '../components/CallStackPanel';
+import { ClearanceNotice } from '../components/ClearanceNotice';
 import { CodePanel } from '../components/CodePanel';
 import { ComplexityPanel } from '../components/ComplexityPanel';
 import { ExplanationBar } from '../components/ExplanationBar';
@@ -111,6 +112,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
         <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
           <div className="flex min-h-0 flex-col lg:border-r lg:border-line">
             <Canvas error={error} />
+            <LayoutNotice error={error} />
             <Commentary />
             <Player />
             <StatusLine />
@@ -240,6 +242,11 @@ function Canvas({ error }: { error: string | null }): ReactNode {
       )}
     </div>
   );
+}
+
+function LayoutNotice({ error }: { error: string | null }): ReactNode {
+  const { frame } = usePlayback();
+  return <ClearanceNotice frame={error === null ? frame : null} />;
 }
 
 function Commentary(): ReactNode {
