@@ -163,10 +163,10 @@ link is disabled rather than handing out a link that would not reproduce it.
   fits a 60 Hz animation frame (~17 ms). Measured in headless Chrome as the
   time from a step key press to React's commit plus the browser's style and
   layout recalculation, over 120 steps, paint excluded (waiting for paint
-  would round every step up to a whole frame). On the force-directed presets
-  at 150 nodes (800-1,250 SVG elements) the median step is 9-17.5 ms and the
-  95th percentile 13-23 ms. Dijkstra on the islands preset is the one median
-  over target (17.5 ms); see the Deferred list in CONTRIBUTING.
+  would round every step up to a whole frame). On every preset of every graph
+  level at 150 nodes (41 presets, 600-1,500 SVG elements) the median step is
+  5.8-11.6 ms and the 95th percentile at most 17.5 ms; Dijkstra on the islands
+  preset, once the slowest at 17.5 ms, is 6.4-7.5 ms measured on its own.
 
 ## Known limitations
 

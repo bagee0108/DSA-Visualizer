@@ -6,13 +6,15 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Running the owner's brief of 2026-10-20 (after the item 9 stop):** the
-  hotfix, ruling 1, ruling 3, 9b, 10, then stop with a full summary. main
-  and Vercel are untouched.
-- **Done:** the hotfix (`hotfix/step-crash` pushed, main untouched);
-  insertion sort as a level (ruling 1); the clearance scale under the
-  strips panel (ruling 3, which needed a fix).
-- **Next:** 9b, Dijkstra islands at 150 nodes under 17 ms a step.
+- **STOPPED after 9b, at the owner's request** ("stop once done with this
+  task", given while 9b was in progress). Done from the brief of 2026-10-20
+  (after the item 9 stop): the hotfix (`hotfix/step-crash` pushed, main
+  untouched), ruling 1 (insertion sort as a level), ruling 3 (the clearance
+  scale, which needed a fix) and 9b. dev is pushed. main and Vercel are
+  untouched.
+- **Not started:** item 10, the step-anchor refactor. The brief's closing
+  "full summary" is the 9b stop entry below, since 10 did not run.
+- **Resume:** item 10, as written in ROADMAP.
 
 ## Done before this run
 
@@ -82,6 +84,73 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### STOP after 9b (owner's request)
+
+The owner asked mid-run to stop once 9b was done. Item 10 (step-anchor
+refactor) is not started; nothing of it is in the tree.
+
+**This brief, commits on dev** (all signed, typecheck, suite twice and build
+clean at each): `87d52f4` (brief, rulings, hotfix log), `db2bb39` `cde32a3`
+(ruling 1), `73d0aa7` `999e924` (ruling 3), `65e0e66` `df52279` (9b), and this
+entry. On `hotfix/step-crash`: `7687831` `c84bdfb` (the two cherry-picks,
+clean). Suite 728 → 735. No test on `it.fails`; no golden or fingerprint
+test changed; no dependency added. main and Vercel untouched.
+
+**Worth a look:**
+
+1. **Ruling 3 found the strips panel more lenient** than the ruling allows
+   (the graph drew up to 10% smaller than on main on short windows) and
+   fixed it; see that entry. The visible effects: strips centred under the
+   drawing at the canvas's scale, and status-line hints that drop from the
+   end on narrow columns instead of wrapping.
+2. **The explanation bar's 1 px jump** (on main too) was resizing the canvas
+   on every step that changed the explanation's line count: the biggest
+   step-time cost on Kruskal, Prim and topological sort. Fixed in `df52279`;
+   it is a candidate for main alongside the hotfix.
+3. **Insertion sort renumbers the path:** every level after 4 moves down
+   one, race mode is 34.
+
+### Item 9b: Dijkstra islands at 150 nodes (done)
+
+**Already under 17 ms before this item's changes, on this machine.** README
+method (key press to React commit plus style and layout, 120 steps, paint
+excluded), five islands seeds at 150 nodes: dev before 9b 6.6-7.3 ms median
+(p95 9.4-10.1); main `bd48036` 11.1-11.7. The README's 17.5 ms predates the
+layout work; item 6 took the strips out of the canvas SVG (1,245 → 1,075
+elements). Frames were never touched.
+
+**Headroom, since the target is per machine:** at 2x CPU throttle dev was
+16.6-17.3 ms (main 32-36), at 4x 42-44 (main 75-78). So on hardware half as
+fast the islands case sits at the line.
+
+**Two changes for that headroom, neither changing frames:**
+
+- `65e0e66`: graph nodes and edges are memoised components on plain values,
+  so a step reconciles only what changed. Proof of no visible change: the
+  canvas's outerHTML hashed after each of 70 steps and at the end matches
+  the previous build on all nine graph levels plus Dijkstra at 150 (islands
+  and random), motion on and off: 22 runs x 71 steps identical. Islands at
+  2x throttle: 15.7-16.0 ms.
+- `df52279`: the explanation bar reserves two lines but missed its 1 px
+  border, so a step that changed the line count resized the canvas by a
+  pixel and re-laid out the whole drawing (the profile showed 4.3 ms of
+  forced layout a step on Kruskal against 1.7 on Dijkstra). Now two lines
+  fit exactly. Kruskal disconnected 19.4-19.7 → 11.3-13.3 ms, Prim
+  disconnected 15.4-15.6 → 9.0-9.6, Kruskal dense ~15 → 10.8-11.3,
+  topological sort wide ~15 → 10.2-10.3.
+
+**Every graph preset at 150 nodes now** (41 presets on 9 levels, two rounds
+in one long run, which reads 2-3 ms higher than a fresh process): medians
+5.8-11.6 ms, p95 at most 17.5 ms. Kruskal disconnected was the one median
+over target (17.1-19.7 ms) before `df52279`, and it was over on main too
+(22.6). README and CONTRIBUTING (Deferred entry removed) updated.
+
+**Profile of what's left, islands:** about 4 ms of script (React's task),
+2 ms of style and layout, forced early by the code panel reading its scroll
+box after each commit (moving it would not change the total). Paint and
+about 3.8 ms of animation-frame work (the counters' count-up) fall outside
+the README method.
 
 ### Ruling 3: the clearance check's scale and the strips panel (fixed, `73d0aa7`)
 

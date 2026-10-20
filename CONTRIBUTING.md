@@ -385,7 +385,6 @@ f, g and h.
 ### Deferred
 
 - Layered layout for the tree preset, deferred: it depends on the source node, which conflicts with fixed per-run topology.
-- Dijkstra islands at 150 nodes: 17.5 ms median, over target, predates the layout work.
 
 # Precompute
 
