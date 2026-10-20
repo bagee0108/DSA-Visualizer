@@ -9,8 +9,9 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 - **Running the owner's brief of 2026-10-20 (after the item 9 stop):** the
   hotfix, ruling 1, ruling 3, 9b, 10, then stop with a full summary. main
   and Vercel are untouched.
-- **Done:** the hotfix (`hotfix/step-crash` pushed, main untouched).
-- **Next:** insertion sort as a full level (ruling 1).
+- **Done:** the hotfix (`hotfix/step-crash` pushed, main untouched);
+  insertion sort as a level (ruling 1).
+- **Next:** the clearance scale under the strips panel (ruling 3).
 
 ## Done before this run
 
@@ -80,6 +81,55 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### Ruling 1: insertion sort as a level (done)
+
+`db2bb39`. Level 5, tier 1, in the arrays lane just before merge sort, so it
+opens the run of sorts; the ticker op is "shift" (sliding larger values
+right), a new word on the ticker. Registered, so Browse and the sitemap list
+it with no other change. Race mode imports the same generator.
+
+**Design choices:**
+
+- **Place on the path:** before merge sort, not after heapsort: it is the
+  simplest of the four and the one the others are usually taught against.
+  Every later level moves down one; race mode is now level 34 (README
+  updated; nothing in the code names a level number).
+- **Browse order** is the catalog's, which was already not the path's
+  (quick, merge, heap). Insertion sort goes after heapsort so the existing
+  Browse order doesn't shift.
+- **The generator now matches the other sorts:** phase "insert" on every
+  frame of a pass (the explanation bar shows it as a chip, as it shows
+  "partition" or "merge"), and the final frame on line 0 with phase "done"
+  and a "Sorted. N comparisons and M writes, with no extra memory." summary,
+  as quicksort, merge sort and heapsort end. Counters and the frame sequence
+  are otherwise unchanged, so race totals (198 operations for 100 sorted)
+  hold. Before this it was race-only and had no level, so no golden pinned
+  it.
+- **Presets:** the shared array presets: random, sorted, reversed, nearly
+  sorted, few unique, organ pipe. Size slider up to 100 as before; typed
+  input up to the shared 200.
+
+**Tests (+4):** on the path before merge sort with "shift" and in the
+sitemap; nearly sorted is close to linear (111-127 comparisons at n=100
+over 20 seeds, against 2,400-2,900 for random; the test asserts under 4n and
+a fifth of random); every frame of a pass is "insert" and the run ends like
+the other sorts; 200 reversed, the largest typed input, is 40,399 frames
+(cap 120,000).
+
+**Worst case:** 200 reversed, 40,399 frames of 200 values each, the same
+order as quicksort on 200 sorted with the last-element pivot.
+
+**Checked in a browser:** axe clean on the level (random and nearly sorted),
+Browse and race mode, both themes, 1366x768, 1x screenshots; the 150-press
+repro is clean with motion on and off. The tab-walk count of stops without
+a detected ring is 8, against 9 on quicksort (one fewer field): the probe's
+usual figure, not a new gap.
+
+**Docs:** README status (Phase 1 is 8 algorithms; its test count is now the
+arrays folder, 150, since the old 133 couldn't be rebuilt from today's
+files) and race level 34; CONTRIBUTING's race section no longer says
+insertion sort is race-only.
 
 ### Hotfix: the step crash, for main (done)
 
