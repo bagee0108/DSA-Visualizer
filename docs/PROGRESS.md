@@ -6,7 +6,7 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Next item:** 4 (Prim), then 5 (A*), then stop as planned.
+- **Next item:** 5 (A*), then stop as planned.
 
 ## Done before this run
 
@@ -57,6 +57,41 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### Item 4: Prim's MST (done)
+
+Commits: `3e14b29` (Kruskal's presets, refusal and number format move to
+`mst.ts`, a pure move: preset output hash identical), `36ff85d` (Prim).
+
+- Lazy heap as in Dijkstra (same `MinHeap`, same queue strip). Key labels
+  (the cheapest edge known from the tree, ∞ to start). MST edges become tree
+  edges when their node is extracted. A spanning forest on disconnected
+  input. Undirected only, refused with Kruskal's message. Marquee op:
+  extract-min. Open on registration; sitemap updated (checked in the built
+  sitemap.xml); README row updated.
+- Shares Kruskal's four presets (textbook, ties, dense, disconnected) with
+  its own descriptions. Total weight matches Kruskal's on every preset at
+  4/6/12/40/150 (test).
+- Tests (18): reference forest and Kruskal parity; the same total from every
+  start node; every join takes the lightest edge across the cut, checked from
+  the frame's own visited set; the heap strip stays a heap; stale pops on
+  dense input, only for nodes already in the tree; negative weights; the
+  refusal; frame hygiene, determinism, input contract; the clearance sweep.
+- **Worst case** (150 nodes, the 600-edge cap): 1,538 frames, about 25 MB
+  heap delta (no forced gc, so an upper-ish estimate), 40 ms to build.
+  Dijkstra on the same graph: 1,455 frames, about 22.5 MB.
+- **Step time at 150**, README method, this machine: Prim dense median
+  9.7 ms (p95 11.9), ties 9.4 (12.3), disconnected 11.8 (17.3); Kruskal
+  dense 10.9 (14.7); Dijkstra random 9.0 (11.6), islands 11.6 (14.4). All
+  medians under the 17 ms target.
+- axe clean in both themes at 1366x768 on the Prim page and on its directed
+  refusal. Screenshots in both themes looked right.
+- Tab walk: every stop takes focus in order. The stops without an outline
+  are the range sliders and form fields, which use the site's existing
+  focus styling. The same pattern is on Kruskal and Dijkstra; Prim adds one
+  field (start node).
+- The two console errors on every page are the Vercel analytics scripts,
+  which the local server doesn't serve.
 
 ### Item 3: Kruskal's dense preset (done)
 
