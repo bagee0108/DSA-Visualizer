@@ -6,7 +6,10 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Next item:** 3 (layout step 6, restore Kruskal's dense preset).
+- **STOPPED at item 3** (2026-10-20, ~02:30): spec conflict, see the stop
+  report below. Items 1 and 2 are done and pushed. Nothing is uncommitted.
+- **Resume:** item 3 once the owner picks an option, then 4 (Prim), 5 (A*),
+  then stop as planned.
 
 ## Done before this run
 
@@ -42,6 +45,59 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### STOP at item 3: Kruskal's dense preset can't pass the sweep as defined
+
+**Done:** items 1 (`9c64a7f`, `4827d00`) and 2 (`b08d3ea`), plus the vitest
+worker cap (`b4dff35`). Suite 618/618 twice, typecheck and build clean at
+every commit; all commits signed and pushed to dev. main untouched.
+
+**Blocked:** item 3, "restore Kruskal's dense preset, passing the multi-seed
+sweep." The preset as saved last session:
+
+```ts
+{
+  id: 'dense',
+  label: 'Dense',
+  build: (size, rng) => finish(connected(0, size, Math.min(MAX_GRAPH_EDGES - size, size * 3), rng, () => randomInt(rng, 1, 20)), size, rng),
+  description: 'about four edges per node, so most edges end up rejected: by the time they come up, their ends are already joined.',
+}
+```
+
+At 150 nodes it is ~599 edges, at the 600-edge cap. With regeneration it
+still fails the sweep: seed 5 at 150 uses up all 5 tries and keeps a graph
+with 2 edge/node pairs (the check and the renderer agree on 2). Sizes 6, 12
+and 40 pass. Single-layout failure rates over 60 fresh seeds:
+
+| Dense variant | One layout fails | All 5 tries fail (p^5) | 20-seed sweep |
+| --- | --- | --- | --- |
+| x3 as saved, 150 nodes | 65% | ~12% | fails (seed 5) |
+| x2.5, 150 nodes (~525 edges) | 15% | ~0.01% | passes |
+| x2, 150 nodes (~450 edges) | 0 of 60 | ~0 | passes |
+| x3 capped at 120 nodes | 37% at 130 | under 1% | passes |
+| x3 capped at 110 nodes | 8% at 110 (32% at 100) | ~0.3% or less | passes |
+
+So "restore it as defined" and "pass the sweep" conflict. Passing anyway
+would need one of: a different preset, more than 5 tries, or layout work.
+More tries and layout changes are both stop conditions of their own.
+
+**Decision needed:** how the dense preset may differ from the saved one.
+
+1. **Density x2.5 at every size (recommended).** "About three and a half
+   edges per node." 150 stays available like every other preset; about 72%
+   of edges are rejected at 150 (x3: about 75%), so the lesson is the same.
+   A user lands on a fallback graph about 1 time in 10,000.
+2. Density x2 ("about three edges per node"): no failures seen, about 67%
+   rejected at 150. Safest, slightly weaker lesson.
+3. Keep x3 and cap the preset at 110 or 120 nodes, with a cap reason like the
+   ring's. Keeps "about four" but adds a second capped preset, and the
+   failure rate is noisy around 100-130.
+4. Keep x3 at 150 and accept that ~12% of dense@150 graphs fall back with the
+   notice. The sweep then fails, so this needs a ruling on the sweep, which
+   I can't make.
+
+On a choice of 1-3, item 3 is a one-commit change: the preset, its
+description, the sweep and Kruskal tests run as they are.
 
 ### Item 2: clearance notice under the canvas (done)
 
