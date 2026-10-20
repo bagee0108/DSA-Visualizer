@@ -61,6 +61,49 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 (One entry per item and per stop, newest first.)
 
+### Item 5a: A* follow-ups (done)
+
+Commits: `cc338d1` (the brief into ROADMAP), `1e635c0` (octile and the
+overestimate preset), `a8a89fd` (walls).
+
+- **Octile** joins the picker between Euclidean and zero: max(dr, dc) +
+  (√2 - 1) min(dr, dc), the cost of the way across open ground. Tested
+  optimal against the independent grid Dijkstra on every preset, sizes
+  6/12/20, random walls over 5 seeds, both ways of moving. Also tested: it
+  is at least Euclidean and at most Manhattan everywhere, exact on open
+  ground with diagonals, and on the open field it never expands more
+  squares than Euclidean.
+- **"When the heuristic overestimates"** is the found map
+  (`.....S/#...#./....../G...../##..##`) as a preset. Design choices: it
+  sets heuristic = Manhattan and moves = 8 itself (a preset's params merge
+  over the form), so one click shows it. It is one fixed 5 x 6 map and
+  ignores the size slider. I didn't give it a `maxSize`, because the cap
+  hint would then sit under the slider for every size above 6; the
+  description says "on a fixed 5 × 6 map" instead. The description comes
+  from tracing the run: Manhattan charges 2 for a √2 diagonal, so the
+  squares on the true route show f = 8, while the search goes down the right
+  edge and along row 3 at f = 7.4 and pops G there. The test runs the preset
+  itself: 7.4 against a reference 6.2, the run's own "costs 7.4", and
+  octile and Euclidean both get 6.2 on the same map.
+- **Walls:** two new derived theme tokens next to `vizGrid` (not role
+  colours, so the role palette and its tests are untouched).
+  `vizWall` = halfway between the hairline and the muted text, moved by
+  `withContrast` only as far as 3:1 against the ground (an empty square).
+  `vizWallHatch` = one OKLCH step (0.05) further from the ground. The hatch
+  is a 2-unit line every 6 view units at 45° (an SVG pattern, id from
+  `useId`). Measured: Ember dark 3.08 (hatch 3.80), Ember light 3.04 (3.72),
+  Brass dark 3.04 (3.75), Brass light 3.07 (3.76); the old dim-text walls
+  were 9.2 / 8.7. Tests: both at least 3:1 in every preset and mode,
+  quieter than dim text, chroma under 0.03.
+- Screenshots at 1x, 1366x768, both themes: the A* default mid-run, the
+  overestimate map's final frame, N-Queens and Sudoku (unchanged: no walls,
+  no pattern emitted). axe clean on all of them in both themes.
+
+**Narrower than it might sound:** the walls clear 3:1 by a thin margin
+(3.04 at worst), by design: the fill moves only as far as 3:1 needs. The
+contrast is between a wall and an empty square. A wall next to a square
+with a role fill (visited, open) is not held to 3:1.
+
 ### STOP after item 5 (planned)
 
 **Done this session:** items 1-5. Commits on dev, all signed, typecheck,
