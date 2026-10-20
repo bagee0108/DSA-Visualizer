@@ -11,7 +11,7 @@ import type { Graph, GraphComponent, GraphSnapshot, Highlights, Pointers } from 
 import type { FillName, InkMap } from './ink';
 import { counted, VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
-import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
+import { bandHeight, PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
 export const GRAPH_TOP = 12;
 
@@ -31,6 +31,8 @@ export interface GraphRendererProps {
   readonly pointers: Pointers;
   readonly animate: boolean;
   readonly durationMs: number;
+  /** Strips are drawn by the page's own strips panel: leave them out and crop the viewBox at the band. */
+  readonly stripsApart?: boolean;
 }
 
 interface Placed {
@@ -244,7 +246,7 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
-function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: GraphRendererProps): ReactNode {
+function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs, stripsApart = false }: GraphRendererProps): ReactNode {
   const { graph } = snapshot;
   const bottom = graphBandBottom(snapshot.strips.length);
   const geometry = useMemo(() => graphGeometry(graph, bottom), [graph, bottom]);
@@ -267,7 +269,7 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
 
   return (
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      viewBox={`0 0 ${VIEW_W} ${stripsApart ? bandHeight(bottom, snapshot.strips.length) : VIEW_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
@@ -475,7 +477,7 @@ function GraphRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
         );
       })}
 
-      {snapshot.strips.map((strip, row) => (
+      {!stripsApart && snapshot.strips.map((strip, row) => (
         <StripRow key={strip.label} strip={strip} y={bottom + 12 + row * STRIP_HEIGHT} roles={roles} transition={animate ? `transform ${ms}ms var(--ease-slide)` : 'none'} animate={animate} ink={ink} />
       ))}
     </svg>

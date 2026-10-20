@@ -12,7 +12,7 @@ import type { GridSnapshot, Highlights, Pointers } from '../core/types';
 import { VIEW_H, VIEW_W } from './canvas';
 import type { FillName, InkMap } from './ink';
 import { markFor, rectMark, resolveRoles, ROLE_COLOR } from './roles';
-import { STRIP_HEIGHT, StripRow } from './strips';
+import { bandHeight, STRIP_HEIGHT, StripRow } from './strips';
 import { TreeLayer, treeScale, type TreeRunBound } from './TreeRenderer';
 
 /** Column headers and their pointer tags sit above the board. */
@@ -55,6 +55,8 @@ export interface GridRendererProps {
   readonly pointers: Pointers;
   readonly animate: boolean;
   readonly durationMs: number;
+  /** Strips are drawn by the page's own strips panel: leave them out and crop the viewBox at the band. */
+  readonly stripsApart?: boolean;
 }
 
 /** A queen in a 24-unit box: a five-point crown on a base. */
@@ -82,7 +84,7 @@ function tagsByTarget(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
-function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: GridRendererProps): ReactNode {
+function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs, stripsApart = false }: GridRendererProps): ReactNode {
   const { rows, cols, cells, piece, checkered, boxes, fixed, marks, walls, notes, rowHeaders, colHeaders, lines, tree, strips } = snapshot;
   const layout = useMemo(() => gridLayout(rows, cols, strips.length, tree !== null), [rows, cols, strips.length, tree]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
@@ -108,7 +110,7 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
 
   return (
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      viewBox={`0 0 ${VIEW_W} ${stripsApart ? bandHeight(layout.bottom, strips.length) : VIEW_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
@@ -331,12 +333,13 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
               pointers={pointers}
               animate={animate}
               durationMs={durationMs}
+              stripsApart={stripsApart}
             />
           </g>
         </>
       )}
 
-      {strips.map((strip, row) => (
+      {!stripsApart && strips.map((strip, row) => (
         <StripRow
           key={strip.label}
           strip={strip}

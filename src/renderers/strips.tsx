@@ -4,11 +4,22 @@ import { useState, type ReactNode } from 'react';
 
 import type { EntityId, HighlightRole, Strip, StripItem } from '../core/types';
 import type { InkMap } from './ink';
-import { VIEW_W } from './canvas';
+import { VIEW_H, VIEW_W } from './canvas';
 import { markFor, rectMark, ROLE_COLOR } from './roles';
 
 export const STRIP_HEIGHT = 46;
 export const PAD_X = 16;
+/** Kept under the band when the strips are drawn apart, so nothing at its edge is clipped. */
+const BAND_MARGIN = 6;
+
+/**
+ * The viewBox height of a structure whose strips are drawn apart: the band it
+ * was laid out in, which is exactly where the strips would have started. The
+ * layout itself is unchanged, so every position stays where it was.
+ */
+export function bandHeight(bottom: number, strips: number): number {
+  return strips > 0 ? Math.min(VIEW_H, bottom + BAND_MARGIN) : VIEW_H;
+}
 /** Past this many chips a strip shows only the end that matters and a +n marker. */
 const MAX_CHIPS = 24;
 /** Wider than this many departures at once and it was a jump, not a step. */

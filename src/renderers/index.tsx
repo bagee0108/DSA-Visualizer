@@ -15,9 +15,11 @@ export interface StructureCanvasProps {
   readonly frames: readonly Frame[];
   readonly animate: boolean;
   readonly durationMs: number;
+  /** The page draws the strips in its own panel; renderers leave them out. */
+  readonly stripsApart?: boolean;
 }
 
-export function StructureCanvas({ frame, frames, animate, durationMs }: StructureCanvasProps): ReactNode {
+export function StructureCanvas({ frame, frames, animate, durationMs, stripsApart = false }: StructureCanvasProps): ReactNode {
   const treeBound = useMemo(() => treeRunBound(frames), [frames]);
   const ink = useInk();
 
@@ -43,6 +45,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           pointers={frame.pointers}
           animate={animate}
           durationMs={durationMs}
+          stripsApart={stripsApart}
         />
       );
     case 'graph':
@@ -54,6 +57,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           pointers={frame.pointers}
           animate={animate}
           durationMs={durationMs}
+          stripsApart={stripsApart}
         />
       );
     case 'matrix':
@@ -65,6 +69,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           pointers={frame.pointers}
           animate={animate}
           durationMs={durationMs}
+          stripsApart={stripsApart}
         />
       );
     case 'split':
@@ -76,6 +81,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           pointers={frame.pointers}
           animate={animate}
           durationMs={durationMs}
+          stripsApart={stripsApart}
         />
       );
     case 'grid':
@@ -88,6 +94,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
           pointers={frame.pointers}
           animate={animate}
           durationMs={durationMs}
+          stripsApart={stripsApart}
         />
       );
     default:
@@ -99,6 +106,7 @@ export function StructureCanvas({ frame, frames, animate, durationMs }: Structur
   }
 }
 
+export { StripsPanel, stripsOf } from './StripsPanel';
 export { ArrayRenderer } from './ArrayRenderer';
 export { GraphRenderer } from './GraphRenderer';
 export { GridRenderer } from './GridRenderer';

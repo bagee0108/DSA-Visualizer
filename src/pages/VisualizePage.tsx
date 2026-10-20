@@ -24,7 +24,7 @@ import type { ParamMap, RegisteredAlgorithm } from '../core/define';
 import { ZERO_COUNTERS } from '../core/types';
 import { PlaybackProvider, usePlayback } from '../playback/PlaybackProvider';
 import { useChunkedBuild } from '../playback/useChunkedBuild';
-import { StructureCanvas } from '../renderers';
+import { StripsPanel, stripsOf, StructureCanvas } from '../renderers';
 import { useRouter } from '../router/router';
 import { CATEGORY_LABEL } from '../catalog';
 
@@ -112,6 +112,7 @@ function AlgorithmView({ algorithm }: { algorithm: RegisteredAlgorithm }): React
         <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
           <div className="flex min-h-0 flex-col lg:border-r lg:border-line">
             <Canvas error={error} />
+            <StripsView error={error} />
             <LayoutNotice error={error} />
             <Commentary />
             <Player />
@@ -238,8 +239,20 @@ function Canvas({ error }: { error: string | null }): ReactNode {
           frames={frames}
           animate={!jumped && frameDurationMs >= 60}
           durationMs={frameDurationMs}
+          stripsApart
         />
       )}
+    </div>
+  );
+}
+
+/** The frame's queue, stack or priority queue, drawn under the canvas rather than inside it. */
+function StripsView({ error }: { error: string | null }): ReactNode {
+  const { frame, jumped, frameDurationMs } = usePlayback();
+  if (error !== null || frame === null || stripsOf(frame).length === 0) return null;
+  return (
+    <div className="shrink-0 bg-ground px-1 pb-1">
+      <StripsPanel frame={frame} animate={!jumped && frameDurationMs >= 60} durationMs={frameDurationMs} />
     </div>
   );
 }

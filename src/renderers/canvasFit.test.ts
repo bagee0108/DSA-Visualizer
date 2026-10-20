@@ -27,7 +27,8 @@ import {
   type PaneShape,
 } from './MatrixRenderer';
 import { BOARD_SHARE, gridLayout, SQUARE_MAX } from './GridRenderer';
-import { PAD_X, STRIP_HEIGHT } from './strips';
+import { bandHeight, PAD_X, STRIP_HEIGHT } from './strips';
+import { stripsHeight } from './StripsPanel';
 import { treeScale, TREE_TOP, type TreeRunBound } from './TreeRenderer';
 
 const STRIP_COUNTS = [0, 1, 2];
@@ -316,6 +317,31 @@ describe('board layout', () => {
           }
         }
       }
+    }
+  });
+});
+
+describe('strips drawn apart from the structure', () => {
+  it('crops each band exactly where its strips would start, and leaves a strip-less canvas whole', () => {
+    for (const strips of STRIP_COUNTS) {
+      const bands = [graphBandBottom(strips), matrixBandBottom(strips), gridLayout(5, 5, strips, false).bottom, treeScale({ columns: 8, depth: 3, strips }).treeBottom];
+      for (const bottom of bands) {
+        const height = bandHeight(bottom, strips);
+        if (strips === 0) expect(height).toBe(VIEW_H);
+        else {
+          expect(height).toBeGreaterThanOrEqual(bottom);
+          // Nothing of the first strip row is left in the crop: it starts 12 below the band.
+          expect(height).toBeLessThan(bottom + 12);
+        }
+      }
+    }
+  });
+
+  it('sizes the strips panel to its rows, the last chip included', () => {
+    expect(stripsHeight(0)).toBe(0);
+    for (const rows of [1, 2, 3]) {
+      // A row's chips are 28 high, from 8 below the panel's top plus a row per strip above it.
+      expect(stripsHeight(rows)).toBeGreaterThanOrEqual(8 + (rows - 1) * STRIP_HEIGHT + 28);
     }
   });
 });

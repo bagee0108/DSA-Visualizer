@@ -12,7 +12,7 @@ import type { Frame, Highlights, Pointers, TreeNodeSnapshot, TreeSnapshot } from
 import type { FillName, InkMap } from './ink';
 import { counted, VIEW_H, VIEW_W } from './canvas';
 import { circleMark, markFor, ROLE_COLOR, resolveRoles } from './roles';
-import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
+import { bandHeight, PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
 export const TREE_TOP = 28;
 const MAX_SLOT = 88;
@@ -35,6 +35,8 @@ export interface TreeRendererProps {
   readonly pointers: Pointers;
   readonly animate: boolean;
   readonly durationMs: number;
+  /** Strips are drawn by the page's own strips panel: leave them out and crop the viewBox at the band. */
+  readonly stripsApart?: boolean;
 }
 
 interface Placed {
@@ -191,11 +193,11 @@ function pointerLabels(pointers: Pointers): ReadonlyMap<string, string[]> {
   return out;
 }
 
-function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: TreeRendererProps): ReactNode {
+function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs, stripsApart = false }: TreeRendererProps): ReactNode {
   const scale = useMemo(() => treeScale(bound), [bound]);
   return (
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      viewBox={`0 0 ${VIEW_W} ${stripsApart ? bandHeight(scale.treeBottom, bound.strips) : VIEW_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
@@ -210,6 +212,7 @@ function TreeRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
         pointers={pointers}
         animate={animate}
         durationMs={durationMs}
+        stripsApart={stripsApart}
       />
     </svg>
   );
@@ -225,10 +228,12 @@ export interface TreeLayerProps {
   readonly pointers: Pointers;
   readonly animate: boolean;
   readonly durationMs: number;
+  /** Strips are drawn by the page's own strips panel: leave them out and crop the viewBox at the band. */
+  readonly stripsApart?: boolean;
 }
 
 /** The drawing itself, in a box of the scale's making, so another renderer can place a tree beside its own picture. */
-export function TreeLayer({ snapshot, scale, width, ink, highlights, pointers, animate, durationMs }: TreeLayerProps): ReactNode {
+export function TreeLayer({ snapshot, scale, width, ink, highlights, pointers, animate, durationMs, stripsApart = false }: TreeLayerProps): ReactNode {
   const positions = useMemo(() => layoutTree(snapshot, scale), [snapshot, scale]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const labels = useMemo(() => pointerLabels(pointers), [pointers]);
@@ -361,7 +366,7 @@ export function TreeLayer({ snapshot, scale, width, ink, highlights, pointers, a
         );
       })}
 
-      {snapshot.strips.map((strip, row) => (
+      {!stripsApart && snapshot.strips.map((strip, row) => (
         <StripRow
           key={strip.label}
           strip={strip}

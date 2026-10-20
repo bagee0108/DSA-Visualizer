@@ -12,7 +12,7 @@ import type { EntityId, Highlights, HighlightRole, MatrixArrow, MatrixSnapshot, 
 import { counted, VIEW_H, VIEW_W } from './canvas';
 import type { FillName, InkMap } from './ink';
 import { markFor, rectMark, ROLE_COLOR, resolveRoles } from './roles';
-import { PAD_X, STRIP_HEIGHT, StripRow } from './strips';
+import { bandHeight, PAD_X, STRIP_HEIGHT, StripRow } from './strips';
 
 export const MATRIX_TOP = 10;
 /** Column title, then column pointers, then column headers, then the grid. */
@@ -512,9 +512,11 @@ export interface MatrixRendererProps {
   readonly pointers: Pointers;
   readonly animate: boolean;
   readonly durationMs: number;
+  /** Strips are drawn by the page's own strips panel: leave them out and crop the viewBox at the band. */
+  readonly stripsApart?: boolean;
 }
 
-function MatrixRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: MatrixRendererProps): ReactNode {
+function MatrixRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs, stripsApart = false }: MatrixRendererProps): ReactNode {
   const { rows, cols, rowHeaders, rowTitle, arrowsUnder } = snapshot;
   const strips = snapshot.strips.length;
   const stack = useMemo(
@@ -527,7 +529,7 @@ function MatrixRendererImpl({ snapshot, ink, highlights, pointers, animate, dura
 
   return (
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      viewBox={`0 0 ${VIEW_W} ${stripsApart ? bandHeight(stack.bottom, strips) : VIEW_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
@@ -548,7 +550,7 @@ function MatrixRendererImpl({ snapshot, ink, highlights, pointers, animate, dura
           paint={paint}
         />
       )}
-      <Strips strips={snapshot.strips} bottom={stack.bottom} roles={roles} animate={animate} ms={ms} ink={ink} />
+      {!stripsApart && <Strips strips={snapshot.strips} bottom={stack.bottom} roles={roles} animate={animate} ms={ms} ink={ink} />}
     </svg>
   );
 }
@@ -562,6 +564,8 @@ export interface SplitRendererProps {
   readonly pointers: Pointers;
   readonly animate: boolean;
   readonly durationMs: number;
+  /** Strips are drawn by the page's own strips panel: leave them out and crop the viewBox at the band. */
+  readonly stripsApart?: boolean;
 }
 
 /** Shapes are fixed for the run, so this key changes only between runs. */
@@ -571,7 +575,7 @@ function shapeKey(snapshot: SplitSnapshot): string {
     .join('\u0001');
 }
 
-function SplitRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs }: SplitRendererProps): ReactNode {
+function SplitRendererImpl({ snapshot, ink, highlights, pointers, animate, durationMs, stripsApart = false }: SplitRendererProps): ReactNode {
   const strips = snapshot.strips.length;
   const key = shapeKey(snapshot);
   // Keyed on the shapes rather than the panes, which are new objects every frame.
@@ -581,7 +585,7 @@ function SplitRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
 
   return (
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      viewBox={`0 0 ${VIEW_W} ${stripsApart ? bandHeight(stack.bottom, strips) : VIEW_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full select-none"
       role="img"
@@ -607,7 +611,7 @@ function SplitRendererImpl({ snapshot, ink, highlights, pointers, animate, durat
           />
         );
       })}
-      <Strips strips={snapshot.strips} bottom={stack.bottom} roles={roles} animate={animate} ms={ms} ink={ink} />
+      {!stripsApart && <Strips strips={snapshot.strips} bottom={stack.bottom} roles={roles} animate={animate} ms={ms} ink={ink} />}
     </svg>
   );
 }
