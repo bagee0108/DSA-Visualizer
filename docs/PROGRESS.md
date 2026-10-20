@@ -61,6 +61,90 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 (One entry per item and per stop, newest first.)
 
+### Item 8: race mode (done)
+
+Commits: `4df227d` (insertion sort, and one operation count for every
+sort), `0233237` (race mode).
+
+**The one call to look at: insertion sort is new.** The approved design
+says "Quicksort on sorted versus insertion sort is one click" and also "No
+generator changes", but there was no insertion sort anywhere in the code
+(the path's sorts are quicksort, merge sort and heapsort). I read "no
+generator changes" as "don't bend the existing generators to suit the
+race", not as "no racer the design names". So I added
+`algorithms/arrays/insertionSort.ts`, the CLRS shifting version, with its
+own tests (reference sort, stability, counts, hygiene, determinism, input
+contract). It serves the race only: it isn't registered, has no level and
+isn't on Browse. No existing generator changed. If you'd rather it were a
+level of its own, or not there at all, either is a small change.
+
+**Counter check (first step of the brief):** every sorting generator counts
+comparisons and writes the same way. `opCount.test.ts` holds quicksort (all
+five pivot strategies), merge sort, heapsort and insertion sort to reference
+implementations written apart from the levels, over sorted, reversed,
+random and few-unique inputs at 1-60 elements. The shared definition: a
+comparison tests an element against an element or a value; a write is one
+store into the array or the aux row (a swap is two writes, copying k values
+to aux is k). **All four already agreed; no counter was wrong.** The test
+also checks that comparisons + writes never fall from one frame to the next,
+which the race clock relies on.
+
+**Design choices made inside the approved design:**
+
+- **Route.** `/visualize/race-mode`, a page of its own. `levels.ts` now has
+  `PAGE_LEVELS` (`race-mode`) next to "is registered" for `isOpen`, so the
+  home path, the neighbours and the sitemap pick it up.
+- **Racers.** Quicksort, merge sort, heapsort, insertion sort. Each side is
+  built with its level's defaults plus the shared input, so quicksort pivots
+  on the last element (its level's default), and that is what makes sorted
+  input quadratic. Default race: quicksort against insertion sort on a fixed
+  shuffle of 1-40.
+- **Clock.** Operations at 40 per second at 1x, times the speed (the same
+  0.25x-16x marks as the player). Each side shows its last frame whose
+  comparisons + writes are at or below the clock. Step moves to the next
+  (or previous) operation boundary on either side, so every step changes at
+  least one lane. The scrubber is in operations. Keys as on every level:
+  space, left/right, up/down for speed, R/Home, End.
+- **Done.** A side whose total is reached holds its final frame and shows
+  "done · N ops" in its lane header.
+- **Lanes.** Two array renderers side by side with live comparisons, writes
+  and ops, and each side's own explanation under it. Stacked below 900 px,
+  where the page scrolls and the timeline sticks to the bottom of the view.
+  Bars animate only on a single step.
+- **Presets.** Random, sorted, reversed, nearly sorted, few unique (the
+  array levels' own, without organ pipe), at the n slider's size (4-100),
+  plus "Quicksort vs insertion sort, sorted". At n = 40 that is 78
+  operations against 2,418; at 100, 198 against 15,048.
+- **URL.** `a`, `b` and `input`, defaults left out. Over 100 elements, or an
+  unknown id, the page says so in the established style.
+- **Announcements.** A live region, written through a ref, says where the
+  reader landed (step, scrub, stop, end), never during play.
+- **Marquee.** No op added: race mode shows the sorts' own operations, and
+  "race" isn't an operation.
+
+**Checked:**
+
+- Browser, both themes, 1366x768: axe clean at the start and at the end;
+  the lesson chip, 16x play, End, step back; tab order header, setup,
+  timeline; no page errors. axe clean and no horizontal overflow at 880,
+  at 320 and at 200% zoom.
+- Worst cases at 100 elements, one process: quicksort on sorted 16,042
+  frames (59 ms, about 43 MB); on reversed, quicksort 11,042 and insertion
+  sort 10,199 frames, about 64 MB together, under 40 ms to build. Within
+  the ~150 MB limit.
+- 9 race tests: defaults, caps and errors, presets, sides built from level
+  defaults, the clock never shows a frame ahead of it, finished sides hold
+  their sorted final frame, the lesson's totals, stepping boundary to
+  boundary both ways.
+
+**Changed an existing test (please look):** `sitemap.test.ts` asserted that
+at least one level is still "soon" before checking that soon levels are
+never listed. With race mode open there are none, by design. Rather than
+drop the rule, `sitemapPaths()` now takes the levels and the open test as
+optional parameters, and the test holds the rule on a synthetic soon level
+as well as on the real path. Nothing it checked is checked less. The home
+page likewise only mentions "soon" (legend and intro) while some level is.
+
 ### Item 7: interactive graph editor (done)
 
 Commit: `24a51a7`.
