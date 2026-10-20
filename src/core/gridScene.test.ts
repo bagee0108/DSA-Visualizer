@@ -128,4 +128,79 @@ describe('GridScene', () => {
     expect(back.marks).toEqual([null, null, null, null, '23', null]);
     expect(back.fixed?.[0]).toBe(true);
   });
+
+  it('carries walls fixed for the run, and notes per square, and neither unless asked', () => {
+    const plain = gridOf(board().frame({ explanation: 'x', codeLine: 1 }));
+    expect([plain.walls, plain.notes]).toEqual([null, null]);
+    expect(() => board().note(0, 0, 'f 1')).toThrow();
+
+    const walls = [false, true, false, false, false, true];
+    const scene = new GridScene({ rows: 2, cols: 3, rowHeaders: headers(2), colHeaders: headers(3), piece: 'text', walls, notes: true });
+    expect([scene.isWall(0, 1), scene.isWall(0, 0)]).toEqual([true, false]);
+    scene.note(1, 0, 'f 3\ng 1\nh 2');
+    const a = gridOf(scene.frame({ explanation: 'a', codeLine: 1 }));
+    const b = gridOf(scene.frame({ explanation: 'b', codeLine: 1 }));
+    expect(a.walls).toEqual(walls);
+    expect(Object.isFrozen(a.walls)).toBe(true);
+    expect(a.walls).toBe(b.walls);
+    expect(a.notes).toBe(b.notes);
+    expect(a.notes?.[3]).toBe('f 3\ng 1\nh 2');
+    scene.note(1, 0, null);
+    expect(gridOf(scene.frame({ explanation: 'c', codeLine: 1 })).notes?.[3]).toBeNull();
+    expect(a.notes?.[3]).toBe('f 3\ng 1\nh 2');
+  });
+
+  it('drops a wall list with no walls in it, and refuses one of the wrong length', () => {
+    const none = new GridScene({ rows: 1, cols: 2, rowHeaders: headers(1), colHeaders: headers(2), piece: 'text', walls: [false, false] });
+    expect(gridOf(none.frame({ explanation: 'x', codeLine: 1 })).walls).toBeNull();
+    expect(() => new GridScene({ rows: 1, cols: 2, rowHeaders: headers(1), colHeaders: headers(2), piece: 'text', walls: [true] })).toThrow(RangeError);
+  });
+});
+
+describe('wall and note hygiene', () => {
+  const definition = (run: () => Generator<import('./types').Frame, void, undefined>) =>
+    defineAlgorithm<null>({
+      meta: {
+        id: 'broken-walls',
+        name: 'Broken walls',
+        category: 'backtracking',
+        structureKind: 'grid',
+        blurb: 'x',
+        complexity: { time: { best: '1', average: '1', worst: '1' }, space: '1' },
+        code: 'x',
+        trackedCounters: [],
+      },
+      fields: [],
+      parse: () => ({ ok: true, value: null }),
+      run,
+    });
+  const walled = (): GridScene =>
+    new GridScene({ rows: 1, cols: 3, rowHeaders: headers(1), colHeaders: headers(3), piece: 'text', walls: [false, true, false], notes: true });
+
+  it('catches a note on a wall', () => {
+    const broken = definition(function* () {
+      const scene = walled();
+      scene.note(0, 1, 'f 1');
+      yield scene.frame({ explanation: 'x', codeLine: 1 });
+    });
+    expect(() => expectFrameHygiene(broken, runFrames(broken, {}))).toThrow(/note on a wall/);
+  });
+
+  it('catches a note too long for its square', () => {
+    const broken = definition(function* () {
+      const scene = walled();
+      scene.note(0, 0, 'f 1\ng 2\nh 3\nx 4');
+      yield scene.frame({ explanation: 'x', codeLine: 1 });
+    });
+    expect(() => expectFrameHygiene(broken, runFrames(broken, {}))).toThrow(/too long/);
+  });
+
+  it('catches a piece on a wall', () => {
+    const broken = definition(function* () {
+      const scene = walled();
+      scene.set(0, 1, 'S');
+      yield scene.frame({ explanation: 'x', codeLine: 1 });
+    });
+    expect(() => expectFrameHygiene(broken, runFrames(broken, {}))).toThrow(/piece on a wall/);
+  });
 });

@@ -3,6 +3,7 @@
 import { expect } from 'vitest';
 
 import type { ParamMap, RegisteredAlgorithm } from '../core/define';
+import { NOTE_LINE_LENGTH, NOTE_LINES } from '../core/gridScene';
 import { parseMatrixRef } from '../core/matrixScene';
 import { parsePaneRef } from '../core/splitScene';
 import type { ArraySnapshot, EntityId, Frame, Graph, GraphSnapshot, GridSnapshot, MatrixSnapshot, SplitSnapshot, TreeSnapshot } from '../core/types';
@@ -491,6 +492,7 @@ function expectGridFrame(structure: GridSnapshot, frame: Frame, where: string, p
       before.boxes,
     ]);
     expect(structure.fixed, `${where}: the givens are fixed for the run`).toEqual(before.fixed);
+    expect(structure.walls, `${where}: the walls are fixed for the run`).toBe(before.walls);
     expect(structure.tree === null, `${where}: a search tree is there for the whole run or not at all`).toBe(before.tree === null);
   }
 
@@ -517,6 +519,28 @@ function expectGridFrame(structure: GridSnapshot, frame: Frame, where: string, p
     expect(
       firstBad(structure.marks.map((mark, at) => mark === null || (structure.cells[at] === null && mark.length >= 1 && mark.length <= Math.max(rows, cols))), (ok) => ok),
       `${where}: pencil marks on a filled square, or too many`,
+    ).toBeNull();
+  }
+
+  if (structure.walls !== null) {
+    expect(Object.isFrozen(structure.walls), `${where}: walls frozen`).toBe(true);
+    expect(structure.walls.length, `${where}: one wall flag per square`).toBe(rows * cols);
+    expect(firstBad(structure.walls.map((wall, at) => !wall || structure.cells[at] === null), (ok) => ok), `${where}: a piece on a wall`).toBeNull();
+  }
+  if (structure.notes !== null) {
+    const notes = structure.notes;
+    expect(Object.isFrozen(notes), `${where}: notes frozen`).toBe(true);
+    expect(notes.length, `${where}: one note slot per square`).toBe(rows * cols);
+    expect(
+      firstBad(
+        notes.map((note, at) => {
+          if (note === null) return true;
+          const lines = note.split('\n');
+          return structure.walls?.[at] !== true && lines.length <= NOTE_LINES && lines.every((line) => line.length >= 1 && line.length <= NOTE_LINE_LENGTH);
+        }),
+        (ok) => ok,
+      ),
+      `${where}: a note on a wall, or one too long for its square`,
     ).toBeNull();
   }
 

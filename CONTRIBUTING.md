@@ -97,7 +97,7 @@ learner should look at, not how the algorithm stores its data.
 | `GraphScene` (`core/graphScene.ts`) | a graph whose topology is shared by reference | traversals, shortest paths (negative weights too), union-find, strongly connected components, topological order | `graphs/dijkstra.ts` |
 | `MatrixScene` (`core/matrixScene.ts`) | a table with row/column headers, dependency arrows and a traceback path | dynamic programming | `dp/lcs.ts` |
 | `SplitScene` (`core/splitScene.ts`) | two or more `MatrixScene` panes in one frame | one run seen two ways | `dp/knapsack.ts`, `dp/lis.ts` |
-| `GridScene` (`core/gridScene.ts`) | a board of squares: pieces or text, boxes, givens, pencil marks, an optional search tree beside it | backtracking | `backtracking/nQueens.ts`, `backtracking/sudoku.ts` |
+| `GridScene` (`core/gridScene.ts`) | a board of squares: pieces or text, boxes, givens, pencil marks, walls, small notes (up to three short lines a square), an optional search tree beside it | backtracking, grid search | `backtracking/nQueens.ts`, `backtracking/sudoku.ts` |
 
 A board that undoes a failed guess uses `GridScene.save()` and `restore()`:
 the undo is one frame, not one frame per square.

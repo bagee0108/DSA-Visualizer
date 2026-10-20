@@ -81,7 +81,7 @@ function tagsByTarget(pointers: Pointers): ReadonlyMap<string, string[]> {
 }
 
 function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate, durationMs }: GridRendererProps): ReactNode {
-  const { rows, cols, cells, piece, checkered, boxes, fixed, marks, rowHeaders, colHeaders, lines, tree, strips } = snapshot;
+  const { rows, cols, cells, piece, checkered, boxes, fixed, marks, walls, notes, rowHeaders, colHeaders, lines, tree, strips } = snapshot;
   const layout = useMemo(() => gridLayout(rows, cols, strips.length, tree !== null), [rows, cols, strips.length, tree]);
   const roles = useMemo(() => resolveRoles(highlights), [highlights]);
   const tags = useMemo(() => tagsByTarget(pointers), [pointers]);
@@ -98,6 +98,9 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
   // Pencil marks sit in a small grid inside the square, each digit always in its own place.
   const markSide = Math.ceil(Math.sqrt(Math.max(rows, cols)));
   const markFont = Math.min(11, (square / markSide) * 0.72);
+  // Notes take the lines below a first line, which holds the square's own value when it has one, small, at the right.
+  const noteFont = Math.min(10, square * 0.2);
+  const noteLine = noteFont * 1.15;
 
   return (
     <svg
@@ -145,9 +148,19 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
       {cells.map((value, at) => {
         const row = Math.floor(at / cols);
         const col = at % cols;
-        const role = roles.get(cellRef(row, col));
+        const wall = walls?.[at] === true;
+        // A wall is part of the board, not of the run: it takes no role.
+        const role = wall ? undefined : roles.get(cellRef(row, col));
         const dark = checkered && (row + col) % 2 === 1;
-        const fill = role !== undefined ? ROLE_COLOR[role] : value !== null && piece === 'queen' ? 'var(--viz-default)' : dark ? 'var(--viz-grid)' : 'none';
+        const fill = wall
+          ? 'var(--viz-text-dim)'
+          : role !== undefined
+            ? ROLE_COLOR[role]
+            : value !== null && piece === 'queen'
+              ? 'var(--viz-default)'
+              : dark
+                ? 'var(--viz-grid)'
+                : 'none';
         const mark = markFor(role);
         const stroke = mark === null ? null : rectMark(mark, square, square);
         const x = x0 + col * square;
@@ -228,6 +241,25 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
           );
         })}
 
+      {notes !== null &&
+        notes.map((note, at) => {
+          if (note === null) return null;
+          const row = Math.floor(at / cols);
+          const col = at % cols;
+          const role = roles.get(cellRef(row, col));
+          const x = x0 + col * square + 3;
+          const top = y0 + row * square + 2;
+          return (
+            <text key={`nt-${at}`} fontSize={noteFont} fill={role === undefined ? 'var(--viz-text-dim)' : ink[role]} className="font-mono">
+              {note.split('\n').map((line, i) => (
+                <tspan key={i} x={x} y={top + (i + 2) * noteLine - noteFont * 0.25}>
+                  {line}
+                </tspan>
+              ))}
+            </text>
+          );
+        })}
+
       {cells.map((value, at) => {
         if (value === null) return null;
         const row = Math.floor(at / cols);
@@ -235,6 +267,22 @@ function GridRendererImpl({ snapshot, bound, ink, highlights, pointers, animate,
         const role = roles.get(cellRef(row, col));
         const fillName: FillName = role ?? 'default';
         const { x, y } = centre(row, col);
+        if ((notes?.[at] ?? null) !== null) {
+          return (
+            <text
+              key={`pc-${at}`}
+              x={x0 + (col + 1) * square - 3}
+              y={y0 + row * square + 2 + noteLine - noteFont * 0.25}
+              textAnchor="end"
+              fontSize={noteFont * 1.15}
+              fontWeight={700}
+              fill={role !== undefined ? ink[fillName] : 'var(--viz-text)'}
+              className="font-mono"
+            >
+              {value}
+            </text>
+          );
+        }
         return piece === 'queen' ? (
           <g key={`pc-${at}`} transform={`translate(${x}, ${y})`}>
             <Queen size={square * 0.62} fill={ink[fillName]} />

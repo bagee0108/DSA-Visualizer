@@ -25,7 +25,15 @@ export interface GridSceneOptions {
   readonly marks?: boolean;
   /** Keep a search tree to draw beside the board. */
   readonly searchTree?: boolean;
+  /** Wall squares, row-major, fixed for the run. */
+  readonly walls?: readonly boolean[];
+  /** Draw small lines of text on squares (see note). */
+  readonly notes?: boolean;
 }
+
+/** Most lines of text a square's note holds, and the longest line. */
+export const NOTE_LINES = 3;
+export const NOTE_LINE_LENGTH = 8;
 
 export interface GridFrameInput {
   readonly explanation: string;
@@ -54,6 +62,9 @@ export class GridScene {
   private marksCache: readonly (string | null)[] | null = null;
   private readonly fixed: boolean[];
   private fixedCache: readonly boolean[] | null = null;
+  private readonly walls: readonly boolean[] | null;
+  private notes: (string | null)[] | null;
+  private notesCache: readonly (string | null)[] | null = null;
 
   private readonly stack: CallStackEntry[] = [];
   private stackCache: readonly CallStackEntry[] | null = null;
@@ -80,6 +91,25 @@ export class GridScene {
     this.values = new Array<string | null>(rows * cols).fill(null);
     this.marks = options.marks === true ? new Array<string | null>(rows * cols).fill(null) : null;
     this.fixed = new Array<boolean>(rows * cols).fill(false);
+    if (options.walls !== undefined && options.walls.length !== rows * cols) throw new RangeError('One wall flag per square');
+    this.walls = options.walls === undefined || !options.walls.includes(true) ? null : Object.freeze([...options.walls]);
+    this.notes = options.notes === true ? new Array<string | null>(rows * cols).fill(null) : null;
+  }
+
+  /** Whether a square is a wall. Uncounted: the walls are part of the board, not something the run reads. */
+  isWall(row: number, col: number): boolean {
+    return this.walls?.[this.index(row, col)] === true;
+  }
+
+  /** A square's note, lines separated by newlines, or null to clear it. Uncounted, like pencil marks. */
+  note(row: number, col: number, text: string | null): void {
+    if (this.notes === null) throw new Error('This board was made without notes');
+    this.notes[this.index(row, col)] = text;
+    this.notesCache = null;
+  }
+
+  peekNote(row: number, col: number): string | null {
+    return this.notes?.[this.index(row, col)] ?? null;
   }
 
   private index(row: number, col: number): number {
@@ -182,6 +212,12 @@ export class GridScene {
     return this.marksCache;
   }
 
+  private notesSnapshot(): readonly (string | null)[] | null {
+    if (this.notes === null) return null;
+    if (this.notesCache === null) this.notesCache = Object.freeze([...this.notes]);
+    return this.notesCache;
+  }
+
   private fixedSnapshot(): readonly boolean[] | null {
     if (!this.fixed.includes(true)) return null;
     if (this.fixedCache === null) this.fixedCache = Object.freeze([...this.fixed]);
@@ -205,6 +241,8 @@ export class GridScene {
       boxes: this.boxes,
       fixed: this.fixedSnapshot(),
       marks: this.marksSnapshot(),
+      walls: this.walls,
+      notes: this.notesSnapshot(),
       rowHeaders: this.rowHeaders,
       colHeaders: this.colHeaders,
       lines: input.lines === undefined ? NO_LINES : Object.freeze([...input.lines]),

@@ -225,6 +225,10 @@ export interface GridSnapshot {
   readonly fixed: readonly boolean[] | null;
   /** Pencil marks on empty squares, such as the digits still possible there ("137"); null for none. */
   readonly marks: readonly (string | null)[] | null;
+  /** Squares that are walls, drawn solid and fixed for the run; null for a board without walls. */
+  readonly walls: readonly boolean[] | null;
+  /** Small lines of text on a square, at most NOTE_LINES, such as A*'s f, g and h; null for none. */
+  readonly notes: readonly (string | null)[] | null;
   readonly rowHeaders: readonly string[];
   readonly colHeaders: readonly string[];
   /** Lines drawn this frame only, such as the attack that rules a square out. */
