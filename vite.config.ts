@@ -80,6 +80,9 @@ export default defineConfig(({ mode }) => {
       // Vitest blanks stylesheets by default; themes.test.ts reads the role
       // palette out of index.css so it can never drift from what ships.
       css: { include: [/index\.css/] },
+      // The clearance sweeps and every-preset tests are CPU-bound. With a worker per core they starve each
+      // other and a 1.4 s test runs past the 5 s default; four workers finish the suite sooner, and in time.
+      maxWorkers: 4,
     },
   };
 });
