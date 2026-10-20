@@ -6,11 +6,11 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **STOPPED after item 9, the end of the owner's brief** (2026-10-20
-  evening). 5a and items 6-9 are done; dev is pushed. main and Vercel are
-  untouched. Every level on the path, race mode included, is open.
-- **Resume:** nothing is queued. See the stop report below for the calls
-  worth a second look before deploy.
+- **Running the owner's brief of 2026-10-20 (after the item 9 stop):** the
+  hotfix, ruling 1, ruling 3, 9b, 10, then stop with a full summary. main
+  and Vercel are untouched.
+- **Done:** the hotfix (`hotfix/step-crash` pushed, main untouched).
+- **Next:** insertion sort as a full level (ruling 1).
 
 ## Done before this run
 
@@ -32,6 +32,25 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
   `SITE_ORIGIN` / Vercel note) that this run did not make. The owner
   committed it as `bce9d9c` (signed, 01:38) just before this run's first
   commit, and it went to origin/dev with that push.
+
+## Owner rulings, 2026-10-20 (after the item 9 stop)
+
+- **Insertion sort:** make it a full level (code panel, explanation, presets
+  including nearly sorted, marquee op, sitemap), in the sorting lane next to
+  the others. Race mode keeps using the same generator.
+- **`sitemap.test.ts` restructure (item 8): approved.** The test assumed at
+  least one level was still "soon", which stopped being true when race mode
+  opened. It now checks the same rule (soon levels are left out of the
+  sitemap, open ones are in) against a synthetic soon level, with
+  `sitemapPaths` taking the level list and the open check as parameters.
+  Nothing is asserted less than before.
+- **Strips panel:** confirm in PROGRESS how the clearance check's scale
+  relates to the new canvas size, with numbers. Stricter than needed is
+  fine, more lenient is not.
+- **Hotfix:** branch `hotfix/step-crash` from origin/main with `c4bcf4e` and
+  `f8b61cb`; push that branch only; the owner fast-forwards main.
+- **Brief continued:** 9b (Dijkstra islands at 150 nodes under 17 ms median
+  step) and 10 (step-anchor refactor). See ROADMAP.
 
 ## Owner rulings, 2026-10-20 (after the item 3 stop)
 
@@ -61,6 +80,32 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### Hotfix: the step crash, for main (done)
+
+Branch `hotfix/step-crash` from origin/main (`bd48036`), in a separate
+worktree so dev was never touched. `git cherry-pick c4bcf4e f8b61cb` **applied
+cleanly**: no conflicts, no edits, the same two files (`FrameAnnouncer.tsx`,
+`useMotion.ts`). They became `7687831` and `c84bdfb`, both signed, with the
+original author dates. On the branch: typecheck clean, suite 607/607 twice
+(main's suite; dev has more), build clean. Pushed `origin/hotfix/step-crash`
+only. origin/main is still `bd48036`, and the branch fast-forwards from it.
+
+**The repro:** the production build served with vercel.json's headers, 150
+ArrowRight presses as fast as Playwright sends them, at 1366x768, on six
+levels, with motion on and with reduced motion. An error is any page error
+or console error, excluding the two Vercel insights scripts, which are 404s
+on a local server.
+
+| | quicksort | LCS | edit distance | mergesort | Dijkstra | BST |
+| --- | --- | --- | --- | --- | --- | --- |
+| main, motion on | #185 at press 53 | 53 | 53 | 54 | clean | 53 |
+| main, reduced motion | 54 | 53 | 54 | 53 | clean | 53 |
+| hotfix, both | clean | clean | clean | clean | clean | clean |
+
+React error #185 is the minified "Maximum update depth exceeded". Dijkstra
+stays clean on main only because its default run is 30 frames, so stepping
+stops before press 53.
 
 ### STOP after item 9 (end of the brief)
 

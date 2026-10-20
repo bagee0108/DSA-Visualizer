@@ -158,5 +158,33 @@ big chunk is done, so commits stay local and dev is pushed at milestones
      off here: "Clearance notice also counts overlapping"; read as the
      backlog entry for overlapping nodes in typed graphs).
 
+### Owner brief, 2026-10-20 (after the item 9 stop): hotfix, then 1, 3, 9b, 10
+
+Same rules. Order: the hotfix, ruling 1, ruling 3, 9b, 10. Push dev after
+each. After item 10, stop and write a full summary in PROGRESS.md. Rulings
+on the item 9 stop report are recorded in PROGRESS.md.
+
+- **Hotfix** (ruling 4). Branch `hotfix/step-crash` from origin/main
+  (`bd48036`), cherry-pick `c4bcf4e` and `f8b61cb`. Typecheck, suite and
+  build there; reproduce the 150-key-press test before and after. Push the
+  hotfix branch only. Don't touch main; the owner fast-forwards it.
+- **Insertion sort as a full level** (ruling 1): code panel, explanation,
+  presets including nearly sorted, marquee op, sitemap, in the sorting lane
+  next to the others. Race mode keeps using the same generator.
+- **Strips panel and the clearance scale** (ruling 3): confirm in PROGRESS
+  how the clearance check's scale relates to the new canvas size, with
+  numbers. Stricter than needed is fine; more lenient is not.
+- **9b. Dijkstra islands at 150 nodes:** median step time under 17 ms
+  without changing frames, if possible; otherwise report why.
+- **10. Step-anchor refactor** (prep for Java, Python, C++):
+  - Frames reference a named step id instead of a JS line number; the JS code
+    panel maps step id to line. Zero visible change.
+  - Golden and fingerprint tests are pre-authorised to change ONLY for this
+    field, provided a test proves that mapping every frame's step id through
+    the JS map reproduces its old line number exactly, for every preset of
+    every level. Any other golden change is still a stop.
+  - A test that every step id a generator emits exists in the map.
+  - No other languages yet.
+
 **Not yet:** the Figma redesign, multi-language code (Java, Python, C++),
 quizzes, accounts. Each comes later with its own brief.
