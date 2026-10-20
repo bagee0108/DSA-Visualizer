@@ -346,6 +346,13 @@ shows **custom graph - not shareable**, Copy link is disabled, and a reload
 or any navigation returns to the URL's run. A link is never produced that
 would fail to reproduce its run.
 
+A* is drawn on the board scene, not the graph canvas, and its map travels the
+same way: the `map` param is the rows of S, G, # and . joined with "/"
+(`core/gridMap.ts`), the field shows one row per line, and "/" stays literal
+in the query like "," and ":". "#" is percent-encoded (`%23`), since a raw one
+would start the fragment. Maps stop at 9 x 20 so every square has room for its
+f, g and h.
+
 ### Deferred
 
 - Layered layout for the tree preset, deferred: it depends on the source node, which conflicts with fixed per-run topology.
