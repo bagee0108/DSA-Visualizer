@@ -45,7 +45,7 @@ export interface AlgorithmMeta {
   readonly inPlace?: boolean;
 }
 
-export type FieldKind = 'numbers' | 'number' | 'text' | 'select' | 'edges';
+export type FieldKind = 'numbers' | 'number' | 'text' | 'select' | 'edges' | 'map';
 
 export interface SelectOption {
   readonly value: string;

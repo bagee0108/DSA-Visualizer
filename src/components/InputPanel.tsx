@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { countTokens, type FieldSpec, type ParamMap, type RegisteredAlgorithm } from '../core/define';
 import { toAsciiMinus } from '../core/graphInput';
+import { mapFromText, mapToText, parseMap } from '../core/gridMap';
 import { makeRng, randomSeed } from '../core/random';
 import { Button, Chip, PanelHeader } from './ui';
 
@@ -53,8 +54,10 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
   const renderField = (field: FieldSpec): ReactNode => {
     const value = draft[field.key] ?? '';
     // An edge list stays ASCII: a pasted true minus (as the canvas draws weights) becomes a hyphen, so the URL and copied links do too.
+    // A map is held in its one-line URL form; the field shows it one row per line.
     const update = (next: string): void =>
-      setDraft((current) => ({ ...current, [field.key]: field.kind === 'edges' ? toAsciiMinus(next) : next }));
+      setDraft((current) => ({ ...current, [field.key]: field.kind === 'edges' ? toAsciiMinus(next) : field.kind === 'map' ? mapFromText(next) : next }));
+    const map = field.kind === 'map' ? parseMap(value) : null;
 
     return (
       <div key={field.key} className="space-y-1">
@@ -65,6 +68,11 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
           {(field.kind === 'numbers' || field.kind === 'edges') && (
             <span className="font-mono text-micro tabular-nums text-fg-mute">
               {countTokens(value)} {field.kind === 'edges' ? 'edges' : 'elements'}
+            </span>
+          )}
+          {map !== null && map.ok && (
+            <span className="font-mono text-micro tabular-nums text-fg-mute">
+              {map.value.rows} × {map.value.cols}
             </span>
           )}
         </div>
@@ -78,6 +86,16 @@ export function InputPanel({ algorithm, params, error, onApply }: InputPanelProp
             rows={3}
             spellCheck={false}
             className={`${FIELD_CLASS} resize-y leading-relaxed`}
+          />
+        ) : field.kind === 'map' ? (
+          <textarea
+            id={`field-${field.key}`}
+            value={mapToText(value)}
+            onChange={(event) => update(event.target.value)}
+            placeholder={field.placeholder}
+            rows={6}
+            spellCheck={false}
+            className={`${FIELD_CLASS} resize-y leading-tight tracking-[0.2em]`}
           />
         ) : field.kind === 'select' ? (
           <select
