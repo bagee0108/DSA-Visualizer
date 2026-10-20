@@ -6,8 +6,7 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **Next item:** 3 (Kruskal's dense preset at x2.5), then 4 (Prim), 5 (A*),
-  then stop as planned.
+- **Next item:** 4 (Prim), then 5 (A*), then stop as planned.
 
 ## Done before this run
 
@@ -58,6 +57,21 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### Item 3: Kruskal's dense preset (done)
+
+Commits: `aa253b5` (notice copy to "do not", backlog entry), `5fe2add` (dense
+preset).
+
+- Dense at density x2.5, "about three and a half edges per node", per the
+  ruling. Over the 20 sweep seeds at 150 nodes: 524 edges, 72% rejected,
+  749-1,343 frames, 6-9 ms to build. Regeneration averages 1.20 tries
+  (worst 3) at 150 and 1.00 at 6/12/40; no seed falls back.
+- The Kruskal sweep passes at every size. **No test in the suite is on
+  `it.fails`** (counted: 0).
+- The notice copy now reads "... nodes they do not connect to in this
+  layout." The overlapping-nodes follow-up is in CONTRIBUTING's Deferred
+  list.
 
 ### STOP at item 3: Kruskal's dense preset can't pass the sweep as defined
 
