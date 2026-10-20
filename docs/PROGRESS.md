@@ -6,9 +6,7 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **STOPPED at item 3** (2026-10-20, ~02:30): spec conflict, see the stop
-  report below. Items 1 and 2 are done and pushed. Nothing is uncommitted.
-- **Resume:** item 3 once the owner picks an option, then 4 (Prim), 5 (A*),
+- **Next item:** 3 (Kruskal's dense preset at x2.5), then 4 (Prim), 5 (A*),
   then stop as planned.
 
 ## Done before this run
@@ -25,12 +23,27 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 - The BFS and DFS sweep tests are on `it.fails`: random sparse at 150 nodes
   fails on 1 of 20 seeds (2 edge/node pairs). Item 1 should take them off.
 - Layout time, random sparse at 150 nodes: median 62 ms (unchanged), slowest
-  seed 102 ms against 73-94 ms before `08ee796`. Not yet ruled on by the
-  owner.
+  seed 102 ms against 73-94 ms before `08ee796`. Accepted by the owner
+  2026-10-20 (load cost, not step time).
 - The working tree had an uncommitted edit to CONTRIBUTING.md (the
   `SITE_ORIGIN` / Vercel note) that this run did not make. The owner
   committed it as `bce9d9c` (signed, 01:38) just before this run's first
   commit, and it went to origin/dev with that push.
+
+## Owner rulings, 2026-10-20 (after the item 3 stop)
+
+- **Item 3:** option 1. Dense preset at density x2.5 at every size,
+  description "about three and a half edges per node".
+- **`08ee796`** (Union-Find golden fingerprint hashes topology, not
+  positions): approved.
+- **Slowest-seed layout at 150 nodes**, ~94 to 102 ms after `08ee796`:
+  accepted. It is a one-time load cost, not step time.
+- **Clearance notice copy:** match the site's style ("does not" / "do not"),
+  not the contraction.
+- **The three "narrower than it sounds" notes** (items 1 and 2) are accepted
+  as recorded.
+- **Backlog, not now:** have the notice also count overlapping nodes in typed
+  graphs.
 
 ## After-the-fact decisions
 
@@ -39,8 +52,8 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
   (directed, weighted, node ids and labels, edges). Positions aren't part of a
   run, and every frame hash still matches, but this changed what a test
   guarantees: the golden no longer pins layout. Under the roadmap's rules that
-  is a required stop; it was not taken at the time. Recorded here for the
-  owner's ruling. Anything like it now stops the run.
+  is a required stop; it was not taken at the time. **Approved by the owner
+  2026-10-20.** Anything like it now stops the run.
 
 ## Log
 
