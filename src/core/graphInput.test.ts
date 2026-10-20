@@ -14,6 +14,7 @@ import {
   regenerating,
   RING_MAX_NODES,
 } from './graphInput';
+import { layoutGraph } from './graphLayout';
 import { makeRng } from './random';
 
 describe('edge list parsing', () => {
@@ -171,5 +172,27 @@ describe('preset regeneration', () => {
         expect(presetViolations(first), `${preset.id} @ ${size}`).toBe(0);
       }
     }
+  });
+});
+
+describe('buildGraph layouts', () => {
+  const positions = (text: string): [number, number][] => {
+    const list = parseEdgeList(text);
+    if (!list.ok) throw new Error(list.error);
+    return buildGraph(list.value, false, 'auto').nodes.map((node) => [node.x, node.y]);
+  };
+
+  it('gives the layout layoutGraph computes, on a first build and on a repeat', () => {
+    const text = '0-1,1-2,2-3,3-0,0-2,4-5,5-6';
+    const direct = layoutGraph(7, [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [4, 5], [5, 6]], 'auto').map((p): [number, number] => [p.x, p.y]);
+    expect(positions(text)).toEqual(direct);
+    expect(positions(text)).toEqual(direct);
+  });
+
+  it('tells apart graphs with the same nodes and different edges', () => {
+    const ring = positions('0-1,1-2,2-3,3-4,4-5,5-0');
+    const star = positions('0-1,0-2,0-3,0-4,0-5');
+    expect(star).not.toEqual(ring);
+    expect(positions('0-1,1-2,2-3,3-4,4-5,5-0')).toEqual(ring);
   });
 });

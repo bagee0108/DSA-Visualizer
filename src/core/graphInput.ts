@@ -2,7 +2,7 @@
 
 import { seedField } from './arrayInput';
 import type { FieldSpec, ParamMap, ParseResult, PresetSpec } from './define';
-import { gridColumns, layoutGraph, layoutViolations, ringMaxNodes, type EdgePair, type LayoutKind } from './graphLayout';
+import { gridColumns, layoutGraph, layoutViolations, ringMaxNodes, type EdgePair, type LayoutKind, type Point } from './graphLayout';
 import { randomInt, shuffle } from './random';
 import type { Graph, GraphEdge, GraphNode } from './types';
 
@@ -82,9 +82,24 @@ export function formatEdgeList(edges: readonly EdgeListEdge[], isolated: readonl
   return [...parts, ...isolated.map(String)].join(',');
 }
 
+/** Layouts kept: a preset's clearance check lays its graph out, and the level's parse then asks for the same one. */
+const RECENT_LAYOUTS = 4;
+const recentLayouts: { readonly key: string; readonly points: readonly Point[] }[] = [];
+
+/** layoutGraph, remembered for the last few graphs. It is a pure function of these arguments, so a hit is the same layout. */
+function layoutOf(nodeCount: number, pairs: readonly EdgePair[], layout: LayoutKind): readonly Point[] {
+  const key = `${layout}|${nodeCount}|${pairs.map(([a, b]) => `${a}-${b}`).join(',')}`;
+  const hit = recentLayouts.find((entry) => entry.key === key);
+  if (hit !== undefined) return hit.points;
+  const points = Object.freeze(layoutGraph(nodeCount, pairs, layout).map((point) => Object.freeze(point)));
+  recentLayouts.unshift({ key, points });
+  recentLayouts.length = Math.min(recentLayouts.length, RECENT_LAYOUTS);
+  return points;
+}
+
 export function buildGraph(list: EdgeList, directed: boolean, layout: LayoutKind): Graph {
   const pairs: EdgePair[] = list.edges.map((edge) => [edge.from, edge.to]);
-  const points = layoutGraph(list.nodeCount, pairs, layout);
+  const points = layoutOf(list.nodeCount, pairs, layout);
   const nodes: GraphNode[] = points.map((point, i) => ({ id: String(i), label: String(i), x: point.x, y: point.y }));
   const edges: GraphEdge[] = list.edges.map((edge, i) => ({
     id: `e${i}`,
@@ -179,7 +194,7 @@ export function presetViolations(params: ParamMap): number {
   const list = parseEdgeList(params.g ?? '', { directed: parseDirected(params.directed) });
   if (!list.ok) return 0;
   const pairs: EdgePair[] = list.value.edges.map((edge) => [edge.from, edge.to]);
-  return layoutViolations(layoutGraph(list.value.nodeCount, pairs, parseLayout(params.layout)), pairs);
+  return layoutViolations(layoutOf(list.value.nodeCount, pairs, parseLayout(params.layout)), pairs);
 }
 
 /**
