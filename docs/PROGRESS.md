@@ -61,6 +61,97 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 (One entry per item and per stop, newest first.)
 
+### Item 7: interactive graph editor (done)
+
+Commit: `24a51a7`.
+
+**Design choices made inside the approved design:**
+
+- **Entry.** An "edit graph" chip at the canvas's top-left corner, on graph
+  scene levels only (A* has a board, not a graph). It sits over the canvas's
+  padding; on a crowded layout it can cover the top-left corner of the
+  drawing. In edit mode a toolbar row replaces it at the top of the canvas
+  pane, and a status and hint row sits under the editor.
+- **Mode machine.** Entering sends `invalidate` then `edit`, so it also works
+  mid-build, and frames are discarded. The page freezes the params the run
+  was built from, so nothing rebuilds while the graph changes. Done sends
+  `commit`: a changed graph builds again (precompute, then ready); an
+  unchanged one is ready at once, from frame 1. While editing, the playback
+  keys are off, the transport is disabled (Play was never disabled before),
+  and the explanation says the run was set aside.
+- **Tools decide the gestures.** "Drag a node" can't mean both move and
+  join, so: select/move drags a node and selects; add node puts one where it
+  clicks; add edge drags from node to node, or clicks one and then the
+  other; delete removes what it clicks. Double-click on an edge edits its
+  weight in any tool; Delete removes the selection in any tool.
+- **Keys.** Tab walks the nodes in id order, then the edges (DOM order:
+  visible edges, then nodes, then the edges' focusable hit paths on top,
+  trimmed at the rims). N adds a node at the free spot farthest from the
+  others and focuses it. E on a node starts a join; Tab to the target and
+  press Enter (or E). Escape cancels. Arrows move the focused node 8 view
+  units (Shift: 32). Enter on an edge opens an inline number field over its
+  midpoint: Enter or blur keeps it, Escape drops it. Delete or Backspace
+  removes; focus moves to the neighbouring node. Ctrl+Z undoes; Ctrl+Y or
+  Ctrl+Shift+Z redoes. Undo and redo are also toolbar chips. Focus is
+  selection.
+- **Snapshots and history.** Every edit returns a new `EditorGraph`
+  (`src/core/graphEdit.ts`, pure, 18 tests). History keeps 200 steps. A
+  drag is one step, committed on release.
+- **Ids stay 0..n-1.** The edge-list format needs every id below the largest
+  to exist, so deleting a node renumbers the nodes after it. The status line
+  says so when it happens.
+- **Weights.** New edges weigh 1 on a level whose default graph is weighted
+  (Dijkstra, Prim, Kruskal, Bellman-Ford); elsewhere edges have no weight
+  and the editor says weights aren't used there.
+- **Directed toggle.** A "directed" chip in the toolbar, the same param as
+  the form's select. Directed to undirected merges each two-way pair into
+  one edge (the first drawn) and says how many merged.
+- **URL and field.** Every committed edit writes the edge list and direction
+  into the URL with `replaceState` (one history entry per session, not one
+  per edit) and so into the form's field. Over the 4,000-character cap the
+  page falls back to "custom graph - not shareable", as for typed graphs.
+- **Positions.** They travel in a `pos` param (layout units, 4 decimals)
+  that `paramsToSearch` never writes. The page keeps it next to the one URL
+  it was made for. All nine graph levels' parse passes it to `buildGraph`,
+  which uses it only with exactly one in-box point per node (otherwise the
+  usual layout). A link, a reload or a new tab therefore shares topology
+  only, and the editor's hint says "Positions you place stay in this tab: a
+  link shares the edges only." A run from the input panel keeps the
+  positions only while the edges and direction are unchanged.
+- **Clearance notice.** While editing it measures the edited graph at the
+  band of the level's strip rows, after every committed edit.
+- **Refusals.** Nothing new: on Done the level's parse refuses as it does
+  for any input (Tarjan undirected, Kruskal directed, checked in the
+  browser with their established messages).
+
+**Checked:**
+
+- In Chrome, Dijkstra: N, E then Enter, weight entry, Shift+arrow, undo,
+  redo, delete with renumbering, click to add, drag to join. The URL and the
+  field followed every topology edit; the notice appeared after an edit
+  that crowded a node, and was gone after a reload (positions not shared).
+  Done rebuilt the run (26 frames).
+- axe clean in edit mode in both themes on Tarjan, Kruskal and BFS.
+  Keyboard walk: the toolbar, then nodes 0, 1, 2... in order. Screenshots
+  in both themes.
+- 150 nodes / 524 edges (Prim dense): an arrow-key move, with its URL
+  write, takes 14.4 ms median, 20.8 ms worst.
+- 18 model tests: edits, caps, renumbering, direction changes, undo/redo,
+  immutability, params round trip, positions reaching a level's run, `pos`
+  never in a URL, Kruskal's refusal on the edited graph.
+
+**Narrower than it might sound:**
+
+- There's no component test for the editor itself (no DOM environment in
+  the suite); its UI was checked by the scripted browser walk above.
+- A node within 16 px of the canvas's right or bottom edge sits under a
+  splitter's hit area, so a press there starts a resize. Nodes are kept in
+  the layout box, whose padding is usually wider than that, but on a narrow
+  canvas the outermost nodes can be hard to grab with a pointer. The keys
+  still reach them.
+- Done from an unchanged graph starts the run from frame 1, not from where
+  you left it: entering discards the frames, as specified.
+
 ### Item 6: resizable panels (done)
 
 Commits: `16659ff` (strips drawn in their own panel), `ad87df9` (splitters),
