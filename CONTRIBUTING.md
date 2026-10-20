@@ -283,7 +283,9 @@ check can regenerate it. For those, and for a preset that used up its tries,
 they do not connect to in this layout." It counts with the renderer's own
 `clearanceOf()` on the geometry as drawn, once per run, in a `role="status"`
 element that stays mounted so a screen reader hears it when a new graph brings
-one. It counts edges only; nodes crowded together are not reported.
+one. It also counts nodes drawn over other nodes (circles that overlap), which
+a typed graph or a hand-placed one can produce: "2 nodes overlap each other in
+this layout."
 
 ### 2. Interaction is an explicit mode machine
 
@@ -384,7 +386,6 @@ f, g and h.
 
 - Layered layout for the tree preset, deferred: it depends on the source node, which conflicts with fixed per-run topology.
 - Dijkstra islands at 150 nodes: 17.5 ms median, over target, predates the layout work.
-- Clearance notice for overlapping nodes: in a typed graph, count nodes laid on top of each other too, not only edges passing close to nodes.
 
 # Precompute
 

@@ -1,6 +1,7 @@
 /**
- * How well a laid-out graph keeps its edges off nodes they do not join. An edge
- * that passes under a third node reads as two edges through it. Measured on
+ * How well a laid-out graph keeps its edges off nodes they do not join, and its
+ * nodes off each other. An edge that passes under a third node reads as two
+ * edges through it; two nodes drawn over each other read as one. Measured on
  * the edges as drawn: the trimmed straight segment, or the curve of one edge
  * of a two-way pair.
  */
@@ -44,6 +45,8 @@ export interface Clearance {
   readonly pairs: number;
   /** Distinct edges in at least one such pair. */
   readonly edges: number;
+  /** Distinct nodes whose circle overlaps another node's: centres closer than two radii. */
+  readonly overlapping: number;
 }
 
 export function clearanceOf(geometry: Pick<Geometry, 'positions' | 'radius' | 'edges'>): Clearance {
@@ -75,7 +78,26 @@ export function clearanceOf(geometry: Pick<Geometry, 'positions' | 'radius' | 'e
     }
     if (hit) edges += 1;
   }
-  return { pairs, edges };
+  return { pairs, edges, overlapping: overlappingNodes(geometry) };
+}
+
+/** Nodes drawn over another node: their circles overlap. */
+export function overlappingNodes(geometry: Pick<Geometry, 'positions' | 'radius'>): number {
+  const placed = [...geometry.positions.values()];
+  const reach = 2 * geometry.radius;
+  const over = new Set<number>();
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      const p = placed[i] as Point;
+      const q = placed[j] as Point;
+      if (Math.abs(p.x - q.x) >= reach || Math.abs(p.y - q.y) >= reach) continue;
+      if (Math.hypot(p.x - q.x, p.y - q.y) < reach) {
+        over.add(i);
+        over.add(j);
+      }
+    }
+  }
+  return over.size;
 }
 
 /** Closest two node centres, in view units. */
@@ -94,11 +116,15 @@ export function minNodeGap(geometry: Pick<Geometry, 'positions'>): number {
 
 /**
  * The notice under the canvas when edges, as drawn, pass within the clearance
- * of nodes they do not join, or null when none do. A user-entered graph can lay
- * out that way; so can a preset that used up its tries (see regenerating()).
+ * of nodes they do not join, or nodes overlap, or null when neither happens. A
+ * user-entered or hand-placed graph can lay out that way; so can a preset that
+ * used up its tries (see regenerating()).
  */
-export function clearanceNotice({ pairs, edges }: Clearance): string | null {
-  if (edges === 0) return null;
-  if (edges === 1) return `1 edge passes close to ${pairs === 1 ? 'a node' : 'nodes'} it does not connect to in this layout.`;
-  return `${edges} edges pass close to nodes they do not connect to in this layout.`;
+export function clearanceNotice({ pairs, edges, overlapping }: Clearance): string | null {
+  const sentences: string[] = [];
+  if (edges === 1) sentences.push(`1 edge passes close to ${pairs === 1 ? 'a node' : 'nodes'} it does not connect to in this layout.`);
+  else if (edges > 1) sentences.push(`${edges} edges pass close to nodes they do not connect to in this layout.`);
+  if (overlapping === 2) sentences.push(`2 nodes overlap each other${edges === 0 ? ' in this layout' : ''}.`);
+  else if (overlapping > 2) sentences.push(`${overlapping} nodes overlap other nodes${edges === 0 ? ' in this layout' : ''}.`);
+  return sentences.length === 0 ? null : sentences.join(' ');
 }

@@ -120,10 +120,10 @@ describe('layoutViolations, the check presets regenerate on', () => {
 
 describe('the clearance notice under the canvas', () => {
   it('counts edges, in words that fit one edge or many', () => {
-    expect(clearanceNotice({ pairs: 0, edges: 0 })).toBeNull();
-    expect(clearanceNotice({ pairs: 1, edges: 1 })).toBe('1 edge passes close to a node it does not connect to in this layout.');
-    expect(clearanceNotice({ pairs: 3, edges: 1 })).toBe('1 edge passes close to nodes it does not connect to in this layout.');
-    expect(clearanceNotice({ pairs: 4, edges: 3 })).toBe('3 edges pass close to nodes they do not connect to in this layout.');
+    expect(clearanceNotice({ pairs: 0, edges: 0, overlapping: 0 })).toBeNull();
+    expect(clearanceNotice({ pairs: 1, edges: 1, overlapping: 0 })).toBe('1 edge passes close to a node it does not connect to in this layout.');
+    expect(clearanceNotice({ pairs: 3, edges: 1, overlapping: 0 })).toBe('1 edge passes close to nodes it does not connect to in this layout.');
+    expect(clearanceNotice({ pairs: 4, edges: 3, overlapping: 0 })).toBe('3 edges pass close to nodes they do not connect to in this layout.');
   });
 
   /** The notice for a level's run, measured as the canvas measures it. */
@@ -138,6 +138,18 @@ describe('the clearance notice under the canvas', () => {
     // Six nodes on the grid put 0 to 3 in one row: 0-2 runs under 1, and 1-3 under 2.
     expect(noticeFor(bfs, { g: '0-2,1-3,5', layout: 'grid' })).toBe('2 edges pass close to nodes they do not connect to in this layout.');
     expect(noticeFor(bfs, { g: '0-2,1', layout: 'grid' })).toBe('1 edge passes close to a node it does not connect to in this layout.');
+  });
+
+  it('counts nodes drawn over other nodes, on their own or after the edges', () => {
+    expect(clearanceNotice({ pairs: 0, edges: 0, overlapping: 2 })).toBe('2 nodes overlap each other in this layout.');
+    expect(clearanceNotice({ pairs: 0, edges: 0, overlapping: 5 })).toBe('5 nodes overlap other nodes in this layout.');
+    expect(clearanceNotice({ pairs: 1, edges: 1, overlapping: 3 })).toBe('1 edge passes close to a node it does not connect to in this layout. 3 nodes overlap other nodes.');
+  });
+
+  it('finds overlapping nodes in a graph whose positions put them on top of each other', () => {
+    // Hand-placed positions (the graph editor's pos param): 1 sits almost on 0, 2 and 3 are clear of both.
+    expect(noticeFor(bfs, { g: '0-2,1-3', pos: '0.5,0.2;0.505,0.2;0.1,0.1;0.9,0.3' })).toBe('2 nodes overlap each other in this layout.');
+    expect(noticeFor(bfs, { g: '0-2,1-3', pos: '0.5,0.2;0.6,0.2;0.1,0.1;0.9,0.3' })).toBeNull();
   });
 
   it('stays quiet on a clear graph, and on every level default', () => {
