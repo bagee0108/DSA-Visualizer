@@ -13,6 +13,7 @@ that each describe the **complete** visual state at that instant.
 import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput';
 import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
 import { ArrayScene } from '../../core/scene';
+import { stepIds } from '../../core/steps';
 
 interface BubbleInput {
   readonly values: readonly number[];
@@ -25,6 +26,10 @@ const CODE = `for (let i = 0; i < n - 1; i++) {
     }
   }
 }`;
+
+// Where each step sits in CODE. Frames name the step; the code panel looks up the line.
+const LINE = { compare: 3, swap: 4 } as const;
+const STEP = stepIds(LINE);
 
 function parse(params: ParamMap): ParseResult<BubbleInput> {
   const parsed = parseNumberList(params.input ?? '', { label: 'Array' });
@@ -44,6 +49,7 @@ export const bubbleSort = defineAlgorithm<BubbleInput>({
       space: 'O(1)',
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'swaps', 'accesses'],
     stable: true,
     inPlace: true,
@@ -59,7 +65,7 @@ export const bubbleSort = defineAlgorithm<BubbleInput>({
       for (let j = 0; j < n - 1 - i; j++) {
         const shouldSwap = scene.compare(j, j + 1) > 0;
         yield scene.frame({
-          codeLine: 3,
+          step: STEP.compare,
           explanation: `Compare a[${j}] and a[${j + 1}].`,
           highlights: { comparing: [j, j + 1] },
           pointers: { i, j },
@@ -68,7 +74,7 @@ export const bubbleSort = defineAlgorithm<BubbleInput>({
         if (shouldSwap) {
           scene.swap(j, j + 1);
           yield scene.frame({
-            codeLine: 4,
+            step: STEP.swap,
             explanation: `Out of order, so swap them.`,
             highlights: { swapped: [j, j + 1] },
             pointers: { i, j },
@@ -79,7 +85,7 @@ export const bubbleSort = defineAlgorithm<BubbleInput>({
     }
 
     scene.markSortedRange(0, n - 1);
-    yield scene.frame({ codeLine: 0, explanation: 'Sorted.' });
+    yield scene.frame({ step: null, explanation: 'Sorted.' });
   },
 });
 ```
@@ -130,8 +136,8 @@ rendering. Cover at least:
 - operation counts match a reference implementation, and ideally a closed form
   for a known worst case;
 - frame count is sane — bounded by the work actually done;
-- every `codeLine` is inside the source, every pointer and highlight is inside
-  the structure;
+- every step a frame names is in `stepLines` and on a line of the source,
+  every pointer and highlight is inside the structure;
 - the run is deterministic for identical params.
 
 `src/algorithms/frameHygiene.ts` checks the frame contract for every
@@ -166,12 +172,20 @@ show a comparison — that correspondence is the whole value of the panel.
 No `Math.random()`, no `Date.now()`. Randomness comes from a seed in the params
 via `makeRng(seed)`, so a URL always reproduces the same run.
 
-### Keep `codeLine` honest
+### Keep the steps honest
 
-The `code` string in `meta` is what the user reads. If a frame claims line 14,
-line 14 must be the line that just executed. When the visualization takes a
-shortcut the source does not show, say so in the explanation instead of
-pointing at a line that did not run.
+A frame names the step it stands at (`step: STEP.swap`), not a line number;
+`meta.stepLines` says which line of `code` each step is, and the code panel
+looks it up. This keeps frames independent of any one listing, so another
+language's code can map the same steps to its own lines. `null` means no line.
+
+The `code` string in `meta` is what the user reads. If a frame's step maps to
+line 14, line 14 must be the line that just executed. When the visualization
+takes a shortcut the source does not show, say so in the explanation instead of
+pointing at a line that did not run. Name steps for what happens (`swap`,
+`relax`), and make them unique within the algorithm: one listing holding
+several functions prefixes them (`inorder.visit`), as `trees/traversals.ts`
+does.
 
 ### The tree renderer has two layouts on purpose. Do not unify them.
 

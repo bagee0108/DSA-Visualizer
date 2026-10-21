@@ -20,6 +20,7 @@ import {
   type KeyOp,
 } from '../../core/treeInput';
 import type { Frame } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface AvlInput {
   readonly keys: readonly number[];
@@ -104,6 +105,7 @@ const LINE = {
   removeRecurse: 40,
   removeRebalance: 42,
 } as const;
+const STEP = stepIds(LINE);
 
 class Avl {
   readonly scene = new TreeScene('binary');
@@ -135,9 +137,9 @@ class Avl {
     if (yBefore === null) throw new Error(`rotate${direction}: ${x} has no child on that side`);
     const crossingBefore = scene.child(yBefore, away);
 
-    scene.pushCall({ label: `rotate${direction === 'left' ? 'Left' : 'Right'}(${scene.label(x)})`, codeLine: LINE.rotateEnter });
+    scene.pushCall({ label: `rotate${direction === 'left' ? 'Left' : 'Right'}(${scene.label(x)})`, step: STEP.rotateEnter });
     yield scene.frame({
-      codeLine: LINE.rotatePick,
+      step: STEP.rotatePick,
       explanation: `Rotate ${direction} at ${scene.label(x)}: its ${direction === 'left' ? 'right' : 'left'} child ${scene.label(yBefore)} will become the parent${crossingBefore === null ? '' : `, and ${scene.label(crossingBefore)} will cross over to ${scene.label(x)}`}.`,
       highlights: { swapped: [x], pivot: [yBefore], ...(crossingBefore === null ? {} : { candidate: [crossingBefore] }) },
       pointers: { x, y: yBefore },
@@ -146,7 +148,7 @@ class Avl {
 
     const { y, crossing } = scene.rotate(x, direction);
     yield scene.frame({
-      codeLine: LINE.rotateCross,
+      step: STEP.rotateCross,
       explanation:
         crossing === null
           ? `${scene.label(y)} had no ${direction === 'left' ? 'left' : 'right'} subtree, so nothing crossed over. ${scene.label(x)} hangs off ${scene.label(y)} now.`
@@ -157,7 +159,7 @@ class Avl {
     });
 
     yield scene.frame({
-      codeLine: LINE.rotateHang,
+      step: STEP.rotateHang,
       explanation: `${scene.label(y)} took the slot ${scene.label(x)} had. Notice nothing moved sideways: a rotation only changes depths.`,
       highlights: { swapped: [x], pivot: [y] },
       pointers: { x, y },
@@ -167,7 +169,7 @@ class Avl {
     this.update(x);
     this.update(y);
     yield scene.frame({
-      codeLine: LINE.rotateUpdate,
+      step: STEP.rotateUpdate,
       explanation: `Recompute heights bottom-up: ${scene.label(x)} is h${this.height(x)}, ${scene.label(y)} is h${this.height(y)}.`,
       highlights: { active: [x, y] },
       pointers: { x, y },
@@ -179,13 +181,13 @@ class Avl {
 
   *rebalance(node: string): Generator<Frame, string, undefined> {
     const scene = this.scene;
-    scene.pushCall({ label: `rebalance(${scene.label(node)})`, codeLine: LINE.rebalanceEnter });
+    scene.pushCall({ label: `rebalance(${scene.label(node)})`, step: STEP.rebalanceEnter });
 
     this.update(node);
     const bf = this.balance(node);
     scene.countComparison();
     yield scene.frame({
-      codeLine: LINE.bf,
+      step: STEP.bf,
       explanation: `${scene.label(node)}: height ${this.height(node)}, balance = h(left) - h(right) = ${this.height(scene.left(node))} - ${this.height(scene.right(node))} = ${bf}.`,
       highlights: { active: [node] },
       pointers: { node },
@@ -199,7 +201,7 @@ class Avl {
       scene.countComparison();
       if (left !== null && childBalance < 0) {
         yield scene.frame({
-          codeLine: LINE.caseLR,
+          step: STEP.caseLR,
           explanation: `Left-heavy, but the left child ${scene.label(left)} leans right (bf ${childBalance}): the LR case. A single rotation would not fix it, so first rotate the child left.`,
           highlights: { swapped: [node], comparing: [left] },
           pointers: { node },
@@ -208,7 +210,7 @@ class Avl {
         yield* this.rotate(left, 'left');
       }
       yield scene.frame({
-        codeLine: LINE.caseLL,
+        step: STEP.caseLL,
         explanation: `Left-heavy (bf ${bf}): rotate right at ${scene.label(node)}.`,
         highlights: { swapped: [node] },
         pointers: { node },
@@ -221,7 +223,7 @@ class Avl {
       scene.countComparison();
       if (right !== null && childBalance > 0) {
         yield scene.frame({
-          codeLine: LINE.caseRL,
+          step: STEP.caseRL,
           explanation: `Right-heavy, but the right child ${scene.label(right)} leans left (bf ${childBalance}): the RL case. Rotate the child right first.`,
           highlights: { swapped: [node], comparing: [right] },
           pointers: { node },
@@ -230,7 +232,7 @@ class Avl {
         yield* this.rotate(right, 'right');
       }
       yield scene.frame({
-        codeLine: LINE.caseRR,
+        step: STEP.caseRR,
         explanation: `Right-heavy (bf ${bf}): rotate left at ${scene.label(node)}.`,
         highlights: { swapped: [node] },
         pointers: { node },
@@ -239,7 +241,7 @@ class Avl {
       root = yield* this.rotate(node, 'left');
     } else {
       yield scene.frame({
-        codeLine: LINE.balanced,
+        step: STEP.balanced,
         explanation: `|${bf}| <= 1, so ${scene.label(node)} is balanced. Return it unchanged.`,
         highlights: { sorted: [node] },
         pointers: { node },
@@ -254,7 +256,7 @@ class Avl {
   *insert(node: string | null, key: number, parent: string | null, side: Side, phase: string): Generator<Frame, string, undefined> {
     const scene = this.scene;
     scene.countCall();
-    scene.pushCall({ label: `insert(${node === null ? 'null' : scene.label(node)}, ${key})`, codeLine: LINE.insertEnter });
+    scene.pushCall({ label: `insert(${node === null ? 'null' : scene.label(node)}, ${key})`, step: STEP.insertEnter });
 
     if (node === null) {
       const created = scene.create(String(key), { value: key, badges: { h: 1, bf: 0 } });
@@ -262,7 +264,7 @@ class Avl {
       if (parent === null) scene.setRoot(created);
       else scene.link(parent, side, created);
       yield scene.frame({
-        codeLine: LINE.insertNew,
+        step: STEP.insertNew,
         explanation: `Null slot reached: ${key} becomes a new leaf${parent === null ? ' and the root' : ` under ${scene.label(parent)}`}.`,
         highlights: { candidate: [created] },
         pointers: { node: created },
@@ -275,7 +277,7 @@ class Avl {
     const cmp = scene.compareValue(node, key);
     if (cmp === 0) {
       yield scene.frame({
-        codeLine: LINE.insertDup,
+        step: STEP.insertDup,
         explanation: `${key} is already here. Keys are unique, so return the node unchanged.`,
         highlights: { excluded: [node] },
         pointers: { node },
@@ -287,7 +289,7 @@ class Avl {
 
     const goLeft = key < scene.value(node);
     yield scene.frame({
-      codeLine: goLeft ? LINE.insertLeft : LINE.insertRight,
+      step: goLeft ? STEP.insertLeft : STEP.insertRight,
       explanation: `${key} ${goLeft ? '<' : '>'} ${scene.label(node)}: recurse ${goLeft ? 'left' : 'right'}.`,
       highlights: { comparing: [node] },
       pointers: { node },
@@ -296,7 +298,7 @@ class Avl {
     yield* this.insert(scene.child(node, goLeft ? LEFT : RIGHT), key, node, goLeft ? LEFT : RIGHT, phase);
 
     yield scene.frame({
-      codeLine: LINE.insertRebalance,
+      step: STEP.insertRebalance,
       explanation: `Back at ${scene.label(node)} on the way up: re-check its balance.`,
       highlights: { active: [node] },
       pointers: { node },
@@ -310,11 +312,11 @@ class Avl {
   *remove(node: string | null, key: number, phase: string): Generator<Frame, string | null, undefined> {
     const scene = this.scene;
     scene.countCall();
-    scene.pushCall({ label: `remove(${node === null ? 'null' : scene.label(node)}, ${key})`, codeLine: LINE.removeEnter });
+    scene.pushCall({ label: `remove(${node === null ? 'null' : scene.label(node)}, ${key})`, step: STEP.removeEnter });
 
     if (node === null) {
       yield scene.frame({
-        codeLine: LINE.removeNull,
+        step: STEP.removeNull,
         explanation: `Fell off the tree: ${key} is not present.`,
         phase,
       });
@@ -326,7 +328,7 @@ class Avl {
     if (cmp !== 0) {
       const goLeft = key < scene.value(node);
       yield scene.frame({
-        codeLine: goLeft ? LINE.removeLeft : LINE.removeRight,
+        step: goLeft ? STEP.removeLeft : STEP.removeRight,
         explanation: `${key} ${goLeft ? '<' : '>'} ${scene.label(node)}: recurse ${goLeft ? 'left' : 'right'}.`,
         highlights: { comparing: [node] },
         pointers: { node },
@@ -336,7 +338,7 @@ class Avl {
       if (scene.child(node, goLeft ? LEFT : RIGHT) !== replacement) scene.link(node, goLeft ? LEFT : RIGHT, replacement);
 
       yield scene.frame({
-        codeLine: LINE.removeRebalance,
+        step: STEP.removeRebalance,
         explanation: `Back at ${scene.label(node)}: a deletion below can unbalance it just like an insertion.`,
         highlights: { active: [node] },
         pointers: { node },
@@ -353,7 +355,7 @@ class Avl {
     if (left === null || right === null) {
       const child = left ?? right;
       yield scene.frame({
-        codeLine: LINE.removeOneChild,
+        step: STEP.removeOneChild,
         explanation:
           child === null
             ? `${scene.label(node)} is a leaf: unlink it.`
@@ -369,7 +371,7 @@ class Avl {
       this.forget(node);
       scene.bump('deletions');
       yield scene.frame({
-        codeLine: LINE.removeSplice,
+        step: STEP.removeSplice,
         explanation: `${key} is gone. ${child === null ? 'The slot is null now.' : `${scene.label(child)} moved up one level.`}`,
         highlights: child === null ? {} : { candidate: [child] },
         phase,
@@ -379,7 +381,7 @@ class Avl {
     }
 
     yield scene.frame({
-      codeLine: LINE.removeSucc,
+      step: STEP.removeSucc,
       explanation: `${scene.label(node)} has two children: find the in-order successor, the leftmost node of the right subtree.`,
       highlights: { swapped: [node], active: [left, right] },
       pointers: { node },
@@ -396,7 +398,7 @@ class Avl {
     }
     const succKey = scene.value(succ);
     yield scene.frame({
-      codeLine: LINE.removeSucc,
+      step: STEP.removeSucc,
       explanation: `Successor is ${succKey}.`,
       highlights: { swapped: [node], pivot: [succ] },
       pointers: { node, succ },
@@ -405,7 +407,7 @@ class Avl {
 
     scene.setValue(node, succKey);
     yield scene.frame({
-      codeLine: LINE.removeCopy,
+      step: STEP.removeCopy,
       explanation: `Copy ${succKey} into the node, then delete ${succKey} from the right subtree instead.`,
       highlights: { pivot: [node], swapped: [succ] },
       pointers: { node, succ },
@@ -413,7 +415,7 @@ class Avl {
     });
 
     yield scene.frame({
-      codeLine: LINE.removeRecurse,
+      step: STEP.removeRecurse,
       explanation: `remove(${scene.label(right)}, ${succKey}): the successor has no left child, so this hits the easy case.`,
       highlights: { comparing: [right] },
       pointers: { node },
@@ -423,7 +425,7 @@ class Avl {
     if (scene.right(node) !== replacement) scene.link(node, RIGHT, replacement);
 
     yield scene.frame({
-      codeLine: LINE.removeRebalance,
+      step: STEP.removeRebalance,
       explanation: `Back at ${scene.label(node)}: re-check balance after the subtree shrank.`,
       highlights: { active: [node] },
       pointers: { node },
@@ -479,6 +481,7 @@ export const avl = defineAlgorithm<AvlInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes', 'recursiveCalls'],
   },
   fields: [
@@ -495,14 +498,14 @@ export const avl = defineAlgorithm<AvlInput>({
 
     const beat = (what: string, phase: string): Frame =>
       scene.frame({
-        codeLine: 0,
+        step: null,
         explanation: `After ${what}: ${scene.size} nodes, height ${scene.height(scene.root) + 1}, every |bf| <= 1.`,
         phase,
       });
 
     if (input.keys.length > 0) {
       yield scene.frame({
-        codeLine: LINE.insertEnter,
+        step: STEP.insertEnter,
         explanation: `Insert ${input.keys.length} keys in order: ${input.keys.join(', ')}. Each node shows h (height) and bf (balance).`,
         phase: 'build',
       });
@@ -526,7 +529,7 @@ export const avl = defineAlgorithm<AvlInput>({
 
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Done: ${scene.size} nodes, height ${scene.height(scene.root) + 1}, ${counters.extra.rotations ?? 0} rotation(s). Log2 bound: ${(1.44 * Math.log2(Math.max(2, scene.size + 1))).toFixed(1)}.`,
       phase: 'done',
     });

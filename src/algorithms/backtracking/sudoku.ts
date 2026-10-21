@@ -10,6 +10,7 @@ import { GridScene } from '../../core/gridScene';
 import { cellRef, colRef, rowRef } from '../../core/matrixScene';
 import type { TreeScene } from '../../core/treeScene';
 import type { EntityId, Frame, Highlights } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface SudokuInput {
   /** Side of the board: 4 or 9. */
@@ -67,6 +68,7 @@ export const LINE = {
   stuck: 28,
   hidden: 29,
 } as const;
+export const STEP = stepIds(LINE);
 
 export const PLACED = 'placed';
 export const GUESSES = 'guesses';
@@ -160,6 +162,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'recursiveCalls'],
   },
   fields: [
@@ -248,7 +251,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
     }
     const givenCount = givens.filter((digit) => digit !== 0).length;
     yield scene.frame({
-      codeLine: LINE.start,
+      step: STEP.start,
       phase: 'setup',
       explanation: `A ${n}x${n} Sudoku with ${givenCount} givens. Every row, column and ${box}x${box} box must hold 1 to ${n} exactly once. The solver deduces what it can first, and guesses only when deduction stalls.`,
       highlights: { active: [root] },
@@ -264,7 +267,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
       mark(square);
     }
     yield scene.frame({
-      codeLine: LINE.pencil,
+      step: STEP.pencil,
       phase: 'setup',
       explanation: `Pencil in the candidates: each of the ${empties().length} empty squares gets every digit that none of its ${peers[0]?.length ?? 0} peers (its row, column and box) already holds.`,
       highlights: treeLook(),
@@ -279,7 +282,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
         if (stuck !== undefined) {
           const wrong = guesses[guesses.length - 1];
           yield scene.frame({
-            codeLine: LINE.dead,
+            step: STEP.dead,
             phase: 'backtrack',
             explanation: `${name(stuck)} has no candidate left: every digit from 1 to ${n} already sits in its row, column or box. ${
               wrong === undefined ? 'Nothing was guessed, so the puzzle has no solution.' : `The guess ${wrong} cannot be right.`
@@ -295,7 +298,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
           const digit = digitsOf(candidates[naked] ?? new Set())[0] ?? 0;
           const struck = place(naked, digit);
           yield scene.frame({
-            codeLine: LINE.naked,
+            step: STEP.naked,
             phase: 'propagate',
             explanation: `${name(naked)} has one candidate left, ${digit}, so it must be ${digit}. ${struckText(digit, struck)}`,
             highlights: { ...treeLook(), active: [ref(n, naked), ...(treeLook().active ?? [])], comparing: struck.map((peer) => ref(n, peer)) },
@@ -321,7 +324,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
         const others = (candidates[hidden.square]?.size ?? 1) - 1;
         const struck = place(hidden.square, hidden.digit);
         yield scene.frame({
-          codeLine: LINE.hidden,
+          step: STEP.hidden,
           phase: 'propagate',
           explanation: `In ${hidden.unit.name}, ${hidden.digit} fits only ${name(hidden.square)}, so it goes there even though the square had ${others} other candidate${
             others === 1 ? '' : 's'
@@ -340,7 +343,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
     function* solve(): Generator<Frame, boolean, undefined> {
       scene.countCall();
       const after = guesses[guesses.length - 1];
-      scene.pushCall({ label: 'solve()', detail: after === undefined ? 'no guesses' : `after ${after}`, codeLine: LINE.solve });
+      scene.pushCall({ label: 'solve()', detail: after === undefined ? 'no guesses' : `after ${after}`, step: STEP.solve });
       const here = path[path.length - 1] ?? root;
 
       if (!(yield* propagate())) {
@@ -352,7 +355,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
       scene.countComparison(open.length);
       if (open.length === 0) {
         yield scene.frame({
-          codeLine: LINE.solved,
+          step: STEP.solved,
           phase: 'solved',
           explanation: `No empty square is left, and every placement kept its row, column and box free of repeats. Solved.`,
           highlights: { sorted: [...filledByRun(), ...path], excluded: [...dead] },
@@ -365,7 +368,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
       for (const candidate of open) if ((candidates[candidate]?.size ?? n) < (candidates[square]?.size ?? n)) square = candidate;
       const options = digitsOf(candidates[square] ?? new Set());
       yield scene.frame({
-        codeLine: LINE.pick,
+        step: STEP.pick,
         phase: 'search',
         explanation: `No single is left, so deduction has stalled and the search must guess. ${name(square)} has the fewest candidates, ${options.length}: ${options.join(
           ', ',
@@ -384,7 +387,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
         path.push(node);
         const struck = place(square, digit);
         yield scene.frame({
-          codeLine: LINE.guess,
+          step: STEP.guess,
           phase: 'search',
           explanation: `Guess ${name(square)} = ${digit}, then propagate from there. ${struckText(digit, struck)} If this leads to a square with no candidates, everything from here on is undone.`,
           highlights: { ...treeLook(), pivot: [ref(n, square)], comparing: struck.map((peer) => ref(n, peer)) },
@@ -405,7 +408,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
         dead.add(node);
         scene.bump(BACKTRACKS);
         yield scene.frame({
-          codeLine: LINE.undo,
+          step: STEP.undo,
           phase: 'backtrack',
           explanation: `${label} led to a contradiction. Undo it${
             followed === 0 ? '' : ` and the ${followed === 1 ? 'one placement' : `${followed} placements`} that followed from it`
@@ -417,7 +420,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
 
       const above = guesses[guesses.length - 1];
       yield scene.frame({
-        codeLine: LINE.fail,
+        step: STEP.fail,
         phase: 'backtrack',
         explanation:
           above === undefined
@@ -433,7 +436,7 @@ export const sudoku = defineAlgorithm<SudokuInput>({
     const solved = yield* solve();
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation: solved
         ? `Solved. ${counters.extra[PLACED] ?? 0} placements, ${counters.extra[GUESSES] ?? 0} of them guesses, and ${counters.extra[BACKTRACKS] ?? 0} backtracks. The highlighted squares are the ones the solver filled in.`

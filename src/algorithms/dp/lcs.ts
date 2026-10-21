@@ -5,6 +5,7 @@ import { cellRef, colRef, MatrixScene, rowRef } from '../../core/matrixScene';
 import { randomInt } from '../../core/random';
 import { mutate, parseString, randomString, stringField, stringPairSize } from '../../core/stringInput';
 import type { EntityId, MatrixArrow, MatrixCell, Strip, StripItem } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface LcsInput {
   readonly a: string;
@@ -60,6 +61,7 @@ const LINE = {
   left: 30,
   ret: 33,
 } as const;
+const STEP = stepIds(LINE);
 
 const ALPHABET = 'ABCDEFGH';
 const DNA = 'ACGT';
@@ -119,6 +121,7 @@ export const lcs = defineAlgorithm<LcsInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes'],
   },
   fields: [stringField('a', 'String a', 'ABCBDAB'), stringField('b', 'String b', 'BDCABA')],
@@ -139,7 +142,7 @@ export const lcs = defineAlgorithm<LcsInput>({
     const strips = (): readonly Strip[] => [{ kind: 'output', label: 'lcs', items: [...answer] }];
 
     yield scene.frame({
-      codeLine: LINE.table,
+      step: STEP.table,
       phase: 'setup',
       explanation: `L[i][j] will hold the LCS length of the first i characters of "${a}" and the first j of "${b}". Row and column 0 stand for an empty prefix.`,
       strips: strips(),
@@ -151,7 +154,7 @@ export const lcs = defineAlgorithm<LcsInput>({
       column.push(cellRef(i, 0));
     }
     yield scene.frame({
-      codeLine: LINE.baseCol,
+      step: STEP.baseCol,
       phase: 'base case',
       explanation: 'An empty b has nothing in common with any prefix of a, so column 0 is all zeros.',
       highlights: { active: column },
@@ -164,7 +167,7 @@ export const lcs = defineAlgorithm<LcsInput>({
       row.push(cellRef(0, j));
     }
     yield scene.frame({
-      codeLine: LINE.baseRow,
+      step: STEP.baseRow,
       phase: 'base case',
       explanation: 'Likewise an empty a: row 0 is all zeros.',
       highlights: { active: row },
@@ -180,7 +183,7 @@ export const lcs = defineAlgorithm<LcsInput>({
 
         scene.countComparison();
         yield scene.frame({
-          codeLine: LINE.test,
+          step: STEP.test,
           phase: 'fill',
           explanation: `L[${i}][${j}]: compare a[${i - 1}] = '${ca}' with b[${j - 1}] = '${cb}'.`,
           highlights: { active: [cellRef(i, j)], comparing: [rowRef(i), colRef(j)] },
@@ -192,7 +195,7 @@ export const lcs = defineAlgorithm<LcsInput>({
           const diagonal = scene.read(i - 1, j - 1);
           scene.write(i, j, diagonal + 1);
           yield scene.frame({
-            codeLine: LINE.match,
+            step: STEP.match,
             phase: 'fill',
             explanation: `'${ca}' matches, so it can end a common subsequence: one longer than the diagonal, ${diagonal} + 1 = ${diagonal + 1}.`,
             highlights: { active: [cellRef(i, j)], comparing: [cellRef(i - 1, j - 1)], sorted: [rowRef(i), colRef(j)] },
@@ -217,7 +220,7 @@ export const lcs = defineAlgorithm<LcsInput>({
                 ? `skipping '${ca}' keeps ${up}, more than the ${left} from skipping '${cb}'`
                 : `skipping '${cb}' keeps ${left}, more than the ${up} from skipping '${ca}'`;
           yield scene.frame({
-            codeLine: LINE.skip,
+            step: STEP.skip,
             phase: 'fill',
             explanation: `'${ca}' ≠ '${cb}', so one of them is not in the answer. Take the better of up and left: ${why}.`,
             highlights: { active: [cellRef(i, j)], comparing: kept, excluded: dropped },
@@ -235,7 +238,7 @@ export const lcs = defineAlgorithm<LcsInput>({
     const taken: EntityId[] = [];
     scene.walk(i, j);
     yield scene.frame({
-      codeLine: LINE.trace,
+      step: STEP.trace,
       phase: 'traceback',
       explanation: `L[${n}][${m}] = ${length} is the answer's length. Walk back from the corner, following where each value came from, to recover the characters.`,
       highlights: { active: [cellRef(i, j)] },
@@ -256,7 +259,7 @@ export const lcs = defineAlgorithm<LcsInput>({
         j -= 1;
         scene.walk(i, j);
         yield scene.frame({
-          codeLine: LINE.take,
+          step: STEP.take,
           phase: 'traceback',
           explanation: `'${ca}' matched here, so it is in the answer. Step back along the diagonal.`,
           highlights: { active: [cellRef(i, j)], sorted: [...taken], candidate: [`output:a${i}`] },
@@ -275,7 +278,7 @@ export const lcs = defineAlgorithm<LcsInput>({
       else j -= 1;
       scene.walk(i, j);
       yield scene.frame({
-        codeLine: goUp ? LINE.up : LINE.left,
+        step: goUp ? STEP.up : STEP.left,
         phase: 'traceback',
         explanation: goUp
           ? `'${ca}' ≠ '${cb}'. The value came from above (${up}${up === left ? ', a tie, broken upward' : ` > ${left}`}), so '${ca}' is skipped.`
@@ -289,7 +292,7 @@ export const lcs = defineAlgorithm<LcsInput>({
 
     const text = answer.map((item) => item.label).join('');
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation:
         length === 0

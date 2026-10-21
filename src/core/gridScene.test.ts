@@ -20,6 +20,7 @@ describe('search tree hygiene', () => {
       blurb: 'x',
       complexity: { time: { best: '1', average: '1', worst: '1' }, space: '1' },
       code: 'x',
+      stepLines: { x: 1 },
       trackedCounters: [],
     },
     fields: [],
@@ -33,7 +34,7 @@ describe('search tree hygiene', () => {
         const scene = board(true);
         const root = scene.tree?.create('·') ?? '';
         scene.tree?.setRoot(root);
-        const frame = scene.frame({ explanation: 'x', codeLine: 1 });
+        const frame = scene.frame({ explanation: 'x', step: 'x' });
         const grid = gridOf(frame);
         const tree = grid.tree;
         if (tree === null) return;
@@ -62,12 +63,12 @@ describe('GridScene', () => {
   it('shares one frozen cell array between frames that change nothing', () => {
     const scene = board();
     scene.set(0, 0, '1');
-    const a = gridOf(scene.frame({ explanation: 'a', codeLine: 1 }));
-    const b = gridOf(scene.frame({ explanation: 'b', codeLine: 1 }));
+    const a = gridOf(scene.frame({ explanation: 'a', step: 'x' }));
+    const b = gridOf(scene.frame({ explanation: 'b', step: 'x' }));
     expect(a.cells).toBe(b.cells);
     expect(Object.isFrozen(a.cells)).toBe(true);
     scene.set(0, 1, '2');
-    const c = gridOf(scene.frame({ explanation: 'c', codeLine: 1 }));
+    const c = gridOf(scene.frame({ explanation: 'c', step: 'x' }));
     expect(c.cells).not.toBe(a.cells);
     expect(a.cells[1]).toBeNull();
   });
@@ -80,11 +81,11 @@ describe('GridScene', () => {
   });
 
   it('carries its search tree in every frame, or none at all', () => {
-    expect(gridOf(board().frame({ explanation: 'x', codeLine: 1 })).tree).toBeNull();
+    expect(gridOf(board().frame({ explanation: 'x', step: 'x' })).tree).toBeNull();
     const searching = board(true);
     const root = searching.tree?.create('·') ?? '';
     searching.tree?.setRoot(root);
-    const tree = gridOf(searching.frame({ explanation: 'x', codeLine: 1 })).tree;
+    const tree = gridOf(searching.frame({ explanation: 'x', step: 'x' })).tree;
     expect(tree?.rootId).toBe(root);
     expect(tree?.strips).toHaveLength(0);
   });
@@ -93,14 +94,14 @@ describe('GridScene', () => {
     const make = (box: { rows: number; cols: number }) => () =>
       new GridScene({ rows: 4, cols: 4, rowHeaders: headers(4), colHeaders: headers(4), piece: 'text', boxes: box });
     expect(make({ rows: 3, cols: 2 })).toThrow(RangeError);
-    expect(gridOf(make({ rows: 2, cols: 2 })().frame({ explanation: 'x', codeLine: 1 })).boxes).toEqual({ rows: 2, cols: 2 });
-    expect(gridOf(board().frame({ explanation: 'x', codeLine: 1 })).boxes).toBeNull();
+    expect(gridOf(make({ rows: 2, cols: 2 })().frame({ explanation: 'x', step: 'x' })).boxes).toEqual({ rows: 2, cols: 2 });
+    expect(gridOf(board().frame({ explanation: 'x', step: 'x' })).boxes).toBeNull();
   });
 
   it('keeps givens fixed, pencil marks per square, and nothing of either unless asked', () => {
     const plain = board();
     expect(() => plain.mark(0, 0, '12')).toThrow();
-    const empty = gridOf(plain.frame({ explanation: 'x', codeLine: 1 }));
+    const empty = gridOf(plain.frame({ explanation: 'x', step: 'x' }));
     expect([empty.fixed, empty.marks]).toEqual([null, null]);
 
     const marked = new GridScene({ rows: 2, cols: 3, rowHeaders: headers(2), colHeaders: headers(3), piece: 'text', marks: true });
@@ -108,7 +109,7 @@ describe('GridScene', () => {
     marked.set(0, 1, '2');
     marked.mark(1, 2, '13');
     expect(marked.peekMark(1, 2)).toBe('13');
-    const shot = gridOf(marked.frame({ explanation: 'x', codeLine: 1 }));
+    const shot = gridOf(marked.frame({ explanation: 'x', step: 'x' }));
     expect(shot.fixed).toEqual([true, false, false, false, false, false]);
     expect(shot.marks).toEqual([null, null, null, null, null, '13']);
     expect(Object.isFrozen(shot.marks)).toBe(true);
@@ -123,14 +124,14 @@ describe('GridScene', () => {
     scene.mark(1, 1, null);
     scene.mark(1, 2, '3');
     scene.restore(saved);
-    const back = gridOf(scene.frame({ explanation: 'x', codeLine: 1 }));
+    const back = gridOf(scene.frame({ explanation: 'x', step: 'x' }));
     expect(back.cells).toEqual(['1', null, null, null, null, null]);
     expect(back.marks).toEqual([null, null, null, null, '23', null]);
     expect(back.fixed?.[0]).toBe(true);
   });
 
   it('carries walls fixed for the run, and notes per square, and neither unless asked', () => {
-    const plain = gridOf(board().frame({ explanation: 'x', codeLine: 1 }));
+    const plain = gridOf(board().frame({ explanation: 'x', step: 'x' }));
     expect([plain.walls, plain.notes]).toEqual([null, null]);
     expect(() => board().note(0, 0, 'f 1')).toThrow();
 
@@ -138,21 +139,21 @@ describe('GridScene', () => {
     const scene = new GridScene({ rows: 2, cols: 3, rowHeaders: headers(2), colHeaders: headers(3), piece: 'text', walls, notes: true });
     expect([scene.isWall(0, 1), scene.isWall(0, 0)]).toEqual([true, false]);
     scene.note(1, 0, 'f 3\ng 1\nh 2');
-    const a = gridOf(scene.frame({ explanation: 'a', codeLine: 1 }));
-    const b = gridOf(scene.frame({ explanation: 'b', codeLine: 1 }));
+    const a = gridOf(scene.frame({ explanation: 'a', step: 'x' }));
+    const b = gridOf(scene.frame({ explanation: 'b', step: 'x' }));
     expect(a.walls).toEqual(walls);
     expect(Object.isFrozen(a.walls)).toBe(true);
     expect(a.walls).toBe(b.walls);
     expect(a.notes).toBe(b.notes);
     expect(a.notes?.[3]).toBe('f 3\ng 1\nh 2');
     scene.note(1, 0, null);
-    expect(gridOf(scene.frame({ explanation: 'c', codeLine: 1 })).notes?.[3]).toBeNull();
+    expect(gridOf(scene.frame({ explanation: 'c', step: 'x' })).notes?.[3]).toBeNull();
     expect(a.notes?.[3]).toBe('f 3\ng 1\nh 2');
   });
 
   it('drops a wall list with no walls in it, and refuses one of the wrong length', () => {
     const none = new GridScene({ rows: 1, cols: 2, rowHeaders: headers(1), colHeaders: headers(2), piece: 'text', walls: [false, false] });
-    expect(gridOf(none.frame({ explanation: 'x', codeLine: 1 })).walls).toBeNull();
+    expect(gridOf(none.frame({ explanation: 'x', step: 'x' })).walls).toBeNull();
     expect(() => new GridScene({ rows: 1, cols: 2, rowHeaders: headers(1), colHeaders: headers(2), piece: 'text', walls: [true] })).toThrow(RangeError);
   });
 });
@@ -168,6 +169,7 @@ describe('wall and note hygiene', () => {
         blurb: 'x',
         complexity: { time: { best: '1', average: '1', worst: '1' }, space: '1' },
         code: 'x',
+        stepLines: { x: 1 },
         trackedCounters: [],
       },
       fields: [],
@@ -181,7 +183,7 @@ describe('wall and note hygiene', () => {
     const broken = definition(function* () {
       const scene = walled();
       scene.note(0, 1, 'f 1');
-      yield scene.frame({ explanation: 'x', codeLine: 1 });
+      yield scene.frame({ explanation: 'x', step: 'x' });
     });
     expect(() => expectFrameHygiene(broken, runFrames(broken, {}))).toThrow(/note on a wall/);
   });
@@ -190,7 +192,7 @@ describe('wall and note hygiene', () => {
     const broken = definition(function* () {
       const scene = walled();
       scene.note(0, 0, 'f 1\ng 2\nh 3\nx 4');
-      yield scene.frame({ explanation: 'x', codeLine: 1 });
+      yield scene.frame({ explanation: 'x', step: 'x' });
     });
     expect(() => expectFrameHygiene(broken, runFrames(broken, {}))).toThrow(/too long/);
   });
@@ -199,7 +201,7 @@ describe('wall and note hygiene', () => {
     const broken = definition(function* () {
       const scene = walled();
       scene.set(0, 1, 'S');
-      yield scene.frame({ explanation: 'x', codeLine: 1 });
+      yield scene.frame({ explanation: 'x', step: 'x' });
     });
     expect(() => expectFrameHygiene(broken, runFrames(broken, {}))).toThrow(/piece on a wall/);
   });

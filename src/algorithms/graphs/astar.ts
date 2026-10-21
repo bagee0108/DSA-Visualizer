@@ -6,6 +6,7 @@ import { GridScene } from '../../core/gridScene';
 import { cellRef } from '../../core/matrixScene';
 import { randomInt } from '../../core/random';
 import type { EntityId, GridLine, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 import { MinHeap } from './minHeap';
 
 export type Heuristic = 'manhattan' | 'euclidean' | 'octile' | 'zero';
@@ -52,6 +53,7 @@ const LINE = {
   push: lineOf('open.push([g[v] + h(v), v])'),
   none: lineOf('return null'),
 } as const;
+const STEP = stepIds(LINE);
 
 /** Float noise in sums of √2 must not count as an improvement. */
 const EPS = 1e-9;
@@ -257,6 +259,7 @@ export const astar = defineAlgorithm<AStarInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
   },
   fields: [
@@ -353,7 +356,7 @@ export const astar = defineAlgorithm<AStarInput>({
     const first = open.push(h(start, goal), String(index(start)));
     openShot = null;
     yield scene.frame({
-      codeLine: LINE.push0,
+      step: STEP.push0,
       explanation: `A* from S to G (${mode}). Each square it reaches shows f, g and h: g is the cost of the best way found from S, h the ${heuristic === 'zero' ? 'estimate to G, here always 0, so this is Dijkstra' : `${HEURISTIC_LABEL[heuristic]} estimate to G`}, and f = g + h orders the open set. S starts it at g = 0.${
         inadmissible ? ' Note: with diagonals, Manhattan counts 2 for a step that costs √2, so it can overestimate and the path found may not be the shortest.' : ''
       }`,
@@ -373,7 +376,7 @@ export const astar = defineAlgorithm<AStarInput>({
       if (closed[at] === 1) {
         scene.bump('stale pops');
         yield scene.frame({
-          codeLine: LINE.stale,
+          step: STEP.stale,
           explanation: `Pop ${name(u)} at f = ${fmt(entry.key)}, but it is already closed: it was reached more cheaply after this entry was pushed. Skip it.`,
           highlights: { visited: closedRefs(), candidate: openRefs(), excluded: [ref(u)] },
           strips: strips(),
@@ -389,7 +392,7 @@ export const astar = defineAlgorithm<AStarInput>({
         const lines: GridLine[] = path.slice(1).map((to, i) => ({ from: path[i] as Square, to }));
         const length = g[at] ?? 0;
         yield scene.frame({
-          codeLine: LINE.goal,
+          step: STEP.goal,
           explanation: `Pop G at f = ${fmt(entry.key)}: the lowest f in the open set is the goal, so the search stops. The path has ${path.length - 1} moves and costs ${fmt(length)}, after ${expanded} squares were expanded.${
             inadmissible
               ? ' Manhattan can overestimate with diagonals, so this path is not guaranteed to be the shortest.'
@@ -409,7 +412,7 @@ export const astar = defineAlgorithm<AStarInput>({
       expanded += 1;
       scene.bump('squares expanded');
       yield scene.frame({
-        codeLine: LINE.close,
+        step: STEP.close,
         explanation: `Pop ${name(u)}, the lowest f in the open set: f = ${fmt(entry.key)} (g ${fmt(g[at] ?? 0)} + h ${fmt(h(u, goal))}). Close it and look at its neighbours.`,
         highlights: { visited: closedRefs(), candidate: openRefs(), active: [ref(u)] },
         strips: strips(),
@@ -424,7 +427,7 @@ export const astar = defineAlgorithm<AStarInput>({
         scene.countComparison();
         if (closed[vi] === 1) {
           yield scene.frame({
-            codeLine: LINE.test,
+            step: STEP.test,
             explanation: `${name(u)} to ${name(v)}: ${name(v)} is already closed.`,
             highlights: { visited: closedRefs(), candidate: openRefs(), active: [ref(u)], excluded: [ref(v)] },
             strips: strips(),
@@ -434,7 +437,7 @@ export const astar = defineAlgorithm<AStarInput>({
         }
         if (tentative >= known - EPS) {
           yield scene.frame({
-            codeLine: LINE.test,
+            step: STEP.test,
             explanation: `${name(u)} to ${name(v)}: g ${fmt(g[at] ?? 0)} + ${move} = ${fmt(tentative)}, no better than the ${fmt(known)} already known. Leave it.`,
             highlights: { visited: closedRefs(), candidate: openRefs(), active: [ref(u)], comparing: [ref(v)] },
             strips: strips(),
@@ -449,7 +452,7 @@ export const astar = defineAlgorithm<AStarInput>({
         const pushed = open.push(f, String(vi));
         openShot = null;
         yield scene.frame({
-          codeLine: LINE.push,
+          step: STEP.push,
           explanation:
             known === Number.POSITIVE_INFINITY
               ? `${name(u)} to ${name(v)}: first way there, g = ${fmt(g[at] ?? 0)} + ${move} = ${fmt(tentative)}; h = ${fmt(h(v, goal))}, so f = ${fmt(f)}. Push it.`
@@ -462,7 +465,7 @@ export const astar = defineAlgorithm<AStarInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.none,
+      step: STEP.none,
       explanation: `The open set is empty after ${expanded} squares were expanded, and G was never popped: every square reachable from S has been closed, so there is no path to G.`,
       highlights: { visited: closedRefs() },
       strips: strips(),

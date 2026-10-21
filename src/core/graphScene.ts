@@ -4,6 +4,7 @@
  * snapshotted, each as a frozen value reused until it changes.
  */
 
+import type { StepId } from './steps';
 import type { CallStackEntry, Counters, Frame, Graph, GraphComponent, GraphEdge, GraphLink, GraphNode, GraphSnapshot, Highlights, Pointers, Strip } from './types';
 
 const NO_STRIPS: readonly Strip[] = Object.freeze([]);
@@ -21,7 +22,7 @@ export interface Neighbour {
 
 export interface GraphFrameInput {
   readonly explanation: string;
-  readonly codeLine: number;
+  readonly step: StepId | null;
   readonly highlights?: Highlights;
   readonly pointers?: Pointers;
   readonly strips?: readonly Strip[];
@@ -265,7 +266,7 @@ export class GraphScene {
       pointers: input.pointers ?? NO_POINTERS,
       callStack: this.stackSnapshot(),
       explanation: input.explanation,
-      codeLine: input.codeLine,
+      step: input.step,
       counters: this.counters(),
       ...(input.phase === undefined ? {} : { phase: input.phase }),
     };

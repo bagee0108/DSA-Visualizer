@@ -76,7 +76,7 @@ describe('heapsort: the heap invariant', () => {
     const SETTLED_LINE = 22;
     let checked = 0;
     for (const frame of frames) {
-      if (frame.phase !== 'sort' || frame.codeLine !== SETTLED_LINE) continue;
+      if (frame.phase !== 'sort' || heapsort.lineOf(frame.step) !== SETTLED_LINE) continue;
       const size = arrayOf(frame).heap?.size ?? 0;
       expect(isMaxHeap(valuesOf(frame), size), `settled heap of size ${size}`).toBe(true);
       checked += 1;

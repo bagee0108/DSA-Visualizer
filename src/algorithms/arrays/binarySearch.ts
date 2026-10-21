@@ -4,6 +4,7 @@ import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput
 import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface BinarySearchInput {
   readonly values: readonly number[];
@@ -37,6 +38,7 @@ const LINE = {
   goLeft: 10,
   notFound: 13,
 } as const;
+const STEP = stepIds(LINE);
 
 function windowRegions(lo: number, hi: number, total: number): ArrayRegion[] {
   const regions: ArrayRegion[] = [];
@@ -84,6 +86,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads'],
     inPlace: true,
   },
@@ -106,7 +109,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
     const { target } = input;
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: input.wasUnsorted
         ? `Searching for ${target}. The input was not sorted, so it has been sorted first - binary search is meaningless otherwise.`
         : `Searching ${total} sorted elements for ${target}.`,
@@ -117,7 +120,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
     let hi = total - 1;
 
     yield scene.frame({
-      codeLine: LINE.initHi,
+      step: STEP.initHi,
       explanation: `The window starts as the whole array: lo = ${lo}, hi = ${hi}.`,
       pointers: { lo, hi },
       regions: windowRegions(lo, hi, total),
@@ -128,7 +131,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
       const value = scene.peek(mid);
 
       yield scene.frame({
-        codeLine: LINE.mid,
+        step: STEP.mid,
         explanation: `Window [${lo}..${hi}] holds ${hi - lo + 1} candidates; probe the middle, a[${mid}] = ${value}.`,
         highlights: { candidate: [mid], excluded: outside(lo, hi, total) },
         pointers: { lo, mid, hi },
@@ -137,7 +140,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
 
       if (scene.compareValue(mid, target) === 0) {
         yield scene.frame({
-          codeLine: LINE.checkEqual,
+          step: STEP.checkEqual,
           explanation: `a[${mid}] = ${value} is the target. Found at index ${mid} after ${scene.counters().comparisons} comparisons.`,
           highlights: { sorted: [mid], excluded: outside(lo, hi, total) },
           pointers: { mid },
@@ -152,7 +155,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
         const discarded = mid - lo + 1;
         lo = mid + 1;
         yield scene.frame({
-          codeLine: LINE.goRight,
+          step: STEP.goRight,
           explanation: `${value} < ${target}, so everything up to index ${mid} is too small. lo becomes ${lo}, discarding ${discarded} slots at once.`,
           highlights: { excluded: outside(lo, hi, total) },
           pointers: { lo, hi },
@@ -161,7 +164,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
       } else {
         hi = mid - 1;
         yield scene.frame({
-          codeLine: LINE.goLeft,
+          step: STEP.goLeft,
           explanation: `${value} > ${target}, so everything from index ${mid} up is too big. hi becomes ${hi}.`,
           highlights: { excluded: outside(lo, hi, total) },
           pointers: { lo, hi },
@@ -171,7 +174,7 @@ export const binarySearch = defineAlgorithm<BinarySearchInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.notFound,
+      step: STEP.notFound,
       explanation: `lo = ${lo} passed hi = ${hi}, so the window is empty: ${target} is not in the array. Note lo is where it would be inserted.`,
       highlights: { excluded: outside(0, -1, total) },
       pointers: { lo, hi },

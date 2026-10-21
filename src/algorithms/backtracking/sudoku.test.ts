@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseMatrixRef } from '../../core/matrixScene';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, gridOf, lastFrame, runFrames } from '../frameHygiene';
-import { BACKTRACKS, ESCARGOT, EASY, GUESSES, GUESSY, LINE, MINI, PLACED, sudoku } from './sudoku';
+import { BACKTRACKS, ESCARGOT, EASY, GUESSES, GUESSY, MINI, PLACED, STEP, sudoku } from './sudoku';
 
 const PRESETS = { EASY, GUESSY, ESCARGOT, MINI } as const;
 
@@ -134,7 +134,7 @@ describe('sudoku: correctness', () => {
 
   it('reports a puzzle with no solution', () => {
     const frames = solve('123....4........');
-    expect(frames.some((frame) => frame.codeLine === LINE.dead)).toBe(true);
+    expect(frames.some((frame) => frame.step === STEP.dead)).toBe(true);
     expect(lastFrame(frames).explanation).toMatch(/no solution/);
   });
 });
@@ -153,7 +153,7 @@ describe('sudoku: the board tells the truth', () => {
             return;
           }
           const open = Array.from({ length: n }, (_, d) => d + 1).filter((d) => !peers(n, box, at).some((peer) => values[peer] === d));
-          expect(mark, `frame ${frame.codeLine} square ${at}`).toBe(open.length === 0 ? null : open.join(''));
+          expect(mark, `frame ${frame.step} square ${at}`).toBe(open.length === 0 ? null : open.join(''));
         });
       }
     }
@@ -168,12 +168,12 @@ describe('sudoku: the board tells the truth', () => {
     const frames = solve(ESCARGOT);
     let checked = 0;
     frames.forEach((frame, at) => {
-      if (frame.codeLine !== LINE.undo) return;
+      if (frame.step !== STEP.undo) return;
       const square = parseMatrixRef(String(frame.highlights.pivot?.[0]));
       if (square === null || square.kind !== 'cell') throw new Error('the undone guess is a square');
       // Walk back to the guess this undo answers: the last guess frame on that square.
       let guess = at - 1;
-      while (guess >= 0 && !(frames[guess]?.codeLine === LINE.guess && frames[guess]?.highlights.pivot?.[0] === frame.highlights.pivot?.[0])) guess -= 1;
+      while (guess >= 0 && !(frames[guess]?.step === STEP.guess && frames[guess]?.highlights.pivot?.[0] === frame.highlights.pivot?.[0])) guess -= 1;
       const before = boardOf(frames[guess] as Frame);
       before[square.row * 9 + square.col] = 0;
       expect(boardOf(frame)).toEqual(before);

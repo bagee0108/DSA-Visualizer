@@ -5,6 +5,7 @@ import { defineAlgorithm, type ParamMap, type ParseResult, type PresetSpec } fro
 import { randomInt } from '../../core/random';
 import { LEFT, RIGHT, TreeScene, type Side } from '../../core/treeScene';
 import type { EntityId, Frame, Highlights, Strip, StripItem } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 export const MAX_LEAVES = 16;
 export const MAX_OPS = 6;
@@ -67,6 +68,7 @@ export const LINE = {
   partial: 28,
   sum: 29,
 } as const;
+export const STEP = stepIds(LINE);
 
 export const VISITED = 'nodes visited';
 
@@ -173,6 +175,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['recursiveCalls', 'reads', 'writes'],
   },
   fields: [
@@ -216,13 +219,13 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       if (parent === null) scene.setRoot(id);
       else scene.link(parent, side, id);
       scene.countCall();
-      scene.pushCall({ label: `build ${span(l, r)}`, codeLine: LINE.build });
+      scene.pushCall({ label: `build ${span(l, r)}`, step: STEP.build });
 
       if (l === r) {
         const value = values[l] ?? 0;
         scene.setValue(id, value);
         yield scene.frame({
-          codeLine: LINE.leaf,
+          step: STEP.leaf,
           phase: 'build',
           explanation: `${span(l, r)} is a single element: the leaf holds a[${l}] = ${value}.`,
           highlights: { active: [id] },
@@ -234,7 +237,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
 
       const mid = (l + r) >> 1;
       yield scene.frame({
-        codeLine: LINE.split,
+        step: STEP.split,
         phase: 'build',
         explanation: `${span(l, r)} splits at mid = ${mid} into ${span(l, mid)} and ${span(mid + 1, r)}. Build both, then add.`,
         highlights: { active: [id] },
@@ -244,7 +247,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       const right = yield* build(mid + 1, r, id, RIGHT);
       scene.setValue(id, left + right);
       yield scene.frame({
-        codeLine: LINE.combine,
+        step: STEP.combine,
         phase: 'build',
         explanation: `Both halves are ready: ${span(l, r)} = ${left} + ${right} = ${left + right}.`,
         highlights: { active: [id], visited: [idOf(l, mid), idOf(mid + 1, r)] },
@@ -255,7 +258,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.build,
+      step: STEP.build,
       phase: 'build',
       explanation: `Each node will hold the sum of a range of the ${n} elements, written beside it; the root covers ${span(0, n - 1)}, and each node splits its range in half for its children.`,
       strips: strips(),
@@ -266,14 +269,14 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
     function* update(l: number, r: number, index: number, value: number, path: string[]): Generator<Frame, number, undefined> {
       const id = idOf(l, r);
       scene.countCall();
-      scene.pushCall({ label: `update ${span(l, r)}`, codeLine: LINE.update });
+      scene.pushCall({ label: `update ${span(l, r)}`, step: STEP.update });
       path.push(id);
 
       if (l === r) {
         const before = scene.value(id);
         scene.setValue(id, value);
         yield scene.frame({
-          codeLine: LINE.setLeaf,
+          step: STEP.setLeaf,
           phase: 'update',
           explanation: `The leaf for a[${index}]: ${before} becomes ${value}. Only the ranges above it contain a[${index}], so only they change.`,
           highlights: { candidate: [id], visited: path.slice(0, -1) },
@@ -286,7 +289,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       const mid = (l + r) >> 1;
       const goLeft = index <= mid;
       yield scene.frame({
-        codeLine: goLeft ? LINE.goLeft : LINE.goRight,
+        step: goLeft ? STEP.goLeft : STEP.goRight,
         phase: 'update',
         explanation: `${index} ${goLeft ? `<= ${mid}` : `> ${mid}`}, so a[${index}] lives in the ${goLeft ? 'left' : 'right'} half, ${goLeft ? span(l, mid) : span(mid + 1, r)}. The other half is untouched.`,
         highlights: { active: [id], visited: path.slice(0, -1) },
@@ -301,7 +304,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       scene.setValue(id, left + right);
       path.pop();
       yield scene.frame({
-        codeLine: LINE.refresh,
+        step: STEP.refresh,
         phase: 'update',
         explanation: `Back up at ${span(l, r)}: ${left} + ${right} = ${left + right}${before === left + right ? ', unchanged' : ` (was ${before})`}.`,
         highlights: { active: [id], visited: [idOf(l, mid), idOf(mid + 1, r)] },
@@ -317,7 +320,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       scene.countCall();
       scene.bump(VISITED);
       seen.visits += 1;
-      scene.pushCall({ label: `query ${span(l, r)}`, codeLine: LINE.query });
+      scene.pushCall({ label: `query ${span(l, r)}`, step: STEP.query });
       const look = (extra: Highlights): Highlights => ({
         sorted: [...seen.covered],
         excluded: [...seen.disjoint],
@@ -328,7 +331,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       if (to < l || r < from) {
         seen.disjoint.push(id);
         yield scene.frame({
-          codeLine: LINE.disjoint,
+          step: STEP.disjoint,
           phase: 'query',
           explanation: `${span(l, r)} does not overlap ${span(from, to)}: it contributes 0, and nothing below it is visited.`,
           highlights: look({}),
@@ -343,7 +346,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
         seen.covered.push(id);
         taken = [...taken, { id: `take:${id}`, label: `${span(l, r)} ${value}` }];
         yield scene.frame({
-          codeLine: LINE.covered,
+          step: STEP.covered,
           phase: 'query',
           explanation: `${span(l, r)} lies wholly inside ${span(from, to)}, so take its sum, ${value}, without going further down.`,
           highlights: look({ active: [id] }),
@@ -356,7 +359,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       seen.partial.push(id);
       const mid = (l + r) >> 1;
       yield scene.frame({
-        codeLine: LINE.partial,
+        step: STEP.partial,
         phase: 'query',
         explanation: `${span(l, r)} only partly overlaps ${span(from, to)}, so ask both halves.`,
         highlights: look({ active: [id] }),
@@ -365,7 +368,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       const left = yield* query(l, mid, from, to, seen);
       const right = yield* query(mid + 1, r, from, to, seen);
       yield scene.frame({
-        codeLine: LINE.sum,
+        step: STEP.sum,
         phase: 'query',
         explanation: `${span(l, r)} returns ${left} + ${right} = ${left + right}.`,
         highlights: look({ active: [id] }),
@@ -381,7 +384,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
       taken = [];
       if (op.kind === 'set') {
         yield scene.frame({
-          codeLine: LINE.update,
+          step: STEP.update,
           phase: 'update',
           explanation: `${formatOp(op)}: walk from the root down to the leaf for a[${op.index}], then refresh every sum on the way back up.`,
           highlights: { active: [idOf(0, n - 1)] },
@@ -391,7 +394,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
         summary = `a[${op.index}] is now ${op.value}; the root holds ${scene.value(idOf(0, n - 1))}.`;
       } else {
         yield scene.frame({
-          codeLine: LINE.query,
+          step: STEP.query,
           phase: 'query',
           explanation: `${formatOp(op)}: the sum of a[${op.from}..${op.to}]. Start at the root and only go down where a range is cut by the query.`,
           highlights: { active: [idOf(0, n - 1)] },
@@ -401,7 +404,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
         const result = yield* query(0, n - 1, op.from, op.to, seen);
         summary = `sum of a[${op.from}..${op.to}] = ${result}, from ${seen.covered.length} whole range${seen.covered.length === 1 ? '' : 's'}; ${seen.visits} of ${scene.size} nodes visited.`;
         yield scene.frame({
-          codeLine: LINE.query,
+          step: STEP.query,
           phase: 'query',
           explanation: summary,
           highlights: { sorted: seen.covered as EntityId[] },
@@ -411,7 +414,7 @@ export const segmentTree = defineAlgorithm<SegmentInput>({
     }
 
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       phase: 'done',
       explanation: ops.length === 0 ? summary : `Done. ${summary}`,
       strips: strips(),

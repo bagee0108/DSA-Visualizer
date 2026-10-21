@@ -21,6 +21,7 @@ import {
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import { randomInt } from '../../core/random';
 import type { Frame, Graph, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 type Method = 'kahn' | 'dfs';
 
@@ -87,6 +88,7 @@ const LINE = {
   recurse: lineOf('!visit(v)'),
   finish: lineOf('order.unshift(u)'),
 } as const;
+const STEP = stepIds(LINE);
 
 export const UNDIRECTED_ERROR =
   'A topological order is defined for directed graphs. Switch "Edges are" to Directed. An undirected edge points both ways, which is already a cycle of two.';
@@ -259,6 +261,7 @@ export const topologicalSort = defineAlgorithm<TopoInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'recursiveCalls'],
   },
   fields: [edgesField('0-1,0-2,1-3,2-3,1-4,3-5,4-5,4-6,2-7,3-7,5-8,6-8', false), directedOnlyField, methodField, layoutField, seedField],
@@ -286,13 +289,13 @@ function* runKahn(graph: Graph): Gen {
   const strips = (): readonly Strip[] => [scene.strip('pq', 'ready', ready), scene.strip('output', 'order', order)];
 
   yield scene.frame({
-    codeLine: LINE.count,
+    step: STEP.count,
     explanation: `Each label is a node's in-degree: how many edges point into it, so how many prerequisites it still waits on. ${scene.nodeIds.length} nodes, ${graph.edges.length} edges.`,
     strips: strips(),
     phase: 'count',
   });
   yield scene.frame({
-    codeLine: LINE.ready,
+    step: STEP.ready,
     explanation:
       ready.length === 0
         ? 'No node has in-degree 0: every node waits on another, so there is nowhere to start.'
@@ -309,7 +312,7 @@ function* runKahn(graph: Graph): Gen {
     order.push(u);
     scene.visit(u);
     yield scene.frame({
-      codeLine: LINE.take,
+      step: STEP.take,
       explanation:
         choices > 1
           ? `${choices} nodes are ready, and any of them could go next: a graph can have many valid topological orders, and this run builds one of them. It takes the smallest id, ${name(u)}, so the run is reproducible.`
@@ -333,7 +336,7 @@ function* runKahn(graph: Graph): Gen {
         ready.sort(byId);
       }
       yield scene.frame({
-        codeLine: left === 0 ? LINE.enqueue : LINE.decrement,
+        step: left === 0 ? STEP.enqueue : STEP.decrement,
         explanation:
           left === 0
             ? `${name(u)} -> ${name(v)}: with ${name(u)} placed, ${name(v)} has nothing left to wait for. In-degree 0, so ${name(v)} is ready.`
@@ -357,7 +360,7 @@ function* runKahn(graph: Graph): Gen {
         ? `All of them are on a cycle.`
         : `On a cycle: ${listOf(onCycle.map(name))}. Only waiting on one: ${listOf(downstream.map(name))}.`;
     yield scene.frame({
-      codeLine: LINE.kahnCycle,
+      step: STEP.kahnCycle,
       explanation: `Not a DAG: no topological order exists. The ready set is empty with ${stuck.length} node${stuck.length === 1 ? '' : 's'} unplaced. These nodes are on a cycle or depend on one, so none of them can ever reach in-degree 0. ${split}`,
       highlights: { swapped: [...stuck, ...between] },
       strips: strips(),
@@ -366,7 +369,7 @@ function* runKahn(graph: Graph): Gen {
     return;
   }
   yield scene.frame({
-    codeLine: LINE.kahnDone,
+    step: STEP.kahnDone,
     explanation: `Done: all ${order.length} nodes placed, and every edge points forward in this order. Other valid orders exist whenever more than one node was ready at once.`,
     highlights: { sorted: [...order] },
     strips: strips(),
@@ -387,7 +390,7 @@ function* runDfs(graph: Graph): Gen {
   /** False once a back edge is found; the recursion then unwinds without frames. */
   function* visit(u: string, parent: string | null): Generator<Frame, boolean, undefined> {
     scene.countCall();
-    scene.pushCall({ label: `visit(${name(u)})`, codeLine: LINE.open });
+    scene.pushCall({ label: `visit(${name(u)})`, step: STEP.open });
     path.push(u);
     onPath.add(u);
     scene.visit(u);
@@ -395,7 +398,7 @@ function* runDfs(graph: Graph): Gen {
     const disc = time;
     scene.setLabel(u, `${disc}/`);
     yield scene.frame({
-      codeLine: LINE.open,
+      step: STEP.open,
       explanation:
         parent === null
           ? `visit(${name(u)}): open at time ${disc}. It stays on the stack until everything reachable from it is placed.`
@@ -414,7 +417,7 @@ function* runDfs(graph: Graph): Gen {
         cycle = { from: u, to: v, edge };
         const loop = path.slice(path.indexOf(v));
         yield scene.frame({
-          codeLine: LINE.backEdge,
+          step: STEP.backEdge,
           explanation: `${name(u)} -> ${name(v)}: ${name(v)} is still open, on the stack below ${name(u)}. That edge points back to an ancestor, closing the cycle ${[...loop, v].map(name).join(' -> ')}.`,
           highlights: { active: [u], swapped: [edge, ...loop] },
           pointers: { u, v },
@@ -428,7 +431,7 @@ function* runDfs(graph: Graph): Gen {
       }
       if (scene.isVisited(v)) {
         yield scene.frame({
-          codeLine: LINE.recurse,
+          step: STEP.recurse,
           explanation: `${name(u)} -> ${name(v)}: ${name(v)} is already finished and placed. ${name(u)} will go in front of it, so this edge points forward. Skip.`,
           highlights: { active: [u], excluded: [v, edge] },
           pointers: { u, v },
@@ -439,7 +442,7 @@ function* runDfs(graph: Graph): Gen {
       }
       scene.setTreeEdge(neighbour.edge);
       yield scene.frame({
-        codeLine: LINE.recurse,
+        step: STEP.recurse,
         explanation: `${name(u)} -> ${name(v)}: ${name(v)} is new. Visit it first; ${name(u)} can only be placed once everything after it is.`,
         highlights: { active: [u], candidate: [v, edge] },
         pointers: { u, v },
@@ -461,7 +464,7 @@ function* runDfs(graph: Graph): Gen {
     onPath.delete(u);
     scene.popCall();
     yield scene.frame({
-      codeLine: LINE.finish,
+      step: STEP.finish,
       explanation: `${name(u)} finishes at time ${time}: everything reachable from it is placed, so it goes to the front of the order.`,
       highlights: { sorted: [u, `output:${u}`], ...(parent === null ? {} : { active: [parent] }) },
       pointers: parent === null ? { u } : { u, parent },
@@ -475,7 +478,7 @@ function* runDfs(graph: Graph): Gen {
     if (scene.isVisited(s)) continue;
     if (scene.visitedCount > 0) {
       yield scene.frame({
-        codeLine: LINE.restart,
+        step: STEP.restart,
         explanation: `${name(s)} is unvisited: nothing visited so far reaches it. Start a new search there; it will land in front of everything placed so far.`,
         highlights: { candidate: [s] },
         pointers: { s },
@@ -489,7 +492,7 @@ function* runDfs(graph: Graph): Gen {
   const found = cycle as { readonly from: string; readonly to: string; readonly edge: string } | null;
   if (found !== null) {
     yield scene.frame({
-      codeLine: LINE.backEdge,
+      step: STEP.backEdge,
       explanation: `Not a DAG: no topological order exists. The edge ${name(found.from)} -> ${name(found.to)} points back to a node that was still open, so ${name(found.to)} would have to come both before and after ${name(found.from)}.`,
       highlights: { swapped: [found.edge, found.from, found.to] },
       strips: strips(),
@@ -498,7 +501,7 @@ function* runDfs(graph: Graph): Gen {
     return;
   }
   yield scene.frame({
-    codeLine: LINE.dfsDone,
+    step: STEP.dfsDone,
     explanation: `Done: every node finished, and the order is reverse finishing time, so every edge points forward. Other valid orders exist; this one follows the id order of the scans.`,
     highlights: { sorted: [...order] },
     strips: strips(),

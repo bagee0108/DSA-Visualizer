@@ -8,6 +8,7 @@ import { randomInt } from '../../core/random';
 import { ArrayScene } from '../../core/scene';
 import { parseString, randomString, stringField } from '../../core/stringInput';
 import type { EntityId, Highlights } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface KmpInput {
   readonly text: string;
@@ -69,6 +70,7 @@ export const LINE = {
   moveOn: 31,
   ret: 34,
 } as const;
+export const STEP = stepIds(LINE);
 
 const PREFIX = 'prefix comparisons';
 const SEARCH = 'search comparisons';
@@ -141,6 +143,7 @@ export const kmp = defineAlgorithm<KmpInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
   },
   fields: [
@@ -167,7 +170,7 @@ export const kmp = defineAlgorithm<KmpInput>({
     let k = 0;
     let i = 1;
     yield self.frame({
-      codeLine: LINE.pi,
+      step: STEP.pi,
       phase: 'failure function',
       explanation: `First, pi for "${pattern}": pi[i] is the length of the longest proper prefix of pattern[0..i] that is also its suffix. The small number in a tile's corner is its pi. pi[0] = 0, since one character has no proper border.`,
     });
@@ -180,7 +183,7 @@ export const kmp = defineAlgorithm<KmpInput>({
       self.bump(PREFIX);
       const same = letters[i] === letters[k];
       yield self.frame({
-        codeLine: LINE.test,
+        step: STEP.test,
         phase: 'failure function',
         explanation: `${k === 0 ? 'No border to extend yet.' : `The border "${pattern.slice(0, k)}" ends just before i.`} pattern[${i}] = '${letters[i]}' against pattern[${k}] = '${letters[k]}': ${same ? 'equal' : 'different'}.`,
         highlights: { comparing: [i, `aux:${i}`], active: border },
@@ -193,7 +196,7 @@ export const kmp = defineAlgorithm<KmpInput>({
         pi[i] = k;
         self.setNote(i, String(k));
         yield self.frame({
-          codeLine: LINE.grow,
+          step: STEP.grow,
           phase: 'failure function',
           explanation: `The border grows to ${k}, so pi[${i}] = ${k}: "${pattern.slice(0, k)}" is both a prefix and a suffix of "${pattern.slice(0, i + 1)}".`,
           highlights: { sorted: [i], active: run(i - k + 1, i) },
@@ -204,7 +207,7 @@ export const kmp = defineAlgorithm<KmpInput>({
       } else if (k > 0) {
         const shorter = pi[k - 1] ?? 0;
         yield self.frame({
-          codeLine: LINE.fallBack,
+          step: STEP.fallBack,
           phase: 'failure function',
           explanation: `It cannot grow. The next shorter border to try is pi[${k - 1}] = ${shorter}, read from the corner of pattern[${k - 1}]. Slide the prefix so ${shorter === 0 ? 'nothing' : `only "${pattern.slice(0, shorter)}"`} stays lined up; i stays put.`,
           highlights: { candidate: [`aux:${i - 1}`], active: border },
@@ -215,7 +218,7 @@ export const kmp = defineAlgorithm<KmpInput>({
       } else {
         self.setNote(i, '0');
         yield self.frame({
-          codeLine: LINE.none,
+          step: STEP.none,
           phase: 'failure function',
           explanation: `pi[${i}] = 0: no prefix of "${pattern.slice(0, i + 1)}" is also its suffix.`,
           highlights: { sorted: [i] },
@@ -250,7 +253,7 @@ export const kmp = defineAlgorithm<KmpInput>({
 
     placePattern(0);
     yield scene.frame({
-      codeLine: LINE.j,
+      step: STEP.j,
       phase: 'search',
       explanation: `pi is [${pi.join(', ')}]. Now the text. i walks it once, left to right, and never steps back; j counts the pattern characters matched so far. On a mismatch the pattern slides right instead.`,
       pointers: { i: 0 },
@@ -264,7 +267,7 @@ export const kmp = defineAlgorithm<KmpInput>({
       scene.bump(SEARCH);
       const same = text[at] === letters[j];
       yield scene.frame({
-        codeLine: LINE.compare,
+        step: STEP.compare,
         phase: 'search',
         explanation: `${j === 0 ? 'Nothing matched yet.' : `${j} matched so far.`} text[${at}] = '${text[at]}' against pattern[${j}] = '${letters[j]}': ${same ? 'equal' : 'different'}.`,
         highlights: look({ comparing: [at, `aux:${at}`], active: matched(at) }),
@@ -276,7 +279,7 @@ export const kmp = defineAlgorithm<KmpInput>({
         const before = j;
         j += 1;
         yield scene.frame({
-          codeLine: LINE.advance,
+          step: STEP.advance,
           phase: 'search',
           explanation: `Both advance: j becomes ${j}${j === m ? ', the whole pattern' : ''}, and i moves past ${at}.`,
           highlights: look({ active: run(at - before, at) }),
@@ -287,7 +290,7 @@ export const kmp = defineAlgorithm<KmpInput>({
           const start = at - m + 1;
           found.push(start);
           yield scene.frame({
-            codeLine: LINE.whole,
+            step: STEP.whole,
             phase: 'search',
             explanation: `Match at ${start}: text[${start}..${at}] is "${pattern}".`,
             highlights: look({}),
@@ -296,7 +299,7 @@ export const kmp = defineAlgorithm<KmpInput>({
           });
           const keep = pi[m - 1] ?? 0;
           yield scene.frame({
-            codeLine: LINE.carry,
+            step: STEP.carry,
             phase: 'search',
             explanation:
               keep === 0
@@ -312,7 +315,7 @@ export const kmp = defineAlgorithm<KmpInput>({
       } else if (j > 0) {
         const keep = pi[j - 1] ?? 0;
         yield scene.frame({
-          codeLine: LINE.slide,
+          step: STEP.slide,
           phase: 'search',
           explanation:
             keep === 0
@@ -325,7 +328,7 @@ export const kmp = defineAlgorithm<KmpInput>({
         j = keep;
       } else {
         yield scene.frame({
-          codeLine: LINE.moveOn,
+          step: STEP.moveOn,
           phase: 'search',
           explanation: 'Nothing is matched, so i moves on.',
           highlights: look({}),
@@ -338,7 +341,7 @@ export const kmp = defineAlgorithm<KmpInput>({
 
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation: `${
         found.length === 0 ? `"${pattern}" does not occur in the text.` : `"${pattern}" occurs at ${found.join(', ')}.`

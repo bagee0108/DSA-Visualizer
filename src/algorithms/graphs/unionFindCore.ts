@@ -6,22 +6,23 @@
  */
 
 import type { GraphScene } from '../../core/graphScene';
+import type { StepId } from '../../core/steps';
 import type { Frame, Highlights, Strip } from '../../core/types';
 
-export interface UnionFindLines {
-  readonly findEnter: number;
-  readonly climb: number;
-  readonly findReturn: number;
-  readonly compressSet: number;
-  readonly shorter: number;
-  readonly taller: number;
-  readonly equal: number;
+export interface UnionFindSteps {
+  readonly findEnter: StepId;
+  readonly climb: StepId;
+  readonly findReturn: StepId;
+  readonly compressSet: StepId;
+  readonly shorter: StepId;
+  readonly taller: StepId;
+  readonly equal: StepId;
 }
 
 export interface UnionFindOptions {
   readonly byRank: boolean;
   readonly compress: boolean;
-  readonly lines: UnionFindLines;
+  readonly steps: UnionFindSteps;
   readonly strips: () => readonly Strip[];
   /**
    * 'every-step' draws a frame per parent climbed and per pointer compressed.
@@ -46,7 +47,7 @@ export interface Merge {
   /** The root that went under the other. */
   readonly child: string;
   readonly top: string;
-  readonly line: number;
+  readonly step: StepId;
   readonly why: string;
 }
 
@@ -78,11 +79,11 @@ export class DisjointSets {
   /** Climbs to x's root, compressing the path if enabled, yielding frames as configured. */
   *find(x: string, phase: string): Generator<Frame, string, undefined> {
     const { scene, options } = this;
-    const { lines } = options;
+    const { steps } = options;
     const stepFrames = (options.findFrames ?? 'every-step') === 'every-step';
     scene.countCall();
     scene.bump('finds');
-    scene.pushCall({ label: `find(${scene.label(x)})`, codeLine: lines.findEnter });
+    scene.pushCall({ label: `find(${scene.label(x)})`, step: steps.findEnter });
     const path: string[] = [];
     let root = x;
     while (this.parent.get(root) !== root) {
@@ -92,7 +93,7 @@ export class DisjointSets {
       path.push(root);
       if (stepFrames) {
         yield scene.frame({
-          codeLine: lines.climb,
+          step: steps.climb,
           explanation: `find(${scene.label(x)}): ${scene.label(root)} is not its own parent, so climb to ${scene.label(next)}.`,
           highlights: withAlso({ active: [root], candidate: [next, `link:${root}`], visited: [...path] }, options.also),
           pointers: { x, root },
@@ -108,7 +109,7 @@ export class DisjointSets {
     if (!stepFrames) {
       for (const node of compressed) this.pointAt(node, root);
       yield scene.frame({
-        codeLine: lines.findReturn,
+        step: steps.findReturn,
         explanation:
           path.length === 0
             ? `find(${scene.label(x)}) = ${scene.label(x)}: it is its own root.`
@@ -123,7 +124,7 @@ export class DisjointSets {
     }
 
     yield scene.frame({
-      codeLine: lines.findReturn,
+      step: steps.findReturn,
       explanation:
         path.length === 0
           ? `find(${scene.label(x)}): ${scene.label(x)} is its own parent, so it is the root of its set.`
@@ -136,7 +137,7 @@ export class DisjointSets {
     for (const node of compressed) {
       this.pointAt(node, root);
       yield scene.frame({
-        codeLine: lines.compressSet,
+        step: steps.compressSet,
         explanation: `Path compression: ${scene.label(node)} now points straight at ${scene.label(root)}, so the next find from here is one hop.`,
         highlights: withAlso({ pivot: [root], candidate: [node, `link:${node}`], visited: [...path] }, options.also),
         pointers: { x, root },
@@ -151,12 +152,12 @@ export class DisjointSets {
   /** Puts one of two distinct roots under the other, by rank if enabled, and updates the canvas. No frame. */
   merge(ra: string, rb: string): Merge {
     const { scene, options } = this;
-    const { lines } = options;
+    const { steps } = options;
     const rankA = this.rank.get(ra) ?? 0;
     const rankB = this.rank.get(rb) ?? 0;
     let child = rb;
     let top = ra;
-    let line = lines.equal;
+    let step = steps.equal;
     let why: string;
     if (!options.byRank) {
       why = `Naive union: ${scene.label(rb)} goes under ${scene.label(ra)} regardless of size, so trees can grow into chains.`;
@@ -164,11 +165,11 @@ export class DisjointSets {
       scene.countComparison();
       child = ra;
       top = rb;
-      line = lines.shorter;
+      step = steps.shorter;
       why = `rank ${rankA} < rank ${rankB}: the shorter tree at ${scene.label(ra)} goes under ${scene.label(rb)}, so no root's height grows.`;
     } else if (rankA > rankB) {
       scene.countComparison(2);
-      line = lines.taller;
+      step = steps.taller;
       why = `rank ${rankA} > rank ${rankB}: ${scene.label(rb)} goes under the taller root ${scene.label(ra)}, whose rank stays ${rankA}.`;
     } else {
       scene.countComparison(2);
@@ -180,7 +181,7 @@ export class DisjointSets {
     this.rootLabel(child);
     this.rootLabel(top);
     this.count -= 1;
-    return { child, top, line, why };
+    return { child, top, step, why };
   }
 
   private pointAt(node: string, root: string): void {

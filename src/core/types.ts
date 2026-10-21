@@ -3,6 +3,8 @@
  * yields immutable `Frame` objects.
  */
 
+import type { StepId } from './steps';
+
 export type EntityId = number | string;
 
 export type StructureKind = 'array' | 'tree' | 'graph' | 'grid' | 'list' | 'matrix' | 'split';
@@ -256,7 +258,8 @@ export type Pointers = Readonly<Record<string, number | string>>;
 export interface CallStackEntry {
   readonly label: string;
   readonly detail?: string;
-  readonly codeLine?: number;
+  /** The step this call was made from, as on Frame. */
+  readonly step?: StepId;
 }
 
 export interface Counters {
@@ -284,7 +287,8 @@ export interface Frame {
   readonly pointers: Pointers;
   readonly callStack: readonly CallStackEntry[];
   readonly explanation: string;
-  readonly codeLine: number;
+  /** Where in the algorithm this frame stands, by name; null for nowhere in particular. The code panel maps it to a line. */
+  readonly step: StepId | null;
   readonly counters: Counters;
   readonly phase?: string;
 }

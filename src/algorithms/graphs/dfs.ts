@@ -19,6 +19,7 @@ import {
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import type { Frame, Graph } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface DfsInput {
   readonly graph: Graph;
@@ -43,6 +44,7 @@ for (const s of nodes) {
 }`;
 
 const LINE = { enter: 1, discover: 3, scan: 4, skip: 5, recurse: 7, finish: 9, first: 12, restart: 14 } as const;
+const STEP = stepIds(LINE);
 
 const forestField: FieldSpec = {
   key: 'forest',
@@ -86,6 +88,7 @@ export const dfs = defineAlgorithm<DfsInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'recursiveCalls'],
   },
   fields: [edgesField('0-1,0-2,1-3,1-4,2-4,2-5,3-6,4-6,4-7,5-7,6-8,7-8,7-9,10-11', false), directedField, startField, forestField, layoutField, seedField],
@@ -105,7 +108,7 @@ export const dfs = defineAlgorithm<DfsInput>({
     function* explore(u: string, parent: string | null): Gen {
       scene.countCall();
       if (parent === null) roots += 1;
-      scene.pushCall({ label: `dfs(${scene.label(u)})`, codeLine: LINE.enter });
+      scene.pushCall({ label: `dfs(${scene.label(u)})`, step: STEP.enter });
       path.push(u);
       scene.visit(u);
       order.push(u);
@@ -113,7 +116,7 @@ export const dfs = defineAlgorithm<DfsInput>({
       const disc = time;
       scene.setLabel(u, `${disc}/`);
       yield scene.frame({
-        codeLine: LINE.discover,
+        step: STEP.discover,
         explanation:
           parent === null
             ? `dfs(${scene.label(u)}): discovered at time ${disc}. It stays on the stack until everything reachable from it is finished.`
@@ -131,7 +134,7 @@ export const dfs = defineAlgorithm<DfsInput>({
         if (scene.isVisited(v)) {
           const onStack = path.includes(v);
           yield scene.frame({
-            codeLine: LINE.skip,
+            step: STEP.skip,
             explanation: onStack
               ? `${scene.label(u)}-${scene.label(v)}: ${scene.label(v)} is still on the stack, an ancestor of ${scene.label(u)}. A back edge, not a tree edge.`
               : `${scene.label(u)}-${scene.label(v)}: ${scene.label(v)} was discovered earlier and is already finished. Skip.`,
@@ -144,7 +147,7 @@ export const dfs = defineAlgorithm<DfsInput>({
         }
         scene.setTreeEdge(neighbour.edge);
         yield scene.frame({
-          codeLine: LINE.recurse,
+          step: STEP.recurse,
           explanation: `${scene.label(u)}-${scene.label(v)}: ${scene.label(v)} is undiscovered, so it hangs off ${scene.label(u)} in the tree. Recurse now; ${scene.label(u)}'s other neighbours wait.`,
           highlights: { active: [u], candidate: [v, edge] },
           pointers: { u, v },
@@ -159,7 +162,7 @@ export const dfs = defineAlgorithm<DfsInput>({
       path.pop();
       scene.popCall();
       yield scene.frame({
-        codeLine: LINE.finish,
+        step: STEP.finish,
         explanation:
           parent === null
             ? `Every neighbour of ${scene.label(u)} is done: finished at time ${time}. The stack is empty.`
@@ -172,7 +175,7 @@ export const dfs = defineAlgorithm<DfsInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.first,
+      step: STEP.first,
       explanation: `dfs(${scene.label(input.start)}): time starts at 0; each node records when it was discovered and when it finished.`,
       highlights: { active: [input.start] },
       pointers: { start: input.start },
@@ -185,7 +188,7 @@ export const dfs = defineAlgorithm<DfsInput>({
       for (const s of scene.nodeIds) {
         if (scene.isVisited(s)) continue;
         yield scene.frame({
-          codeLine: LINE.restart,
+          step: STEP.restart,
           explanation: `${scene.label(s)} is still undiscovered: no path reaches it from anything visited so far. Start a new tree there.`,
           highlights: { candidate: [s] },
           pointers: { s },
@@ -198,7 +201,7 @@ export const dfs = defineAlgorithm<DfsInput>({
 
     const unreached = scene.nodeIds.length - scene.visitedCount;
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation:
         unreached === 0
           ? `Done: all ${scene.visitedCount} nodes discovered and finished, ${roots} tree${roots === 1 ? '' : 's'}, ${scene.visitedCount - roots} tree edges.`

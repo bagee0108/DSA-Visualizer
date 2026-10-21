@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { makeRng, randomInt } from '../../core/random';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, lastFrame, paneOf, runFrames, splitOf } from '../frameHygiene';
-import { LINE, lis, MAX_LENGTH } from './lis';
+import { lis, MAX_LENGTH, STEP } from './lis';
 
 function solve(values: readonly number[]): readonly Frame[] {
   return runFrames(lis, { input: values.join(', ') });
@@ -72,7 +72,7 @@ describe('lis: correctness', () => {
     const values = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5];
     let i = 0;
     for (const frame of solve(values)) {
-      if (frame.codeLine !== LINE.place) continue;
+      if (frame.step !== STEP.place) continue;
       const lit = (frame.highlights.active ?? []).map(String).find((ref) => ref.startsWith('piles/cell:0:'));
       const landed = Number(lit?.split(':')[2]);
       expect(paneOf(frame, 'piles').cells[landed], `a[${i}] is on the pile it says`).toBe(values[i]);

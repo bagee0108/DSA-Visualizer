@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseMatrixRef } from '../../core/matrixScene';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, gridOf, lastFrame, runFrames } from '../frameHygiene';
-import { LINE, MAX_N, MIN_N, nQueens, PRUNED, TRIES } from './nQueens';
+import { MAX_N, MIN_N, nQueens, PRUNED, STEP, TRIES } from './nQueens';
 
 function solve(n: number): readonly Frame[] {
   return runFrames(nQueens, { n: String(n) });
@@ -72,7 +72,7 @@ describe('n-queens: correctness', () => {
 
 describe('n-queens: pruning made visible', () => {
   it('draws, on every pruned square, a real attack from a queen on the board', () => {
-    for (const frame of solve(6).filter((candidate) => candidate.codeLine === LINE.prune)) {
+    for (const frame of solve(6).filter((candidate) => candidate.step === STEP.prune)) {
       const board = gridOf(frame);
       expect(board.lines).toHaveLength(1);
       const [line] = board.lines;
@@ -86,7 +86,7 @@ describe('n-queens: pruning made visible', () => {
   });
 
   it('draws no attack line on any other frame', () => {
-    const others = solve(5).filter((frame) => frame.codeLine !== LINE.prune);
+    const others = solve(5).filter((frame) => frame.step !== STEP.prune);
     expect(others.every((frame) => gridOf(frame).lines.length === 0)).toBe(true);
   });
 

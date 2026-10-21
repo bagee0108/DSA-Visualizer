@@ -56,7 +56,7 @@ describe('SplitScene', () => {
     row.write(0, 0, 5);
     const frame = split.frame({
       explanation: 'both',
-      codeLine: 1,
+      step: 'one',
       arrows: { table: [{ from: { row: 0, col: 0 }, to: { row: 1, col: 1 } }] },
     });
     const structure = splitOf(frame);
@@ -72,7 +72,7 @@ describe('SplitScene', () => {
       { id: 'table', title: 'a', scene: table(2, 2) },
       { id: 'row', title: 'b', scene: table(1, 2) },
     ]);
-    expect(() => split.frame({ explanation: 'x', codeLine: 0, arrows: { nope: [] } })).toThrow(RangeError);
+    expect(() => split.frame({ explanation: 'x', step: null, arrows: { nope: [] } })).toThrow(RangeError);
   });
 
   it('adds the panes counters, so splitting a run does not change its totals', () => {
@@ -87,7 +87,7 @@ describe('SplitScene', () => {
     row.write(0, 0, 1);
     grid.read(0, 1);
     row.countComparison(3);
-    const { counters } = split.frame({ explanation: 'x', codeLine: 0 });
+    const { counters } = split.frame({ explanation: 'x', step: null });
     expect(counters.writes).toBe(3);
     expect(counters.reads).toBe(1);
     expect(counters.comparisons).toBe(3);
@@ -101,9 +101,9 @@ describe('SplitScene', () => {
       { id: 'table', title: 'a', scene: grid },
       { id: 'row', title: 'b', scene: row },
     ]);
-    const first = split.frame({ explanation: 'x', codeLine: 0 });
+    const first = split.frame({ explanation: 'x', step: null });
     row.write(0, 1, 4);
-    const second = split.frame({ explanation: 'y', codeLine: 0 });
+    const second = split.frame({ explanation: 'y', step: null });
     expect(paneOf(second, 'table').cells).toBe(paneOf(first, 'table').cells);
     expect(paneOf(second, 'row').cells).not.toBe(paneOf(first, 'row').cells);
   });
@@ -119,6 +119,7 @@ const fixture = defineAlgorithm<{ bad: string }>({
     blurb: 'test',
     complexity: { time: { best: '1', average: '1', worst: '1' }, space: '1' },
     code: 'line one\nline two',
+    stepLines: { one: 1, two: 2 },
     trackedCounters: ['writes'],
   },
   fields: [{ key: 'bad', label: 'Bad', kind: 'text', defaultValue: '' }],
@@ -136,7 +137,7 @@ const fixture = defineAlgorithm<{ bad: string }>({
         row.write(0, j, i + j);
         yield split.frame({
           explanation: `fill ${i},${j}`,
-          codeLine: 1,
+          step: 'one',
           highlights: { active: [paneRef('table', cellRef(i, j)), paneRef('row', cellRef(0, j))] },
           pointers: { i: paneRef('table', rowRef(i)), w: bad === 'pointer' ? colRef(j) : paneRef('row', colRef(j)) },
           strips: [{ kind: 'output', label: 'out', items: [{ id: 'x', label: 'x' }] }],

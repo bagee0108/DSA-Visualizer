@@ -206,8 +206,8 @@ describe('quicksort: frame hygiene', () => {
 
   it('points every frame at a real source line', () => {
     for (const frame of frames) {
-      expect(frame.codeLine).toBeGreaterThanOrEqual(0);
-      expect(frame.codeLine).toBeLessThanOrEqual(CODE_LINE_COUNT);
+      expect(quicksort.lineOf(frame.step)).toBeGreaterThanOrEqual(0);
+      expect(quicksort.lineOf(frame.step)).toBeLessThanOrEqual(CODE_LINE_COUNT);
     }
   });
 

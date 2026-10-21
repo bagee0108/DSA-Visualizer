@@ -4,6 +4,7 @@ import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput
 import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion, Frame } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface HeapsortInput {
   readonly values: readonly number[];
@@ -53,6 +54,7 @@ const LINE = {
   swapDown: 24,
   descend: 25,
 } as const;
+const STEP = stepIds(LINE);
 
 function heapRegion(size: number, total: number): ArrayRegion[] {
   const regions: ArrayRegion[] = [];
@@ -70,7 +72,7 @@ function* siftDown(
   const total = scene.length;
   let i = start;
 
-  scene.pushCall({ label: `siftDown(${start}, ${size})`, codeLine: LINE.enterSift });
+  scene.pushCall({ label: `siftDown(${start}, ${size})`, step: STEP.enterSift });
 
   for (;;) {
     const l = 2 * i + 1;
@@ -78,7 +80,7 @@ function* siftDown(
     let largest = i;
 
     yield scene.frame({
-      codeLine: LINE.children,
+      step: STEP.children,
       explanation:
         l >= size
           ? `Node ${i} (value ${scene.peek(i)}) is a leaf, so there is nothing below it.`
@@ -92,7 +94,7 @@ function* siftDown(
     if (l < size && scene.compare(l, largest) > 0) {
       largest = l;
       yield scene.frame({
-        codeLine: LINE.checkLeft,
+        step: STEP.checkLeft,
         explanation: `Left child a[${l}] = ${scene.peek(l)} beats a[${i}] = ${scene.peek(i)}, so it is the new candidate.`,
         highlights: { comparing: [l, i] },
         pointers: { i, l },
@@ -101,7 +103,7 @@ function* siftDown(
       });
     } else if (l < size) {
       yield scene.frame({
-        codeLine: LINE.checkLeft,
+        step: STEP.checkLeft,
         explanation: `Left child a[${l}] = ${scene.peek(l)} does not beat a[${i}] = ${scene.peek(i)}.`,
         highlights: { comparing: [l, i] },
         pointers: { i, l },
@@ -113,7 +115,7 @@ function* siftDown(
     if (r < size && scene.compare(r, largest) > 0) {
       largest = r;
       yield scene.frame({
-        codeLine: LINE.checkRight,
+        step: STEP.checkRight,
         explanation: `Right child a[${r}] = ${scene.peek(r)} is bigger still, so it becomes the largest.`,
         highlights: { comparing: [r, largest] },
         pointers: { i, r },
@@ -122,7 +124,7 @@ function* siftDown(
       });
     } else if (r < size) {
       yield scene.frame({
-        codeLine: LINE.checkRight,
+        step: STEP.checkRight,
         explanation: `Right child a[${r}] = ${scene.peek(r)} does not beat the current largest a[${largest}] = ${scene.peek(largest)}.`,
         highlights: { comparing: [r, largest] },
         pointers: { i, r },
@@ -133,7 +135,7 @@ function* siftDown(
 
     if (largest === i) {
       yield scene.frame({
-        codeLine: LINE.settled,
+        step: STEP.settled,
         explanation: `a[${i}] = ${scene.peek(i)} is at least as large as both children, so this subtree is a valid heap.`,
         highlights: { sorted: [] },
         pointers: { i },
@@ -149,7 +151,7 @@ function* siftDown(
     const promoted = scene.peek(largest);
     scene.swap(i, largest);
     yield scene.frame({
-      codeLine: LINE.swapDown,
+      step: STEP.swapDown,
       explanation: `Swap ${moving} down and ${promoted} up: the parent must dominate its children.`,
       highlights: { swapped: [i, largest] },
       pointers: { i },
@@ -159,7 +161,7 @@ function* siftDown(
 
     i = largest;
     yield scene.frame({
-      codeLine: LINE.descend,
+      step: STEP.descend,
       explanation: `Follow ${moving} down to index ${i} and check its new children.`,
       highlights: { active: [i] },
       pointers: { i },
@@ -192,6 +194,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'swaps', 'accesses'],
     stable: false,
     inPlace: true,
@@ -206,7 +209,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
     scene.setHeapSize(n);
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: `Heapsort ${n} elements. The tree above and the bars below are the same array: node i has children 2i+1 and 2i+2.`,
       regions: heapRegion(n, n),
       phase: 'build',
@@ -215,7 +218,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
     for (let i = (n >> 1) - 1; i >= 0; i--) {
       scene.countCall();
       yield scene.frame({
-        codeLine: LINE.buildLoop,
+        step: STEP.buildLoop,
         explanation: `Build phase: sift down from node ${i}. Nodes past ${(n >> 1) - 1} are leaves, so they are already valid heaps.`,
         highlights: { active: [i] },
         pointers: { i },
@@ -226,7 +229,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.sortLoop,
+      step: STEP.sortLoop,
       explanation: `Heap built: a[0] = ${scene.peek(0)} is the maximum. Total cost of the build was ${scene.counters().comparisons} comparisons, which is linear in n.`,
       highlights: { candidate: [0] },
       regions: heapRegion(n, n),
@@ -239,7 +242,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
       scene.markSorted(end);
       scene.setHeapSize(end);
       yield scene.frame({
-        codeLine: LINE.swapMax,
+        step: STEP.swapMax,
         explanation: `Swap the max ${max} into slot ${end}: that is its final position. The heap shrinks to ${end} elements.`,
         highlights: { swapped: [0, end] },
         pointers: { end },
@@ -249,7 +252,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
 
       scene.countCall();
       yield scene.frame({
-        codeLine: LINE.restore,
+        step: STEP.restore,
         explanation: `a[0] = ${scene.peek(0)} came up from a leaf and probably breaks the heap, so sift it back down.`,
         highlights: { active: [0] },
         regions: heapRegion(end, n),
@@ -262,7 +265,7 @@ export const heapsort = defineAlgorithm<HeapsortInput>({
     scene.setHeapSize(null);
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Sorted. ${counters.comparisons} comparisons and ${counters.swaps} swaps, with no extra memory.`,
       phase: 'done',
     });

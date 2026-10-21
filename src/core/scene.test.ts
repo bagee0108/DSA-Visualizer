@@ -19,6 +19,7 @@ const slideDefinition: AlgorithmDefinition<SlideInput> = {
     blurb: 'Test fixture.',
     complexity: { time: { best: 'O(n)', average: 'O(n)', worst: 'O(n)' }, space: 'O(1)' },
     code: 'slide()',
+    stepLines: { slide: 1 },
     trackedCounters: ['comparisons'],
   },
   fields: [
@@ -31,7 +32,7 @@ const slideDefinition: AlgorithmDefinition<SlideInput> = {
     for (let at = 0; at + pattern.length <= text.length; at++) {
       scene.placeAux('pattern', [...pattern], at);
       scene.compareValue(at, pattern[0] ?? '');
-      yield scene.frame({ explanation: `shift ${at}`, codeLine: 1, highlights: { comparing: [at, `aux:${at}`] }, pointers: { s: at } });
+      yield scene.frame({ explanation: `shift ${at}`, step: 'slide', highlights: { comparing: [at, `aux:${at}`] }, pointers: { s: at } });
     }
   },
 };
@@ -51,9 +52,9 @@ describe('ArrayScene over letters', () => {
   it('places aux values at an offset, keyed by their own positions so a shift slides them', () => {
     const scene = new ArrayScene<string>([...'abcabd']);
     scene.placeAux('pattern', [...'abd'], 0);
-    const first = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).auxiliary;
+    const first = arrayOf(scene.frame({ explanation: '', step: 'slide' })).auxiliary;
     scene.placeAux('pattern', [...'abd'], 3);
-    const second = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).auxiliary;
+    const second = arrayOf(scene.frame({ explanation: '', step: 'slide' })).auxiliary;
 
     expect([first?.activeFrom, first?.activeTo]).toEqual([0, 2]);
     expect([second?.activeFrom, second?.activeTo]).toEqual([3, 5]);
@@ -80,10 +81,10 @@ describe('ArrayScene over letters', () => {
     const scene = new ArrayScene<string>([...'abc']);
     scene.setNote(0, '2');
     scene.swap(0, 2);
-    const swapped = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).elements;
+    const swapped = arrayOf(scene.frame({ explanation: '', step: 'slide' })).elements;
     expect(swapped.map((element) => element.note)).toEqual([undefined, undefined, '2']);
     scene.setNote(2, null);
-    const cleared = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).elements;
+    const cleared = arrayOf(scene.frame({ explanation: '', step: 'slide' })).elements;
     expect(cleared.every((element) => element.note === undefined)).toBe(true);
     expect(scene.counters().writes).toBe(2);
   });
@@ -91,14 +92,14 @@ describe('ArrayScene over letters', () => {
   it('captions placed aux values in order, so the notes slide with them', () => {
     const scene = new ArrayScene<string>([...'abcabd']);
     scene.placeAux('pattern', [...'abd'], 3, ['0', '0', null]);
-    const aux = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).auxiliary;
+    const aux = arrayOf(scene.frame({ explanation: '', step: 'slide' })).auxiliary;
     expect(aux?.elements.slice(3).map((element) => element.note)).toEqual(['0', '0', undefined]);
   });
 
   it('still copies numbers to aux as before', () => {
     const scene = new ArrayScene([5, 3, 8]);
     scene.copyToAux('copy', 0, 2);
-    const aux = arrayOf(scene.frame({ explanation: '', codeLine: 1 })).auxiliary;
+    const aux = arrayOf(scene.frame({ explanation: '', step: 'slide' })).auxiliary;
     expect(aux?.elements.map((element) => element.value)).toEqual([5, 3, 8]);
     expect(scene.counters().writes).toBe(3);
   });
@@ -120,7 +121,7 @@ describe('letter frames', () => {
     const long = defineAlgorithm<SlideInput>({
       ...slideDefinition,
       *run() {
-        yield new ArrayScene<string>(['a', 'abcd']).frame({ explanation: '', codeLine: 1 });
+        yield new ArrayScene<string>(['a', 'abcd']).frame({ explanation: '', step: 'slide' });
       },
     });
     expect(() => expectFrameHygiene(long, runFrames(long, {}))).toThrow();
@@ -132,7 +133,7 @@ describe('letter frames', () => {
       *run() {
         const scene = new ArrayScene([3, 1]);
         scene.setNote(0, '1');
-        yield scene.frame({ explanation: '', codeLine: 1 });
+        yield scene.frame({ explanation: '', step: 'slide' });
       },
     });
     expect(() => expectFrameHygiene(noted, runFrames(noted, {}))).toThrow();

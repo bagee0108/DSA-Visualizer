@@ -9,6 +9,7 @@ import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput
 import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface InsertionInput {
   readonly values: readonly number[];
@@ -33,6 +34,7 @@ const LINE = {
   shift: 6,
   place: 9,
 } as const;
+const STEP = stepIds(LINE);
 
 function sortedPrefix(i: number): ArrayRegion[] {
   return i > 0 ? [{ from: 0, to: i - 1, label: 'sorted prefix', tone: 'sorted' }] : [];
@@ -61,6 +63,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'writes'],
     stable: true,
     inPlace: true,
@@ -74,7 +77,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
     const n = scene.length;
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: `Insertion sort ${n} elements. Everything left of i is sorted; each step slides one more value into it.`,
       regions: sortedPrefix(1),
     });
@@ -82,7 +85,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
     for (let i = 1; i < n; i++) {
       const key = scene.read(i);
       yield scene.frame({
-        codeLine: LINE.key,
+        step: STEP.key,
         explanation: `Take key = a[${i}] = ${key}. The prefix a[0..${i - 1}] is sorted.`,
         highlights: { active: [i] },
         pointers: { i },
@@ -94,7 +97,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
       for (;;) {
         if (j < 0) {
           yield scene.frame({
-            codeLine: LINE.test,
+            step: STEP.test,
             explanation: `j fell off the front: ${key} is the smallest so far.`,
             pointers: { i },
             regions: sortedPrefix(i),
@@ -104,7 +107,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
         }
         const larger = scene.compareValue(j, key) > 0;
         yield scene.frame({
-          codeLine: LINE.test,
+          step: STEP.test,
           explanation: larger ? `a[${j}] = ${scene.peek(j)} > ${key}: it slides right.` : `a[${j}] = ${scene.peek(j)} <= ${key}: the gap is at ${j + 1}.`,
           highlights: { comparing: [j] },
           pointers: { i, j },
@@ -114,7 +117,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
         if (!larger) break;
         scene.write(j + 1, scene.read(j));
         yield scene.frame({
-          codeLine: LINE.shift,
+          step: STEP.shift,
           explanation: `Copy a[${j}] to a[${j + 1}].`,
           highlights: { swapped: [j + 1] },
           pointers: { i, j },
@@ -126,7 +129,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
 
       scene.write(j + 1, key);
       yield scene.frame({
-        codeLine: LINE.place,
+        step: STEP.place,
         explanation: `Put ${key} at a[${j + 1}]. a[0..${i}] is sorted.`,
         highlights: { sorted: [j + 1] },
         pointers: { i },
@@ -138,7 +141,7 @@ export const insertionSort = defineAlgorithm<InsertionInput>({
     scene.markSortedRange(0, n - 1);
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Sorted. ${counters.comparisons} comparisons and ${counters.writes} writes, with no extra memory.`,
       regions: sortedPrefix(n),
       phase: 'done',

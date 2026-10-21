@@ -19,6 +19,7 @@ import {
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import type { Graph } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface BfsInput {
   readonly graph: Graph;
@@ -42,6 +43,7 @@ const CODE = `function bfs(start: Node): void {
 }`;
 
 const LINE = { enter: 1, init: 2, loop: 5, shift: 6, scan: 7, skip: 8, discover: 10, push: 12 } as const;
+const STEP = stepIds(LINE);
 
 function parse(params: ParamMap): ParseResult<BfsInput> {
   const directed = parseDirected(params.directed);
@@ -69,6 +71,7 @@ export const bfs = defineAlgorithm<BfsInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
   },
   fields: [edgesField('0-1,0-2,1-3,1-4,2-4,2-5,3-6,4-6,4-7,5-7,6-8,7-8,7-9,10-11', false), directedField, startField, layoutField, seedField],
@@ -91,7 +94,7 @@ export const bfs = defineAlgorithm<BfsInput>({
     scene.setLabel(start, '0');
     queue.push(start);
     yield scene.frame({
-      codeLine: LINE.init,
+      step: STEP.init,
       explanation: `bfs(${scene.label(start)}): it is at distance 0 and the only node in the queue.`,
       highlights: { active: [start] },
       pointers: { start },
@@ -105,7 +108,7 @@ export const bfs = defineAlgorithm<BfsInput>({
       const d = dist.get(u) ?? 0;
       order.push(u);
       yield scene.frame({
-        codeLine: LINE.shift,
+        step: STEP.shift,
         explanation: `Dequeue ${scene.label(u)} (distance ${d}). Everything at distance ${d} leaves the queue before anything at ${d + 1} does.`,
         highlights: { active: [u], sorted: [`output:${u}`] },
         pointers: { u },
@@ -119,7 +122,7 @@ export const bfs = defineAlgorithm<BfsInput>({
         scene.countComparison();
         if (scene.isVisited(v)) {
           yield scene.frame({
-            codeLine: LINE.skip,
+            step: STEP.skip,
             explanation: `${scene.label(u)}-${scene.label(v)}: ${scene.label(v)} was already reached at distance ${dist.get(v) ?? '?'}, so this edge cannot shorten anything. Skip.`,
             highlights: { active: [u], excluded: [v, edge] },
             pointers: { u, v },
@@ -134,7 +137,7 @@ export const bfs = defineAlgorithm<BfsInput>({
         scene.setTreeEdge(neighbour.edge);
         queue.push(v);
         yield scene.frame({
-          codeLine: LINE.push,
+          step: STEP.push,
           explanation: `${scene.label(u)}-${scene.label(v)}: first time ${scene.label(v)} is reached. Its distance is ${d + 1}, its parent is ${scene.label(u)}, and it joins the back of the queue.`,
           highlights: { active: [u], candidate: [v, edge, `queue:${v}`] },
           pointers: { u, v },
@@ -146,7 +149,7 @@ export const bfs = defineAlgorithm<BfsInput>({
 
     const unreachable = scene.nodeIds.length - scene.visitedCount;
     yield scene.frame({
-      codeLine: LINE.loop,
+      step: STEP.loop,
       explanation:
         unreachable === 0
           ? `Queue empty: all ${scene.visitedCount} nodes have their distance from ${scene.label(start)}.`

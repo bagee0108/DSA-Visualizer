@@ -18,6 +18,7 @@ import {
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import type { Graph, GraphEdge, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 import { MinHeap } from './minHeap';
 import { componentsOf, DIRECTED_ERROR, fmt, mstPresets } from './mst';
 
@@ -65,6 +66,7 @@ const LINE = {
   push: lineOf('pq.push([w, v])'),
   done: lineOf('return tree'),
 } as const;
+const STEP = stepIds(LINE);
 
 function parse(params: ParamMap): ParseResult<PrimInput> {
   if (parseDirected(params.directed)) return { ok: false, error: DIRECTED_ERROR };
@@ -100,6 +102,7 @@ export const prim = defineAlgorithm<PrimInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
   },
   fields: [edgesField('0-1:4,0-7:8,1-2:8,1-7:11,2-3:7,2-5:4,2-8:2,3-4:9,3-5:14,4-5:10,5-6:2,6-7:1,6-8:6,7-8:7', true), directedField, startField, layoutField, seedField],
@@ -139,7 +142,7 @@ export const prim = defineAlgorithm<PrimInput>({
       scene.setLabel(root, '0');
       const first = pq.push(0, root);
       yield scene.frame({
-        codeLine: trees === 1 ? LINE.init : LINE.root,
+        step: trees === 1 ? STEP.init : STEP.root,
         explanation:
           trees === 1
             ? `prim(${name(root)}): every key starts at ∞ except the start at 0. A key is the cheapest edge known from the tree to that node; the tree is empty, so ${name(root)} is the only queue entry.`
@@ -159,7 +162,7 @@ export const prim = defineAlgorithm<PrimInput>({
         if (scene.isVisited(u)) {
           scene.bump('stale pops');
           yield scene.frame({
-            codeLine: LINE.stale,
+            step: STEP.stale,
             explanation: `Extract-min gives ${name(u)} at ${fmt(k)}, but ${name(u)} is already in the tree: it joined through a cheaper edge after this entry was pushed. Skip it.`,
             highlights: { excluded: [u] },
             pointers: { u },
@@ -182,7 +185,7 @@ export const prim = defineAlgorithm<PrimInput>({
         }
         const from = edge === undefined ? null : edge.from === u ? edge.to : edge.from;
         yield scene.frame({
-          codeLine: LINE.join,
+          step: STEP.join,
           explanation:
             edge === undefined || from === null
               ? `Extract-min gives ${name(u)} at 0: the root of tree ${trees}. It joins with no edge.`
@@ -201,7 +204,7 @@ export const prim = defineAlgorithm<PrimInput>({
           scene.countComparison();
           if (scene.isVisited(v)) {
             yield scene.frame({
-              codeLine: LINE.test,
+              step: STEP.test,
               explanation: `${name(u)}-${name(v)} (${fmt(w)}): ${name(v)} is already in the tree, so this edge does not leave it.`,
               highlights: { active: [u], excluded: [v, ref] },
               pointers: { u, v },
@@ -212,7 +215,7 @@ export const prim = defineAlgorithm<PrimInput>({
           }
           if (w >= known) {
             yield scene.frame({
-              codeLine: LINE.test,
+              step: STEP.test,
               explanation: `${name(u)}-${name(v)} (${fmt(w)}): not cheaper than the ${fmt(known)} already known for ${name(v)}. Leave it.`,
               highlights: { active: [u], excluded: [v, ref] },
               pointers: { u, v },
@@ -226,7 +229,7 @@ export const prim = defineAlgorithm<PrimInput>({
           scene.setLabel(v, fmt(w));
           const pushed = pq.push(w, v);
           yield scene.frame({
-            codeLine: LINE.push,
+            step: STEP.push,
             explanation:
               known === Number.POSITIVE_INFINITY
                 ? `${name(u)}-${name(v)} (${fmt(w)}): the first edge from the tree to ${name(v)}. Its key drops from ∞ to ${fmt(w)}; push (${fmt(w)}, ${name(v)}).`
@@ -241,7 +244,7 @@ export const prim = defineAlgorithm<PrimInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.done,
+      step: STEP.done,
       explanation:
         trees === 1
           ? `Queue empty and every node is in the tree: a minimum spanning tree of ${accepted.length} edges, total weight ${fmt(weight)}.`

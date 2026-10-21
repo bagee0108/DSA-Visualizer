@@ -5,6 +5,7 @@ import { defineAlgorithm, type ParamMap, type ParseResult, type PresetSpec } fro
 import { randomInt } from '../../core/random';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface SlidingWindowInput {
   readonly values: readonly number[];
@@ -42,6 +43,7 @@ const LINE = {
   record: 15,
   ret: 18,
 } as const;
+const STEP = stepIds(LINE);
 
 function windowRegions(left: number, right: number, best: { from: number; to: number } | null): ArrayRegion[] {
   const regions: ArrayRegion[] = [];
@@ -121,6 +123,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads'],
     inPlace: true,
   },
@@ -149,7 +152,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
     let left = 0;
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: `Find the longest run of ${total} values whose sum stays at or below ${limit}.`,
     });
 
@@ -158,7 +161,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
       sum += added;
 
       yield scene.frame({
-        codeLine: LINE.grow,
+        step: STEP.grow,
         explanation: `Extend right to ${right}: add ${added}, window sum is ${sum}.`,
         highlights: { comparing: [right], active: windowIds(left, right - 1) },
         pointers: { left, right },
@@ -168,7 +171,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
       scene.countComparison();
       while (sum > limit) {
         yield scene.frame({
-          codeLine: LINE.checkHeavy,
+          step: STEP.checkHeavy,
           explanation: `${sum} exceeds the limit ${limit}, so the window has to shrink from the left.`,
           highlights: { excluded: [left], active: windowIds(left + 1, right) },
           pointers: { left, right },
@@ -180,7 +183,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
         left += 1;
 
         yield scene.frame({
-          codeLine: LINE.advanceLeft,
+          step: STEP.advanceLeft,
           explanation: `Drop a[${left - 1}] = ${removed}; sum falls to ${sum} and left advances to ${left}. left never goes back, which is why this stays linear.`,
           highlights: { active: windowIds(left, right) },
           pointers: { left, right },
@@ -195,7 +198,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
         best = length;
         bestSpan = { from: left, to: right };
         yield scene.frame({
-          codeLine: LINE.record,
+          step: STEP.record,
           explanation: `Window [${left}..${right}] sums to ${sum} and spans ${length} - a new best.`,
           highlights: { sorted: windowIds(left, right) },
           pointers: { left, right },
@@ -204,7 +207,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
         });
       } else {
         yield scene.frame({
-          codeLine: LINE.record,
+          step: STEP.record,
           explanation: `Window [${left}..${right}] spans ${length}, which does not beat the best of ${best}.`,
           highlights: { active: windowIds(left, right) },
           pointers: { left, right },
@@ -214,7 +217,7 @@ export const slidingWindow = defineAlgorithm<SlidingWindowInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       explanation:
         bestSpan === null
           ? `No single element fits under ${limit}, so the answer is 0.`

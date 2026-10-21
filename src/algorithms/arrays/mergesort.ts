@@ -4,6 +4,7 @@ import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput
 import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion, Frame } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface MergesortInput {
   readonly values: readonly number[];
@@ -49,6 +50,7 @@ const LINE = {
   takeRight: 20,
   takeLeft: 21,
 } as const;
+const STEP = stepIds(LINE);
 
 function halves(lo: number, mid: number, hi: number): ArrayRegion[] {
   return [
@@ -64,10 +66,10 @@ function* merge(
   hi: number,
 ): Generator<Frame, void, undefined> {
   scene.bump('merges');
-  scene.pushCall({ label: `merge(${lo}, ${mid}, ${hi})`, codeLine: LINE.enterMerge });
+  scene.pushCall({ label: `merge(${lo}, ${mid}, ${hi})`, step: STEP.enterMerge });
 
   yield scene.frame({
-    codeLine: LINE.enterMerge,
+    step: STEP.enterMerge,
     explanation: `Merge the sorted runs a[${lo}..${mid}] and a[${mid + 1}..${hi}].`,
     pointers: { lo, mid, hi },
     regions: halves(lo, mid, hi),
@@ -76,7 +78,7 @@ function* merge(
 
   scene.copyToAux('aux', lo, hi);
   yield scene.frame({
-    codeLine: LINE.copy,
+    step: STEP.copy,
     explanation: `Copy a[${lo}..${hi}] into aux. The merge reads from aux and writes back into a.`,
     pointers: { lo, hi },
     regions: halves(lo, mid, hi),
@@ -87,7 +89,7 @@ function* merge(
   let j = mid + 1;
 
   yield scene.frame({
-    codeLine: LINE.initJ,
+    step: STEP.initJ,
     explanation: `i = ${i} walks the left run, j = ${j} walks the right run. Each step takes the smaller head.`,
     highlights: { comparing: [`aux:${i}`, `aux:${j}`] },
     pointers: { lo, hi },
@@ -104,7 +106,7 @@ function* merge(
       takeLeft = false;
       reason = `the left run is used up, so the rest of the right run comes over in order`;
       yield scene.frame({
-        codeLine: LINE.takeRightExhaustedLeft,
+        step: STEP.takeRightExhaustedLeft,
         explanation: `i passed mid: ${reason}. Take aux[${j}] = ${scene.auxPeek(j)}.`,
         highlights: { comparing: [`aux:${j}`], active: [k] },
         pointers: { k },
@@ -116,7 +118,7 @@ function* merge(
       takeLeft = true;
       reason = `the right run is used up`;
       yield scene.frame({
-        codeLine: LINE.takeLeftExhaustedRight,
+        step: STEP.takeLeftExhaustedRight,
         explanation: `j passed hi: ${reason}. Take aux[${i}] = ${scene.auxPeek(i)}.`,
         highlights: { comparing: [`aux:${i}`], active: [k] },
         pointers: { k },
@@ -132,7 +134,7 @@ function* merge(
         ? `${left} <= ${right}`
         : `${right} < ${left}`;
       yield scene.frame({
-        codeLine: takeLeft ? LINE.takeLeft : LINE.takeRight,
+        step: takeLeft ? STEP.takeLeft : STEP.takeRight,
         explanation: takeLeft
           ? `${reason}, so the left head wins${left === right ? ' (tie goes left, which is what keeps merge sort stable)' : ''}. Write ${left} to a[${k}].`
           : `${reason}, so the right head wins. Write ${right} to a[${k}].`,
@@ -151,7 +153,7 @@ function* merge(
     else j += 1;
 
     yield scene.frame({
-      codeLine: takeLeft ? LINE.takeLeft : LINE.takeRight,
+      step: takeLeft ? STEP.takeLeft : STEP.takeRight,
       explanation: `a[${k}] = ${value}. ${takeLeft ? `i` : `j`} advances to ${takeLeft ? i : j}.`,
       highlights: { swapped: [k] },
       pointers: { k },
@@ -164,7 +166,7 @@ function* merge(
   scene.clearAux();
   scene.popCall();
   yield scene.frame({
-    codeLine: LINE.loop,
+    step: STEP.loop,
     explanation: `a[${lo}..${hi}] is one sorted run of ${hi - lo + 1} elements now.`,
     highlights: { sorted: rangeIds(lo, hi) },
     regions: [{ from: lo, to: hi, label: `sorted [${lo}..${hi}]`, tone: 'sorted' }],
@@ -183,13 +185,13 @@ function* sort(scene: ArrayScene, lo: number, hi: number): Generator<Frame, void
   scene.countCall();
   scene.pushCall({
     label: `mergesort(${lo}, ${hi})`,
-    codeLine: LINE.enter,
+    step: STEP.enter,
     detail: `${Math.max(0, hi - lo + 1)} elements`,
   });
 
   if (lo >= hi) {
     yield scene.frame({
-      codeLine: LINE.baseCase,
+      step: STEP.baseCase,
       explanation:
         lo === hi
           ? `Base case: a[${lo}] = ${scene.peek(lo)} is a sorted run of one.`
@@ -203,7 +205,7 @@ function* sort(scene: ArrayScene, lo: number, hi: number): Generator<Frame, void
 
   const mid = (lo + hi) >> 1;
   yield scene.frame({
-    codeLine: LINE.mid,
+    step: STEP.mid,
     explanation: `Split a[${lo}..${hi}] at mid = ${mid} into ${mid - lo + 1} and ${hi - mid} elements.`,
     highlights: { active: rangeIds(lo, hi) },
     pointers: { lo, mid, hi },
@@ -212,7 +214,7 @@ function* sort(scene: ArrayScene, lo: number, hi: number): Generator<Frame, void
   });
 
   yield scene.frame({
-    codeLine: LINE.recurseLeft,
+    step: STEP.recurseLeft,
     explanation: `Sort the left half a[${lo}..${mid}] first.`,
     pointers: { lo, mid },
     regions: [{ from: lo, to: mid, label: `left [${lo}..${mid}]`, tone: 'left' }],
@@ -221,7 +223,7 @@ function* sort(scene: ArrayScene, lo: number, hi: number): Generator<Frame, void
   yield* sort(scene, lo, mid);
 
   yield scene.frame({
-    codeLine: LINE.recurseRight,
+    step: STEP.recurseRight,
     explanation: `Now sort the right half a[${mid + 1}..${hi}].`,
     pointers: { mid, hi },
     regions: [{ from: mid + 1, to: hi, label: `right [${mid + 1}..${hi}]`, tone: 'right' }],
@@ -256,6 +258,7 @@ export const mergesort = defineAlgorithm<MergesortInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes', 'recursiveCalls'],
     stable: true,
     inPlace: false,
@@ -268,7 +271,7 @@ export const mergesort = defineAlgorithm<MergesortInput>({
     const scene = new ArrayScene(input.values);
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: `Merge sort ${input.values.length} elements. Split down to runs of one, then merge upward.`,
       pointers: { lo: 0, hi: input.values.length - 1 },
     });
@@ -278,7 +281,7 @@ export const mergesort = defineAlgorithm<MergesortInput>({
     scene.markSortedRange(0, input.values.length - 1);
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Sorted. ${counters.comparisons} comparisons, ${counters.writes} writes, ${counters.extra.merges ?? 0} merges.`,
       phase: 'done',
     });

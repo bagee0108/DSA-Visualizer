@@ -22,6 +22,7 @@ import {
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import { randomInt, shuffle } from '../../core/random';
 import type { Frame, Graph, GraphEdge, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface BellmanFordInput {
   readonly graph: Graph;
@@ -71,6 +72,7 @@ const LINE = {
   walk: lineOf('V steps back'),
   cycle: lineOf('follow prev from x'),
 } as const;
+const STEP = stepIds(LINE);
 
 export const UNDIRECTED_ERROR =
   'Bellman-Ford is defined here for directed graphs. Switch "Edges are" to Directed. In an undirected graph a negative edge is itself a negative cycle: walking it there and back lowers the cost forever.';
@@ -220,6 +222,7 @@ export const bellmanFord = defineAlgorithm<BellmanFordInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
     phaseJump: 'pass',
   },
@@ -263,7 +266,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
   scene.setLabel(start, '0');
   scene.visit(start);
   yield scene.frame({
-    codeLine: LINE.init,
+    step: STEP.init,
     explanation: `bellmanFord(${name(start)}): every distance starts at ∞ except the start at 0. Each pass relaxes all ${edges.length} edges in the order shown, at most ${n - 1} passes.`,
     highlights: { active: [start] },
     pointers: { start },
@@ -288,7 +291,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
       const label = `${name(u)}→${name(v)} (${fmt(w)})`;
       if (!Number.isFinite(du)) {
         yield scene.frame({
-          codeLine: LINE.test,
+          step: STEP.test,
           explanation: `${label}: ${name(u)} is not reached yet, dist ∞, so there is nothing to carry over to ${name(v)}.`,
           highlights: { excluded: [ref], active: [`queue:${edge.id}`] },
           pointers: { u, v },
@@ -302,7 +305,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
         relax(edge, candidate);
         scene.bump('relaxations');
         yield scene.frame({
-          codeLine: LINE.relax,
+          step: STEP.relax,
           explanation: Number.isFinite(dv)
             ? `${label}: ${fmt(du)} + ${fmt(w)} = ${fmt(candidate)} beats ${fmt(dv)}. Relax: ${name(v)} now hangs off ${name(u)}.`
             : `${label}: first way to ${name(v)}, at ${fmt(du)} + ${fmt(w)} = ${fmt(candidate)}. ${name(v)} hangs off ${name(u)}.`,
@@ -314,7 +317,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
         continue;
       }
       yield scene.frame({
-        codeLine: LINE.test,
+        step: STEP.test,
         explanation: `${label}: ${fmt(du)} + ${fmt(w)} = ${fmt(candidate)}, no better than the ${fmt(dv)} already known for ${name(v)}.`,
         highlights: { active: [u, `queue:${edge.id}`], excluded: [ref] },
         pointers: { u, v },
@@ -325,7 +328,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
 
     if (changed === 0) {
       yield scene.frame({
-        codeLine: LINE.early,
+        step: STEP.early,
         explanation: `Pass ${pass} relaxed nothing, so no distance can change again: every one is final. Stop after ${pass} of the ${n - 1} passes allowed. A pass that changes nothing also rules out a reachable negative cycle, so no check pass is needed.`,
         highlights: { sorted: scene.nodeIds.filter((id) => Number.isFinite(dist.get(id) ?? Number.POSITIVE_INFINITY)) },
         strips: [none],
@@ -335,7 +338,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
     }
     if (pass < n - 1) {
       yield scene.frame({
-        codeLine: LINE.pass,
+        step: STEP.pass,
         explanation: `Pass ${pass} relaxed ${changed} edge${changed === 1 ? '' : 's'}, so something may still improve. Pass ${pass + 1}, same order.`,
         strips: full(),
         phase: `pass ${pass + 1} of ${n - 1}`,
@@ -344,7 +347,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
   }
 
   yield scene.frame({
-    codeLine: LINE.check,
+    step: STEP.check,
     explanation: `${n - 1} passes done, the most a path without a cycle can need. One more pass, only to check: if any edge still relaxes, a negative cycle is reachable.`,
     strips: full(),
     phase: 'check',
@@ -361,7 +364,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
     const label = `${name(u)}→${name(v)} (${fmt(w)})`;
     if (!(Number.isFinite(du) && du + w < dv)) {
       yield scene.frame({
-        codeLine: LINE.check,
+        step: STEP.check,
         explanation: `${label}: ${Number.isFinite(du) ? `${fmt(du)} + ${fmt(w)} = ${fmt(du + w)}, not below ${fmt(dv)}` : `${name(u)} is unreached`}. Holds.`,
         highlights: { active: [`queue:${edge.id}`], excluded: [ref] },
         pointers: { u, v },
@@ -373,7 +376,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
 
     relax(edge, du + w);
     yield scene.frame({
-      codeLine: LINE.still,
+      step: STEP.still,
       explanation: `${label}: ${fmt(du)} + ${fmt(w)} = ${fmt(du + w)} still beats ${fmt(dv)} after ${n - 1} passes. Only a negative cycle can keep lowering a distance, so one is reachable. To find it, walk prev back ${n} times from ${name(v)}.`,
       highlights: { swapped: [ref], active: [v, `queue:${edge.id}`] },
       pointers: { u, v },
@@ -387,7 +390,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
       if (back === undefined) throw new Error(`no prev for ${x} while walking back`);
       x = back.from;
       yield scene.frame({
-        codeLine: LINE.walk,
+        step: STEP.walk,
         explanation:
           step < n
             ? `Step ${step} of ${n}: x = prev[x] = ${name(x)}.`
@@ -413,14 +416,14 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
     const loopText = [...loopNodes, loopNodes[0] ?? x].map(name).join(' → ');
     const cycleMarks = [...loopNodes, ...loopEdges.map(edgeRef)];
     yield scene.frame({
-      codeLine: LINE.cycle,
+      step: STEP.cycle,
       explanation: `Follow prev from ${name(x)} until it comes back: ${loopText}, total weight ${fmt(total)}. Every lap lowers each distance on it by ${fmt(-total)} again.`,
       highlights: { swapped: cycleMarks },
       strips: [none],
       phase: 'walk prev',
     });
     yield scene.frame({
-      codeLine: LINE.cycle,
+      step: STEP.cycle,
       explanation: `Negative cycle: shortest paths are undefined. ${loopText} costs ${fmt(total)}, and anything reachable from it can be made as cheap as you like by going round again first.`,
       highlights: { swapped: cycleMarks },
       strips: [none],
@@ -431,7 +434,7 @@ function* runBellmanFord(graph: Graph, start: string): Gen {
 
   const unreached = scene.nodeIds.filter((id) => !Number.isFinite(dist.get(id) ?? Number.POSITIVE_INFINITY));
   yield scene.frame({
-    codeLine: 0,
+    step: null,
     explanation: `The check pass relaxed nothing: no negative cycle is reachable, and every distance is final.${unreached.length === 0 ? '' : ` ${unreached.length} node${unreached.length === 1 ? ' is' : 's are'} unreachable from ${name(start)} and stay at ∞.`}`,
     highlights: { sorted: scene.nodeIds.filter((id) => !unreached.includes(id)) },
     strips: [none],

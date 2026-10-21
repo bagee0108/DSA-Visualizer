@@ -5,6 +5,7 @@ import { GridScene } from '../../core/gridScene';
 import { cellRef, colRef, rowRef } from '../../core/matrixScene';
 import type { TreeScene } from '../../core/treeScene';
 import type { EntityId, Frame, GridLine } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 export const MIN_N = 4;
 export const MAX_N = 8;
@@ -43,6 +44,7 @@ export const LINE = {
   fail: 16,
   ret: 19,
 } as const;
+export const STEP = stepIds(LINE);
 
 export const TRIES = 'squares tried';
 export const PRUNED = 'pruned';
@@ -80,6 +82,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'recursiveCalls'],
   },
   fields: [
@@ -130,7 +133,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
     });
 
     yield scene.frame({
-      codeLine: LINE.place,
+      step: STEP.place,
       phase: 'search',
       explanation: `Place ${n} queens so that none attacks another. Two queens on one row always attack, so the search gives each row one queen and only chooses its column. The tree on the right grows a node per safe queen.`,
       highlights: { active: [root] },
@@ -138,12 +141,12 @@ export const nQueens = defineAlgorithm<QueensInput>({
 
     function* place(row: number): Generator<Frame, boolean, undefined> {
       scene.countCall();
-      scene.pushCall({ label: `place(${row})`, detail: queens.length === 0 ? 'empty board' : `queens [${queens.join(', ')}]`, codeLine: LINE.place });
+      scene.pushCall({ label: `place(${row})`, detail: queens.length === 0 ? 'empty board' : `queens [${queens.join(', ')}]`, step: STEP.place });
       const here = path[path.length - 1] ?? root;
 
       if (row === n) {
         yield scene.frame({
-          codeLine: LINE.done,
+          step: STEP.done,
           phase: 'solved',
           explanation: `Row ${n} does not exist: every row has a queen and none attacks another. Solved.`,
           highlights: { sorted: [...queenSquares(), ...path], excluded: [...dead] },
@@ -167,7 +170,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
           const how = by === col ? 'column' : 'diagonal';
           const line: GridLine = { from: { row: hit.row, col: by }, to: { row, col } };
           yield scene.frame({
-            codeLine: LINE.prune,
+            step: STEP.prune,
             phase: 'search',
             explanation: `(${row}, ${col}) is attacked along the ${how} by the queen at (${hit.row}, ${by}). Pruned: no queen goes here, so nothing below it is ever tried.`,
             highlights: {
@@ -189,7 +192,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
         tree.attach(here, node);
         path.push(node);
         yield scene.frame({
-          codeLine: LINE.push,
+          step: STEP.push,
           phase: 'search',
           explanation: `(${row}, ${col}) is safe: no queen shares its column or a diagonal. Place it and go a row deeper.`,
           highlights: { ...treeLook(), active: [cellRef(row, col), node] },
@@ -207,7 +210,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
         dead.add(node);
         scene.bump(BACKTRACKS);
         yield scene.frame({
-          codeLine: LINE.pop,
+          step: STEP.pop,
           phase: 'backtrack',
           explanation: `No column of row ${row + 1} works with a queen at (${row}, ${col}). Take it back and try the next column of row ${row}.`,
           highlights: { ...treeLook(), excluded: [...dead], comparing: [cellRef(row, col)] },
@@ -216,7 +219,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
       }
 
       yield scene.frame({
-        codeLine: LINE.fail,
+        step: STEP.fail,
         phase: 'backtrack',
         explanation:
           row === 0
@@ -232,7 +235,7 @@ export const nQueens = defineAlgorithm<QueensInput>({
     const solved = yield* place(0);
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation: solved
         ? `Queens in columns [${queens.join(', ')}], row by row. The search tried ${counters.extra[TRIES] ?? 0} squares, pruned ${counters.extra[PRUNED] ?? 0} of them before going deeper, and backtracked ${counters.extra[BACKTRACKS] ?? 0} times.`

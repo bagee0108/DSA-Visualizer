@@ -5,6 +5,7 @@ import { seedField } from '../../core/arrayInput';
 import { LEFT, RIGHT, TreeScene, type Side } from '../../core/treeScene';
 import { keysField, opsField, parseKeyOps, parseTreeKeys, treePresets, type KeyOp } from '../../core/treeInput';
 import type { Frame } from '../../core/types';
+import { stepIds, type StepId } from '../../core/steps';
 
 interface BstInput {
   readonly keys: readonly number[];
@@ -64,13 +65,14 @@ const LINE = {
   removeChild: 29,
   removeSplice: 30,
 } as const;
+const STEP = stepIds(LINE);
 
 type Gen = Generator<Frame, void, undefined>;
 
 function* descend(
   scene: TreeScene,
   key: number,
-  lines: { loop: number; step: number },
+  steps: { loop: StepId; step: StepId },
   phase: string,
 ): Generator<Frame, { found: string | null; parent: string | null; side: Side }, undefined> {
   let cur = scene.root;
@@ -83,7 +85,7 @@ function* descend(
     const value = scene.value(cur);
     if (cmp === 0) {
       yield scene.frame({
-        codeLine: lines.loop,
+        step: steps.loop,
         explanation: `${key} equals the key at this node - found it after ${path.length + 1} comparison(s).`,
         highlights: { sorted: [cur], visited: [...path] },
         pointers: { cur },
@@ -94,7 +96,7 @@ function* descend(
 
     const goLeft = key < value;
     yield scene.frame({
-      codeLine: lines.step,
+      step: steps.step,
       explanation: `${key} ${goLeft ? '<' : '>'} ${value}, so it can only be in the ${goLeft ? 'left' : 'right'} subtree.`,
       highlights: { comparing: [cur], visited: [...path] },
       pointers: { cur },
@@ -111,17 +113,17 @@ function* descend(
 }
 
 function* search(scene: TreeScene, key: number): Gen {
-  scene.pushCall({ label: `search(${key})`, codeLine: LINE.searchEnter });
+  scene.pushCall({ label: `search(${key})`, step: STEP.searchEnter });
   yield scene.frame({
-    codeLine: LINE.searchEnter,
+    step: STEP.searchEnter,
     explanation: `search(${key}): start at the root and go one way at each node.`,
     phase: 'search',
   });
 
-  const result = yield* descend(scene, key, { loop: LINE.searchHit, step: LINE.searchStep }, 'search');
+  const result = yield* descend(scene, key, { loop: STEP.searchHit, step: STEP.searchStep }, 'search');
   if (result.found === null) {
     yield scene.frame({
-      codeLine: LINE.searchMiss,
+      step: STEP.searchMiss,
       explanation: `Reached a null child below ${result.parent === null ? 'the root' : scene.label(result.parent)}: ${key} is not in the tree.`,
       highlights: result.parent === null ? {} : { excluded: [result.parent] },
       phase: 'search',
@@ -131,17 +133,17 @@ function* search(scene: TreeScene, key: number): Gen {
 }
 
 function* insert(scene: TreeScene, key: number, phase: string): Gen {
-  scene.pushCall({ label: `insert(${key})`, codeLine: LINE.insertEnter });
+  scene.pushCall({ label: `insert(${key})`, step: STEP.insertEnter });
   yield scene.frame({
-    codeLine: LINE.insertEnter,
+    step: STEP.insertEnter,
     explanation: `insert(${key}): search for where it would be, then hang it there.`,
     phase,
   });
 
-  const result = yield* descend(scene, key, { loop: LINE.insertLoop, step: LINE.insertStep }, phase);
+  const result = yield* descend(scene, key, { loop: STEP.insertLoop, step: STEP.insertStep }, phase);
   if (result.found !== null) {
     yield scene.frame({
-      codeLine: LINE.insertLoop,
+      step: STEP.insertLoop,
       explanation: `${key} is already present. BST keys are unique, so this insert is a no-op.`,
       highlights: { excluded: [result.found] },
       phase,
@@ -151,7 +153,7 @@ function* insert(scene: TreeScene, key: number, phase: string): Gen {
     if (result.parent === null) {
       scene.setRoot(node);
       yield scene.frame({
-        codeLine: LINE.insertRoot,
+        step: STEP.insertRoot,
         explanation: `The tree was empty, so ${key} becomes the root.`,
         highlights: { candidate: [node] },
         pointers: { node },
@@ -160,7 +162,7 @@ function* insert(scene: TreeScene, key: number, phase: string): Gen {
     } else {
       scene.link(result.parent, result.side, node);
       yield scene.frame({
-        codeLine: result.side === LEFT ? LINE.insertLeft : LINE.insertRight,
+        step: result.side === LEFT ? STEP.insertLeft : STEP.insertRight,
         explanation: `The ${result.side === LEFT ? 'left' : 'right'} child of ${scene.label(result.parent)} was null, so ${key} goes there, at depth ${depthOf(scene, node)}.`,
         highlights: { candidate: [node], active: [result.parent] },
         pointers: { node, parent: result.parent },
@@ -182,17 +184,17 @@ function depthOf(scene: TreeScene, id: string): number {
 }
 
 function* remove(scene: TreeScene, key: number): Gen {
-  scene.pushCall({ label: `remove(${key})`, codeLine: LINE.removeEnter });
+  scene.pushCall({ label: `remove(${key})`, step: STEP.removeEnter });
   yield scene.frame({
-    codeLine: LINE.removeEnter,
+    step: STEP.removeEnter,
     explanation: `delete(${key}): find it first.`,
     phase: 'delete',
   });
 
-  const result = yield* descend(scene, key, { loop: LINE.searchHit, step: LINE.searchStep }, 'delete');
+  const result = yield* descend(scene, key, { loop: STEP.searchHit, step: STEP.searchStep }, 'delete');
   if (result.found === null) {
     yield scene.frame({
-      codeLine: LINE.searchMiss,
+      step: STEP.searchMiss,
       explanation: `${key} is not in the tree; nothing to delete.`,
       phase: 'delete',
     });
@@ -206,7 +208,7 @@ function* remove(scene: TreeScene, key: number): Gen {
 
   if (left !== null && right !== null) {
     yield scene.frame({
-      codeLine: LINE.removeTwo,
+      step: STEP.removeTwo,
       explanation: `${key} has two children, so it cannot simply be unlinked. Find its in-order successor: the smallest key in the right subtree.`,
       highlights: { swapped: [target], active: [left, right] },
       pointers: { node: target },
@@ -219,7 +221,7 @@ function* remove(scene: TreeScene, key: number): Gen {
       const next = scene.left(succ);
       if (next === null) break;
       yield scene.frame({
-        codeLine: LINE.removeSucc,
+        step: STEP.removeSucc,
         explanation: `${scene.label(succ)} still has a left child, so keep going left.`,
         highlights: { swapped: [target], comparing: [succ] },
         pointers: { node: target, succ },
@@ -231,7 +233,7 @@ function* remove(scene: TreeScene, key: number): Gen {
 
     const succKey = scene.value(succ);
     yield scene.frame({
-      codeLine: LINE.removeSucc,
+      step: STEP.removeSucc,
       explanation: `The successor is ${succKey}: the very next key in order, and it has no left child by construction.`,
       highlights: { swapped: [target], pivot: [succ] },
       pointers: { node: target, succ },
@@ -240,7 +242,7 @@ function* remove(scene: TreeScene, key: number): Gen {
 
     scene.setValue(target, succKey);
     yield scene.frame({
-      codeLine: LINE.removeCopy,
+      step: STEP.removeCopy,
       explanation: `Overwrite ${key} with ${succKey}. In-order is intact because ${succKey} was already the next key.`,
       highlights: { pivot: [target], swapped: [succ] },
       pointers: { node: target, succ },
@@ -249,7 +251,7 @@ function* remove(scene: TreeScene, key: number): Gen {
 
     target = succ;
     yield scene.frame({
-      codeLine: LINE.removeRetarget,
+      step: STEP.removeRetarget,
       explanation: `Now delete the successor node instead. It has at most one child, so that is the easy case.`,
       highlights: { swapped: [target] },
       pointers: { node: target },
@@ -259,7 +261,7 @@ function* remove(scene: TreeScene, key: number): Gen {
 
   const child = scene.left(target) ?? scene.right(target);
   yield scene.frame({
-    codeLine: LINE.removeChild,
+    step: STEP.removeChild,
     explanation:
       child === null
         ? `${scene.label(target)} is a leaf: just unlink it.`
@@ -279,7 +281,7 @@ function* remove(scene: TreeScene, key: number): Gen {
   scene.bump('deletions');
 
   yield scene.frame({
-    codeLine: LINE.removeSplice,
+    step: STEP.removeSplice,
     explanation: `Spliced out. ${child === null ? 'The parent slot is null now' : `${scene.label(child)} hangs from ${parent === null ? 'the root position' : scene.label(parent)} now`}. Keys in order: ${scene.inorder().join(' ')}.`,
     highlights: child === null ? {} : { candidate: [child] },
     phase: 'delete',
@@ -315,6 +317,7 @@ export const bst = defineAlgorithm<BstInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes'],
   },
   fields: [keysField, opsField('insert 55; search 45; delete 30; delete 50', ['insert', 'delete', 'search']), seedField],
@@ -326,20 +329,20 @@ export const bst = defineAlgorithm<BstInput>({
 
     if (input.keys.length > 0) {
       yield scene.frame({
-        codeLine: LINE.insertEnter,
+        step: STEP.insertEnter,
         explanation: `Build the tree by inserting ${input.keys.length} keys in the given order: ${input.keys.join(', ')}.`,
         phase: 'build',
       });
       for (const key of input.keys) {
         yield* insert(scene, key, 'build');
         yield scene.frame({
-          codeLine: 0,
+          step: null,
           explanation: `After insert ${key}: ${scene.size} nodes, height ${scene.height(scene.root) + 1}.`,
           phase: 'build',
         });
       }
       yield scene.frame({
-        codeLine: 0,
+        step: null,
         explanation: `Built: ${scene.size} nodes, height ${scene.height(scene.root)}. A perfect tree of this size would have height ${Math.floor(Math.log2(Math.max(1, scene.size)))}.`,
         phase: 'build',
       });
@@ -350,7 +353,7 @@ export const bst = defineAlgorithm<BstInput>({
       else if (op.kind === 'delete') yield* remove(scene, op.key);
       else yield* search(scene, op.key);
       yield scene.frame({
-        codeLine: 0,
+        step: null,
         explanation: `After ${op.kind} ${op.key}: ${scene.size} nodes, height ${scene.height(scene.root) + 1}.`,
         phase: op.kind,
       });
@@ -358,7 +361,7 @@ export const bst = defineAlgorithm<BstInput>({
 
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Done. ${scene.size} nodes, height ${scene.height(scene.root)}, ${counters.comparisons} comparisons in total.`,
       phase: 'done',
     });

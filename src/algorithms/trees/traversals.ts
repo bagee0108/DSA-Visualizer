@@ -7,6 +7,7 @@ import { seedField } from '../../core/arrayInput';
 import { defineAlgorithm, type FieldSpec, type ParamMap, type ParseResult } from '../../core/define';
 import { LEFT, RIGHT, TreeScene } from '../../core/treeScene';
 import { keysField, parseTreeKeys, treePresets } from '../../core/treeInput';
+import type { StepId, StepLines } from '../../core/steps';
 import type { Frame, TreeStrip } from '../../core/types';
 
 const ORDERS = ['preorder', 'inorder', 'postorder', 'levelorder'] as const;
@@ -48,13 +49,40 @@ function levelorder(root: Node): void {
   }
 }`;
 
-const LINES: Record<Order, { enter: number; base: number; left: number; visit: number; right: number }> = {
+type Point = 'enter' | 'base' | 'left' | 'visit' | 'right';
+
+const LINES: Record<Order, Record<Point, number>> = {
   preorder: { enter: 1, base: 2, visit: 3, left: 4, right: 5 },
   inorder: { enter: 8, base: 9, left: 10, visit: 11, right: 12 },
   postorder: { enter: 15, base: 16, left: 17, right: 18, visit: 19 },
   levelorder: { enter: 22, base: 23, left: 27, visit: 26, right: 28 },
 };
 const LEVEL = { init: 23, loop: 24, shift: 25, visit: 26, pushLeft: 27, pushRight: 28 } as const;
+
+/** The four functions share one listing, so a step id names its function too: "inorder.visit". */
+function orderSteps(order: Order): Readonly<Record<Point, StepId>> {
+  return { enter: `${order}.enter`, base: `${order}.base`, left: `${order}.left`, visit: `${order}.visit`, right: `${order}.right` };
+}
+const STEP: Readonly<Record<Order, Readonly<Record<Point, StepId>>>> = {
+  preorder: orderSteps('preorder'),
+  inorder: orderSteps('inorder'),
+  postorder: orderSteps('postorder'),
+  levelorder: orderSteps('levelorder'),
+};
+const LEVEL_STEP = {
+  init: 'levelorder.init',
+  loop: 'levelorder.loop',
+  shift: 'levelorder.shift',
+  visit: 'levelorder.visit',
+  pushLeft: 'levelorder.pushLeft',
+  pushRight: 'levelorder.pushRight',
+} as const satisfies Record<keyof typeof LEVEL, StepId>;
+
+const POINTS: readonly Point[] = ['enter', 'base', 'left', 'visit', 'right'];
+const STEP_LINES: StepLines = {
+  ...Object.fromEntries(ORDERS.flatMap((order) => POINTS.map((point) => [STEP[order][point], LINES[order][point]]))),
+  ...Object.fromEntries((Object.keys(LEVEL) as (keyof typeof LEVEL)[]).map((point) => [LEVEL_STEP[point], LEVEL[point]])),
+};
 
 type Gen = Generator<Frame, void, undefined>;
 
@@ -67,13 +95,13 @@ function queueStrip(scene: TreeScene, queue: readonly string[]): TreeStrip {
 }
 
 function* recursive(scene: TreeScene, order: Exclude<Order, 'levelorder'>, node: string | null, visited: string[], label: string): Gen {
-  const lines = LINES[order];
+  const steps = STEP[order];
   scene.countCall();
-  scene.pushCall({ label: `${order}(${node === null ? 'null' : scene.label(node)})`, codeLine: lines.enter });
+  scene.pushCall({ label: `${order}(${node === null ? 'null' : scene.label(node)})`, step: steps.enter });
 
   if (node === null) {
     yield scene.frame({
-      codeLine: lines.base,
+      step: steps.base,
       explanation: `${label} is null: return immediately. Every leaf makes two of these calls.`,
       strips: [outputStrip(scene, visited)],
       phase: order,
@@ -86,7 +114,7 @@ function* recursive(scene: TreeScene, order: Exclude<Order, 'levelorder'>, node:
     scene.visit(node);
     visited.push(node);
     yield scene.frame({
-      codeLine: lines.visit,
+      step: steps.visit,
       explanation: `visit(${scene.label(node)}): output position ${visited.length}.`,
       highlights: { sorted: [...visited], comparing: [node] },
       pointers: { node },
@@ -98,7 +126,7 @@ function* recursive(scene: TreeScene, order: Exclude<Order, 'levelorder'>, node:
   const recurse = function* (side: typeof LEFT | typeof RIGHT): Gen {
     const child = scene.child(node, side);
     yield scene.frame({
-      codeLine: side === LEFT ? lines.left : lines.right,
+      step: side === LEFT ? steps.left : steps.right,
       explanation: `${order}(${scene.label(node)}.${side === LEFT ? 'left' : 'right'})${child === null ? ', which is null' : ` = ${scene.label(child)}`}.`,
       highlights: { sorted: [...visited], active: [node], ...(child === null ? {} : { candidate: [child] }) },
       pointers: { node },
@@ -109,7 +137,7 @@ function* recursive(scene: TreeScene, order: Exclude<Order, 'levelorder'>, node:
   };
 
   yield scene.frame({
-    codeLine: lines.enter,
+    step: steps.enter,
     explanation: `${order}(${scene.label(node)}), depth ${scene.depth - 1}.`,
     highlights: { sorted: [...visited], active: [node] },
     pointers: { node },
@@ -139,7 +167,7 @@ function* levelorder(scene: TreeScene, visited: string[]): Gen {
   const queue: string[] = [root];
 
   yield scene.frame({
-    codeLine: LEVEL.init,
+    step: LEVEL_STEP.init,
     explanation: `Seed the queue with the root. A queue, not a stack: that is the entire difference from depth-first.`,
     highlights: { active: [root] },
     strips: [queueStrip(scene, queue), outputStrip(scene, visited)],
@@ -151,7 +179,7 @@ function* levelorder(scene: TreeScene, visited: string[]): Gen {
     if (node === undefined) break;
     scene.visit(node);
     yield scene.frame({
-      codeLine: LEVEL.shift,
+      step: LEVEL_STEP.shift,
       explanation: `Dequeue ${scene.label(node)} from the front.`,
       highlights: { sorted: [...visited], comparing: [node] },
       pointers: { node },
@@ -161,7 +189,7 @@ function* levelorder(scene: TreeScene, visited: string[]): Gen {
 
     visited.push(node);
     yield scene.frame({
-      codeLine: LEVEL.visit,
+      step: LEVEL_STEP.visit,
       explanation: `visit(${scene.label(node)}): output position ${visited.length}.`,
       highlights: { sorted: [...visited] },
       pointers: { node },
@@ -174,7 +202,7 @@ function* levelorder(scene: TreeScene, visited: string[]): Gen {
       if (child === null) continue;
       queue.push(child);
       yield scene.frame({
-        codeLine: side === LEFT ? LEVEL.pushLeft : LEVEL.pushRight,
+        step: side === LEFT ? LEVEL_STEP.pushLeft : LEVEL_STEP.pushRight,
         explanation: `Enqueue ${scene.label(child)} at the back; it will be visited after everything already waiting.`,
         highlights: { sorted: [...visited], candidate: [child, `queue:${child}`] },
         pointers: { node },
@@ -185,7 +213,7 @@ function* levelorder(scene: TreeScene, visited: string[]): Gen {
   }
 
   yield scene.frame({
-    codeLine: LEVEL.loop,
+    step: LEVEL_STEP.loop,
     explanation: `Queue empty: ${visited.length} nodes visited level by level.`,
     highlights: { sorted: [...visited] },
     strips: [queueStrip(scene, queue), outputStrip(scene, visited)],
@@ -253,6 +281,7 @@ export const treeTraversals = defineAlgorithm<TraversalInput>({
       ],
     },
     code: CODE,
+    stepLines: STEP_LINES,
     trackedCounters: ['reads', 'recursiveCalls'],
   },
   fields: [{ ...keysField, defaultValue: '50, 30, 70, 20, 40, 60, 80, 35, 45' }, orderField, seedField],
@@ -264,7 +293,7 @@ export const treeTraversals = defineAlgorithm<TraversalInput>({
     buildBst(scene, input.keys);
 
     yield scene.frame({
-      codeLine: LINES[input.order].enter,
+      step: STEP[input.order].enter,
       explanation: `A BST of ${scene.size} keys, height ${scene.height(scene.root) + 1}. Traverse it in ${input.order}.`,
       strips: input.order === 'levelorder' ? [queueStrip(scene, []), outputStrip(scene, [])] : [outputStrip(scene, [])],
       phase: input.order,
@@ -275,7 +304,7 @@ export const treeTraversals = defineAlgorithm<TraversalInput>({
     else yield* recursive(scene, input.order, scene.root, visited, 'root');
 
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation:
         input.order === 'inorder'
           ? `Done. In-order on a BST is the sorted key sequence, every time.`

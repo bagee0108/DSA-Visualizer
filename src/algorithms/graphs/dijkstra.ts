@@ -19,6 +19,7 @@ import {
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import type { Graph, GraphEdge, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 import { MinHeap } from './minHeap';
 
 interface DijkstraInput {
@@ -45,6 +46,7 @@ const CODE = `function dijkstra(start: Node): void {
 }`;
 
 const LINE = { enter: 1, init: 2, push0: 4, loop: 5, pop: 6, stale: 7, settle: 8, scan: 9, test: 10, improve: 11, push: 13 } as const;
+const STEP = stepIds(LINE);
 
 function parse(params: ParamMap): ParseResult<DijkstraInput> {
   const directed = parseDirected(params.directed);
@@ -80,6 +82,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
   },
   fields: [edgesField('0-1:4,0-2:1,2-1:2,1-3:1,2-3:5,3-4:3,2-4:8,4-5:2,3-5:6,6-7:1', true), directedField, startField, layoutField, seedField],
@@ -108,7 +111,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
     scene.setLabel(start, '0');
     const first = pq.push(0, start);
     yield scene.frame({
-      codeLine: LINE.push0,
+      step: STEP.push0,
       explanation: `dijkstra(${scene.label(start)}): every distance starts at ∞ except the start at 0, which is the only queue entry.`,
       highlights: { active: [start], candidate: [`pq:q${first.seq}`] },
       pointers: { start },
@@ -126,7 +129,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
       if (d > current) {
         scene.bump('stale pops');
         yield scene.frame({
-          codeLine: LINE.stale,
+          step: STEP.stale,
           explanation: `Pop ${scene.label(u)} at ${fmt(d)}, but dist[${scene.label(u)}] is already ${fmt(current)}: this entry went stale when ${scene.label(u)} was improved. Skip it.`,
           highlights: { excluded: [u] },
           pointers: { u },
@@ -139,7 +142,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
       scene.visit(u);
       settledOrder.push(u);
       yield scene.frame({
-        codeLine: LINE.settle,
+        step: STEP.settle,
         explanation: `Pop ${scene.label(u)} at ${fmt(d)}, the smallest tentative distance in the queue. Weights are non-negative, so nothing still queued can reach it more cheaply: ${fmt(d)} is final.`,
         highlights: { active: [u], sorted: [`output:${u}`] },
         pointers: { u },
@@ -156,7 +159,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
         scene.countComparison();
         if (scene.isVisited(v)) {
           yield scene.frame({
-            codeLine: LINE.test,
+            step: STEP.test,
             explanation: `${scene.label(u)}-${scene.label(v)} (${fmt(w)}): ${scene.label(v)} is already settled at ${fmt(known)}, and ${fmt(d)} + ${fmt(w)} = ${fmt(candidate)} cannot beat that.`,
             highlights: { active: [u], excluded: [v, edge] },
             pointers: { u, v },
@@ -167,7 +170,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
         }
         if (candidate >= known) {
           yield scene.frame({
-            codeLine: LINE.test,
+            step: STEP.test,
             explanation: `${scene.label(u)}-${scene.label(v)} (${fmt(w)}): ${fmt(d)} + ${fmt(w)} = ${fmt(candidate)}, not better than the ${fmt(known)} already known for ${scene.label(v)}. Leave it.`,
             highlights: { active: [u], excluded: [v, edge] },
             pointers: { u, v },
@@ -185,7 +188,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
         scene.bump('relaxations');
         const pushed = pq.push(candidate, v);
         yield scene.frame({
-          codeLine: LINE.push,
+          step: STEP.push,
           explanation:
             known === Number.POSITIVE_INFINITY
               ? `${scene.label(u)}-${scene.label(v)} (${fmt(w)}): first path to ${scene.label(v)}, at ${fmt(d)} + ${fmt(w)} = ${fmt(candidate)}. Record it and push (${fmt(candidate)}, ${scene.label(v)}).`
@@ -200,7 +203,7 @@ export const dijkstra = defineAlgorithm<DijkstraInput>({
 
     const unreachable = scene.nodeIds.length - scene.visitedCount;
     yield scene.frame({
-      codeLine: LINE.loop,
+      step: STEP.loop,
       explanation:
         unreachable === 0
           ? `Queue empty: all ${scene.visitedCount} nodes settled. The heavier edges are the shortest-path tree from ${scene.label(start)}.`

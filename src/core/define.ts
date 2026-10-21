@@ -1,5 +1,6 @@
 /** Algorithm definition + type-erasure boundary. */
 
+import type { StepId, StepLines } from './steps';
 import type { Frame, FrameGenerator, StructureKind } from './types';
 
 export type ParamMap = Readonly<Record<string, string>>;
@@ -40,6 +41,8 @@ export interface AlgorithmMeta {
   readonly blurb: string;
   readonly complexity: Complexity;
   readonly code: string;
+  /** Where each step the generator names sits in `code`. */
+  readonly stepLines: StepLines;
   readonly trackedCounters: readonly CounterKey[];
   readonly stable?: boolean;
   readonly inPlace?: boolean;
@@ -117,6 +120,8 @@ export interface RegisteredAlgorithm {
   /** The same build, drained a slice at a time. `build` is this run to the end. */
   readonly startBuild: (params: ParamMap) => IncrementalBuild;
   readonly codeLines: readonly string[];
+  /** The line of `codeLines` a step sits on, 1-based; 0 for no step, or one the code does not have. */
+  readonly lineOf: (step: StepId | null) => number;
 }
 
 export const MAX_FRAMES = 120000;
@@ -142,6 +147,7 @@ export function defineAlgorithm<TInput>(def: AlgorithmDefinition<TInput>): Regis
     sizeOf: def.sizeOf ?? ((params) => countTokens(params.input)),
     defaults,
     codeLines: def.meta.code.replace(/\s+$/, '').split('\n'),
+    lineOf: (step) => (step === null ? 0 : (def.meta.stepLines[step] ?? 0)),
     build(params: ParamMap): BuildResult {
       // One code path, so a chunked build and a synchronous one cannot drift.
       const step = startBuild(params).step(Number.POSITIVE_INFINITY);

@@ -30,7 +30,7 @@ describe('MatrixScene', () => {
   it('takes its shape from the headers and starts empty', () => {
     const table = scene(3, 4);
     expect([table.rows, table.cols]).toEqual([3, 4]);
-    const snapshot = matrixOf(table.frame({ explanation: 'start', codeLine: 0 }));
+    const snapshot = matrixOf(table.frame({ explanation: 'start', step: null }));
     expect(snapshot.cells).toHaveLength(12);
     expect(snapshot.cells.every((value) => value === null)).toBe(true);
     expect(snapshot.rowHeaders).toEqual(['r0', 'r1', 'r2']);
@@ -64,8 +64,8 @@ describe('MatrixScene', () => {
   it('shares frozen snapshots between frames until something changes', () => {
     const table = scene();
     table.write(0, 0, 0);
-    const a = matrixOf(table.frame({ explanation: 'a', codeLine: 0 }));
-    const b = matrixOf(table.frame({ explanation: 'b', codeLine: 0 }));
+    const a = matrixOf(table.frame({ explanation: 'a', step: null }));
+    const b = matrixOf(table.frame({ explanation: 'b', step: null }));
     expect(b.cells).toBe(a.cells);
     expect(b.path).toBe(a.path);
     expect(b.rowHeaders).toBe(a.rowHeaders);
@@ -73,7 +73,7 @@ describe('MatrixScene', () => {
 
     table.write(0, 1, 1);
     table.walk(0, 1);
-    const c = matrixOf(table.frame({ explanation: 'c', codeLine: 0 }));
+    const c = matrixOf(table.frame({ explanation: 'c', step: null }));
     expect(c.cells).not.toBe(b.cells);
     expect(b.cells[1]).toBeNull();
     expect(c.cells[1]).toBe(1);
@@ -86,23 +86,23 @@ describe('MatrixScene', () => {
     table.walk(2, 3);
     table.walk(1, 2);
     const arrows = [{ from: { row: 1, col: 2 }, to: { row: 2, col: 3 }, label: 'match' }];
-    const shown = matrixOf(table.frame({ explanation: 'show', codeLine: 0, arrows }));
+    const shown = matrixOf(table.frame({ explanation: 'show', step: null, arrows }));
     expect(shown.arrows).toEqual(arrows);
     expect(Object.isFrozen(shown.arrows)).toBe(true);
     expect(shown.path).toEqual([{ row: 2, col: 3 }, { row: 1, col: 2 }]);
 
-    const next = matrixOf(table.frame({ explanation: 'next', codeLine: 0 }));
+    const next = matrixOf(table.frame({ explanation: 'next', step: null }));
     expect(next.arrows).toEqual([]);
     expect(next.path).toBe(shown.path);
 
     table.clearPath();
-    expect(matrixOf(table.frame({ explanation: 'cleared', codeLine: 0 })).path).toEqual([]);
+    expect(matrixOf(table.frame({ explanation: 'cleared', step: null })).path).toEqual([]);
   });
 
   it('rejects an arrow that leaves the table', () => {
     const table = scene();
     expect(() =>
-      table.frame({ explanation: 'bad', codeLine: 0, arrows: [{ from: { row: 0, col: 0 }, to: { row: 9, col: 0 } }] }),
+      table.frame({ explanation: 'bad', step: null, arrows: [{ from: { row: 0, col: 0 }, to: { row: 9, col: 0 } }] }),
     ).toThrow(RangeError);
   });
 });
@@ -118,6 +118,7 @@ const probe = (mutate?: (frame: Frame) => Frame) =>
       blurb: 'Test fixture.',
       complexity: { time: { best: 'O(nm)', average: 'O(nm)', worst: 'O(nm)' }, space: 'O(nm)' },
       code: 'for each cell\n  t[i][j] = t[i-1][j] + 1',
+      stepLines: { each: 1, fill: 2 },
       trackedCounters: ['reads', 'writes'],
     },
     fields: [{ key: 'input', label: 'Size', kind: 'number', defaultValue: '3' }],
@@ -132,7 +133,7 @@ const probe = (mutate?: (frame: Frame) => Frame) =>
           yield emit(
             table.frame({
               explanation: `Fill (${i}, ${j}).`,
-              codeLine: 2,
+              step: 'fill',
               highlights: { active: [cellRef(i, j)], comparing: [rowRef(i), colRef(j)] },
               pointers: { i: rowRef(i), j: colRef(j) },
               arrows: i === 0 ? [] : [{ from: { row: i - 1, col: j }, to: { row: i, col: j } }],
@@ -142,7 +143,7 @@ const probe = (mutate?: (frame: Frame) => Frame) =>
       }
       for (let i = size - 1; i >= 0; i--) {
         table.walk(i, size - 1);
-        yield emit(table.frame({ explanation: `Walk back through row ${i}.`, codeLine: 1, highlights: { sorted: [cellRef(i, size - 1)] } }));
+        yield emit(table.frame({ explanation: `Walk back through row ${i}.`, step: 'each', highlights: { sorted: [cellRef(i, size - 1)] } }));
       }
     },
   });

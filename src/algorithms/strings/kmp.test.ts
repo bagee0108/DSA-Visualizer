@@ -13,7 +13,7 @@ import {
   lettersOf,
   runFrames,
 } from '../frameHygiene';
-import { kmp, LINE, MAX_PATTERN, MAX_TEXT } from './kmp';
+import { kmp, MAX_PATTERN, MAX_TEXT, STEP } from './kmp';
 
 const HYGIENE = { allowSizeChange: true } as const;
 
@@ -24,7 +24,7 @@ function solve(text: string, pattern: string): readonly Frame[] {
 /** Match starts, read back from the frames that announce a whole match. */
 function matchesOf(frames: readonly Frame[], m: number): number[] {
   return frames
-    .filter((frame) => frame.codeLine === LINE.whole)
+    .filter((frame) => frame.step === STEP.whole)
     .map((frame) => (indexPointer(frame, 'i') ?? NaN) - m + 1);
 }
 

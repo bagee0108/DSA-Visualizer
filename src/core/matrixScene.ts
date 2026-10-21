@@ -8,6 +8,7 @@
  * same prefixed style the graph uses for edges.
  */
 
+import type { StepId } from './steps';
 import type {
   CallStackEntry,
   Counters,
@@ -63,7 +64,7 @@ export interface MatrixSceneOptions {
 
 export interface MatrixFrameInput {
   readonly explanation: string;
-  readonly codeLine: number;
+  readonly step: StepId | null;
   readonly highlights?: Highlights;
   readonly pointers?: Pointers;
   readonly arrows?: readonly MatrixArrow[];
@@ -242,7 +243,7 @@ export class MatrixScene {
       pointers: input.pointers ?? NO_POINTERS,
       callStack: this.callStack(),
       explanation: input.explanation,
-      codeLine: input.codeLine,
+      step: input.step,
       counters: this.counters(),
       ...(input.phase === undefined ? {} : { phase: input.phase }),
     };

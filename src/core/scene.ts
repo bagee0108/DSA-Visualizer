@@ -9,6 +9,7 @@
  * order them as strings.
  */
 
+import type { StepId } from './steps';
 import type {
   ArrayElement,
   ArrayRegion,
@@ -27,7 +28,7 @@ const NO_POINTERS: Pointers = Object.freeze({});
 
 export interface FrameInput {
   readonly explanation: string;
-  readonly codeLine: number;
+  readonly step: StepId | null;
   readonly highlights?: Highlights;
   readonly pointers?: Pointers;
   readonly regions?: readonly ArrayRegion[];
@@ -373,7 +374,7 @@ export class ArrayScene<V extends ArrayValue = number> {
       pointers: input.pointers ?? NO_POINTERS,
       callStack: this.stackSnapshot(),
       explanation: input.explanation,
-      codeLine: input.codeLine,
+      step: input.step,
       counters: this.counters(),
       ...(input.phase === undefined ? {} : { phase: input.phase }),
     };

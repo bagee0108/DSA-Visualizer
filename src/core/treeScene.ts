@@ -1,5 +1,6 @@
 /** TreeScene - the authoring surface for tree algorithms, mirroring ArrayScene. */
 
+import type { StepId } from './steps';
 import type {
   CallStackEntry,
   Counters,
@@ -51,7 +52,7 @@ export interface CreateOptions {
 
 export interface TreeFrameInput {
   readonly explanation: string;
-  readonly codeLine: number;
+  readonly step: StepId | null;
   readonly highlights?: Highlights;
   readonly pointers?: Pointers;
   readonly strips?: readonly TreeStrip[];
@@ -405,7 +406,7 @@ export class TreeScene {
       pointers: input.pointers ?? NO_POINTERS,
       callStack: this.stackSnapshot(),
       explanation: input.explanation,
-      codeLine: input.codeLine,
+      step: input.step,
       counters: this.counters(),
       ...(input.phase === undefined ? {} : { phase: input.phase }),
     };

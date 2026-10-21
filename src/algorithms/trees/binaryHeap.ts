@@ -8,6 +8,7 @@ import { arrayField, parseNumberList } from '../../core/arrayInput';
 import { randomInt } from '../../core/random';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion, Frame } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 type HeapOp = { readonly kind: 'push'; readonly value: number } | { readonly kind: 'pop' } | { readonly kind: 'heapify' };
 
@@ -72,6 +73,7 @@ const LINE = {
   siftSwap: 30,
   siftMove: 31,
 } as const;
+const STEP = stepIds(LINE);
 
 type Gen = Generator<Frame, void, undefined>;
 
@@ -82,7 +84,7 @@ function heapRegion(scene: ArrayScene): ArrayRegion[] {
 function* siftDown(scene: ArrayScene, start: number, phase: string): Gen {
   let i = start;
   const n = scene.length;
-  scene.pushCall({ label: `siftDown(${start})`, codeLine: LINE.siftEnter });
+  scene.pushCall({ label: `siftDown(${start})`, step: STEP.siftEnter });
 
   for (;;) {
     const l = 2 * i + 1;
@@ -91,7 +93,7 @@ function* siftDown(scene: ArrayScene, start: number, phase: string): Gen {
 
     if (l >= n) {
       yield scene.frame({
-        codeLine: LINE.siftChildren,
+        step: STEP.siftChildren,
         explanation: `Index ${i} (${scene.peek(i)}) has no children: it is a leaf, done.`,
         highlights: { sorted: [i] },
         pointers: { i },
@@ -106,7 +108,7 @@ function* siftDown(scene: ArrayScene, start: number, phase: string): Gen {
     if (r < n && scene.compare(r, largest) > 0) largest = r;
 
     yield scene.frame({
-      codeLine: r < n ? LINE.siftRight : LINE.siftLeft,
+      step: r < n ? STEP.siftRight : STEP.siftLeft,
       explanation:
         largest === i
           ? `${scene.peek(i)} at ${i} is at least as large as ${r < n ? 'both children' : 'its child'}: the heap property holds here.`
@@ -119,7 +121,7 @@ function* siftDown(scene: ArrayScene, start: number, phase: string): Gen {
 
     if (largest === i) {
       yield scene.frame({
-        codeLine: LINE.siftDone,
+        step: STEP.siftDone,
         explanation: `Stop: nothing below ${i} needs to change.`,
         highlights: { sorted: [i] },
         pointers: { i },
@@ -133,7 +135,7 @@ function* siftDown(scene: ArrayScene, start: number, phase: string): Gen {
     const sinking = scene.peek(i);
     scene.swap(i, largest);
     yield scene.frame({
-      codeLine: LINE.siftSwap,
+      step: STEP.siftSwap,
       explanation: `Swap ${sinking} down with ${scene.peek(i)}.`,
       highlights: { swapped: [i, largest] },
       pointers: { i },
@@ -142,7 +144,7 @@ function* siftDown(scene: ArrayScene, start: number, phase: string): Gen {
     });
     i = largest;
     yield scene.frame({
-      codeLine: LINE.siftMove,
+      step: STEP.siftMove,
       explanation: `Follow ${sinking} to index ${i}.`,
       highlights: { active: [i] },
       pointers: { i },
@@ -157,7 +159,7 @@ function* push(scene: ArrayScene, value: number): Gen {
   const index = scene.push(value);
   scene.setHeapSize(scene.length);
   yield scene.frame({
-    codeLine: LINE.pushAppend,
+    step: STEP.pushAppend,
     explanation: `push(${value}): append it as the last leaf at index ${index}. The tree stays complete by construction.`,
     highlights: { candidate: [index] },
     pointers: { i: index },
@@ -170,7 +172,7 @@ function* push(scene: ArrayScene, value: number): Gen {
     const parent = (i - 1) >> 1;
     const parentSmaller = scene.compare(parent, i) < 0;
     yield scene.frame({
-      codeLine: LINE.pushLoop,
+      step: STEP.pushLoop,
       explanation: parentSmaller
         ? `Parent ${scene.peek(parent)} at ${parent} is smaller than ${scene.peek(i)}: sift up.`
         : `Parent ${scene.peek(parent)} at ${parent} is not smaller than ${scene.peek(i)}: the heap property holds, stop.`,
@@ -183,7 +185,7 @@ function* push(scene: ArrayScene, value: number): Gen {
 
     scene.swap(i, parent);
     yield scene.frame({
-      codeLine: LINE.pushSwap,
+      step: STEP.pushSwap,
       explanation: `Swap ${scene.peek(parent)} up into index ${parent}.`,
       highlights: { swapped: [i, parent] },
       pointers: { i: parent },
@@ -195,7 +197,7 @@ function* push(scene: ArrayScene, value: number): Gen {
 
   if (i === 0) {
     yield scene.frame({
-      codeLine: LINE.pushLoop,
+      step: STEP.pushLoop,
       explanation: `${scene.peek(0)} reached the root: it is the new maximum.`,
       highlights: { sorted: [0] },
       pointers: { i: 0 },
@@ -208,13 +210,13 @@ function* push(scene: ArrayScene, value: number): Gen {
 
 function* pop(scene: ArrayScene): Gen {
   if (scene.length === 0) {
-    yield scene.frame({ codeLine: LINE.popEnter, explanation: `pop() on an empty heap: nothing to remove.`, phase: 'pop' });
+    yield scene.frame({ step: STEP.popEnter, explanation: `pop() on an empty heap: nothing to remove.`, phase: 'pop' });
     return;
   }
   const top = scene.read(0);
   const last = scene.length - 1;
   yield scene.frame({
-    codeLine: LINE.popTop,
+    step: STEP.popTop,
     explanation: `pop(): the maximum ${top} sits at the root. It has to leave without breaking the shape.`,
     highlights: { pivot: [0] },
     pointers: { i: 0 },
@@ -225,7 +227,7 @@ function* pop(scene: ArrayScene): Gen {
   if (last > 0) {
     scene.swap(0, last);
     yield scene.frame({
-      codeLine: LINE.popSwap,
+      step: STEP.popSwap,
       explanation: `Swap the last leaf ${scene.peek(0)} into the root, so the hole is at the end where removal is O(1).`,
       highlights: { swapped: [0, last] },
       pointers: { i: 0 },
@@ -238,7 +240,7 @@ function* pop(scene: ArrayScene): Gen {
   scene.setHeapSize(scene.length);
   scene.bump('popped');
   yield scene.frame({
-    codeLine: LINE.popShrink,
+    step: STEP.popShrink,
     explanation: `Drop ${top}. The heap has ${scene.length} element(s) left${scene.length > 0 ? `, and ${scene.peek(0)} at the root is probably too small` : ''}.`,
     highlights: scene.length > 0 ? { active: [0] } : {},
     regions: heapRegion(scene),
@@ -247,7 +249,7 @@ function* pop(scene: ArrayScene): Gen {
 
   if (scene.length > 1) {
     yield scene.frame({
-      codeLine: LINE.popSift,
+      step: STEP.popSift,
       explanation: `siftDown(0) restores the heap property.`,
       highlights: { active: [0] },
       pointers: { i: 0 },
@@ -258,7 +260,7 @@ function* pop(scene: ArrayScene): Gen {
   }
 
   yield scene.frame({
-    codeLine: LINE.popReturn,
+    step: STEP.popReturn,
     explanation: `Return ${top}.${scene.length > 0 ? ` The new maximum is ${scene.peek(0)}.` : ''}`,
     highlights: scene.length > 0 ? { sorted: [0] } : {},
     regions: heapRegion(scene),
@@ -271,7 +273,7 @@ function* heapify(scene: ArrayScene): Gen {
   const n = scene.length;
   scene.setHeapSize(n);
   yield scene.frame({
-    codeLine: LINE.heapifyEnter,
+    step: STEP.heapifyEnter,
     explanation: `heapify: turn the raw array into a heap bottom-up. Indices ${n >> 1}..${n - 1} are leaves and already valid.`,
     highlights: { excluded: Array.from({ length: n - (n >> 1) }, (_, k) => (n >> 1) + k) },
     regions: heapRegion(scene),
@@ -281,7 +283,7 @@ function* heapify(scene: ArrayScene): Gen {
   for (let i = (n >> 1) - 1; i >= 0; i--) {
     scene.countCall();
     yield scene.frame({
-      codeLine: LINE.heapifyLoop,
+      step: STEP.heapifyLoop,
       explanation: `siftDown(${i}): both subtrees below are heaps already, so one sift fixes this one.`,
       highlights: { active: [i] },
       pointers: { i },
@@ -292,7 +294,7 @@ function* heapify(scene: ArrayScene): Gen {
   }
 
   yield scene.frame({
-    codeLine: LINE.heapifyLoop,
+    step: STEP.heapifyLoop,
     explanation: `Heap built in ${scene.counters().comparisons} comparisons - linear in n, not n log n, because most nodes are near the bottom and barely move.`,
     highlights: { sorted: [0] },
     regions: heapRegion(scene),
@@ -379,6 +381,7 @@ export const binaryHeap = defineAlgorithm<HeapInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'swaps', 'accesses'],
     inPlace: true,
   },
@@ -392,7 +395,7 @@ export const binaryHeap = defineAlgorithm<HeapInput>({
 
     const heapifies = input.ops.some((op) => op.kind === 'heapify');
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation:
         scene.length === 0
           ? `Start from an empty heap.`
@@ -410,7 +413,7 @@ export const binaryHeap = defineAlgorithm<HeapInput>({
 
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Done: ${scene.length} element(s) in the heap${scene.length > 0 ? `, max ${scene.peek(0)}` : ''}. ${counters.comparisons} comparisons, ${counters.swaps} swaps.`,
       regions: heapRegion(scene),
       phase: 'done',

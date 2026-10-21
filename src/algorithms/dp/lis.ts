@@ -11,6 +11,7 @@ import { cellRef, colRef, MatrixScene } from '../../core/matrixScene';
 import { randomInt, shuffle } from '../../core/random';
 import { paneRef, SplitScene } from '../../core/splitScene';
 import type { EntityId, Strip, StripItem } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 const CODE = `function lis(a: number[]): { length: number; sequence: number[] } {
   const n = a.length;
@@ -57,6 +58,7 @@ export const LINE = {
   take: 26,
   ret: 30,
 } as const;
+export const STEP = stepIds(LINE);
 
 export const MAX_LENGTH = 12;
 const MIN_VALUE = -99;
@@ -145,6 +147,7 @@ export const lis = defineAlgorithm<readonly number[]>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes'],
   },
   fields: [field],
@@ -177,7 +180,7 @@ export const lis = defineAlgorithm<readonly number[]>({
 
     for (let i = 0; i < n; i++) table.write(VALUE, i, a[i] ?? 0);
     yield scene.frame({
-      codeLine: LINE.init,
+      step: STEP.init,
       phase: 'setup',
       explanation: `Two answers to one question, side by side. The table finds, for every element, the longest increasing run ending there. The piles find only the length, with a binary search per element instead of a scan.`,
       highlights: { active: indices.map((_, i) => value(i)) },
@@ -189,7 +192,7 @@ export const lis = defineAlgorithm<readonly number[]>({
       const x = a[i] ?? 0;
       table.write(RUN, i, 1);
       yield scene.frame({
-        codeLine: LINE.element,
+        step: STEP.element,
         phase: 'table',
         explanation:
           i === 0
@@ -206,7 +209,7 @@ export const lis = defineAlgorithm<readonly number[]>({
         table.bump('table comparisons');
         if (y >= x) {
           yield scene.frame({
-            codeLine: LINE.extend,
+            step: STEP.extend,
             phase: 'table',
             explanation: `a[${j}] = ${y} is not smaller than ${x}, so ${x} cannot follow it.`,
             highlights: { active: [value(i), run(i)], excluded: [value(j), run(j)] },
@@ -219,7 +222,7 @@ export const lis = defineAlgorithm<readonly number[]>({
         const before = table.read(RUN, i);
         if (through > before) table.write(RUN, i, through);
         yield scene.frame({
-          codeLine: LINE.extend,
+          step: STEP.extend,
           phase: 'table',
           explanation:
             through > before
@@ -235,7 +238,7 @@ export const lis = defineAlgorithm<readonly number[]>({
       let lo = 0;
       let hi = piled;
       yield scene.frame({
-        codeLine: LINE.search,
+        step: STEP.search,
         phase: 'patience',
         explanation:
           piled === 0
@@ -255,7 +258,7 @@ export const lis = defineAlgorithm<readonly number[]>({
         if (right) lo = mid + 1;
         else hi = mid;
         yield scene.frame({
-          codeLine: right ? LINE.probeRight : LINE.probeLeft,
+          step: right ? STEP.probeRight : STEP.probeLeft,
           phase: 'patience',
           explanation: right
             ? `Pile ${mid + 1}'s top is ${top} < ${x}: ${x} could go on top of a run that long, so look right of it.`
@@ -271,7 +274,7 @@ export const lis = defineAlgorithm<readonly number[]>({
       if (lo === piled) piled += 1;
       const length = table.peek(RUN, i) ?? 1;
       yield scene.frame({
-        codeLine: LINE.place,
+        step: STEP.place,
         phase: 'patience',
         explanation: `${replaced === null ? `${x} starts pile ${lo + 1}` : `${x} covers ${replaced} on pile ${lo + 1}`}, and pile ${lo + 1} is L[${i}] = ${length}: the pile an element lands on is the length of the longest run ending at it.`,
         highlights: { active: [pile(lo), run(i)] },
@@ -283,7 +286,7 @@ export const lis = defineAlgorithm<readonly number[]>({
     const tops = Array.from({ length: piled }, (_, k) => piles.peek(0, k) ?? 0);
     let want = piled;
     yield scene.frame({
-      codeLine: LINE.trace,
+      step: STEP.trace,
       phase: 'traceback',
       explanation: `${piled} pile${piled === 1 ? '' : 's'}, so the longest increasing subsequence has length ${piled}. The tops ${tops.join(', ')} only give the length. To recover the elements, scan the table from the right for L = ${want}, ${want - 1}, and so on.`,
       highlights: { sorted: tops.map((_, k) => pile(k)) },
@@ -310,7 +313,7 @@ export const lis = defineAlgorithm<readonly number[]>({
           ? `L[${i}] = ${length}, not ${want}: skip it.`
           : `L[${i}] = ${length}, but ${x} is not smaller than ${after ?? ''}, the element already chosen after it: skip it.`;
       yield scene.frame({
-        codeLine: fits ? LINE.take : LINE.check,
+        step: fits ? STEP.take : STEP.check,
         phase: 'traceback',
         explanation,
         highlights: { active: [value(i), run(i)], ...(fits ? { candidate: [`output:i${i}`] } : {}) },
@@ -320,7 +323,7 @@ export const lis = defineAlgorithm<readonly number[]>({
     }
 
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation: `Length ${piled}: ${chosen.map((item) => item.label).join(' < ')}. ${
         tops.join() === chosen.map((item) => item.label).join()

@@ -16,6 +16,7 @@ import {
 } from '../../core/graphInput';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import type { Frame, Graph, GraphEdge, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 import { componentsOf, DIRECTED_ERROR, fmt, mstPresets } from './mst';
 import { DisjointSets } from './unionFindCore';
 
@@ -52,6 +53,7 @@ const LINE = {
   stop: lineOf('spanning forest is complete'),
   done: lineOf('return tree'),
 } as const;
+const STEP = stepIds(LINE);
 
 function parse(params: ParamMap): ParseResult<KruskalInput> {
   if (parseDirected(params.directed)) return { ok: false, error: DIRECTED_ERROR };
@@ -103,6 +105,7 @@ export const kruskal = defineAlgorithm<KruskalInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons'],
   },
   fields: [edgesField('0-1:4,0-7:8,1-2:8,1-7:11,2-3:7,2-5:4,2-8:2,3-4:9,3-5:14,4-5:10,5-6:2,6-7:1,6-8:6,7-8:7', true), directedField, layoutField, seedField],
@@ -137,7 +140,7 @@ function* runKruskal(graph: Graph): Gen {
   const forest = new DisjointSets(scene, {
     byRank: true,
     compress: true,
-    lines: { findEnter: LINE.find, climb: LINE.find, findReturn: LINE.find, compressSet: LINE.find, shorter: LINE.union, taller: LINE.union, equal: LINE.union },
+    steps: { findEnter: STEP.find, climb: STEP.find, findReturn: STEP.find, compressSet: STEP.find, shorter: STEP.union, taller: STEP.union, equal: STEP.union },
     strips,
     findFrames: 'one-per-find',
     also: () => {
@@ -150,7 +153,7 @@ function* runKruskal(graph: Graph): Gen {
   const ties = sorted.some((edge, i) => i > 0 && edge.weight === sorted[i - 1]?.weight);
 
   yield scene.frame({
-    codeLine: LINE.sort,
+    step: STEP.sort,
     explanation: `${sorted.length} edges sorted cheapest first. ${
       pieces === 1 ? `The graph is connected, so a spanning tree has V − 1 = ${target} edges.` : `The graph has ${pieces} separate pieces, so a spanning forest has V − ${pieces} = ${target} edges.`
     } ${ties ? 'Some weights tie, broken by the smaller endpoint pair, so the tree found may not be the only minimum one.' : 'No two weights tie, so the minimum spanning tree is unique.'}`,
@@ -168,7 +171,7 @@ function* runKruskal(graph: Graph): Gen {
     if (ru === rv) {
       scene.bump('edges rejected');
       yield scene.frame({
-        codeLine: LINE.same,
+        step: STEP.same,
         explanation: `${name(u)} and ${name(v)} already share root ${name(ru)}: this edge would close a cycle.`,
         highlights: { swapped: [edgeRef(edge)], pivot: [ru], active: [`queue:${edge.id}`] },
         pointers: { u, v, root: ru },
@@ -189,7 +192,7 @@ function* runKruskal(graph: Graph): Gen {
     tree = Object.freeze({ label: 'tree edges', kind: 'output' as const, items: Object.freeze(accepted.map(chip)) });
     const complete = accepted.length === target;
     yield scene.frame({
-      codeLine: complete ? LINE.stop : LINE.push,
+      step: complete ? STEP.stop : STEP.push,
       explanation: `${name(u)}-${name(v)} (${fmt(w)}) joins two different trees, rooted at ${name(ru)} and ${name(rv)}: take it. ${why} MST weight ${fmt(weight)}.${
         complete ? ` That is ${target} of ${target}: the spanning ${pieces === 1 ? 'tree' : 'forest'} is complete, so the remaining ${sorted.length - at - 1} edge${sorted.length - at - 1 === 1 ? '' : 's'} need not be looked at. Stop early.` : ''
       }`,
@@ -207,7 +210,7 @@ function* runKruskal(graph: Graph): Gen {
       ? `Done: a minimum spanning tree of ${accepted.length} edges, total weight ${fmt(weight)}.`
       : `Done: the graph is not connected, so there is no spanning tree. Kruskal built a minimum spanning forest instead: ${pieces} trees, one per piece, ${accepted.length} edges, total weight ${fmt(weight)}.`;
   yield scene.frame({
-    codeLine: LINE.done,
+    step: STEP.done,
     explanation: `${forestText}${ties ? ' Tied weights mean another minimum tree of the same weight may exist.' : ''}`,
     highlights: { sorted: accepted.map(edgeRef) },
     strips: [none, tree],

@@ -5,6 +5,7 @@ import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/def
 import { LEFT, RIGHT, TreeScene, type Side } from '../../core/treeScene';
 import { keysField, opsField, parseKeyOps, parseTreeKeys, treePresets, type KeyOp } from '../../core/treeInput';
 import type { Frame } from '../../core/types';
+import { stepIds, type StepId } from '../../core/steps';
 
 interface RedBlackInput {
   readonly keys: readonly number[];
@@ -55,6 +56,7 @@ const LINE = {
   case3Rotate: 21,
   rootBlack: 24,
 } as const;
+const STEP = stepIds(LINE);
 
 type Gen = Generator<Frame, void, undefined>;
 
@@ -69,7 +71,7 @@ function* bstDescend(scene: TreeScene, key: number, phase: string): Generator<Fr
     if (cmp === 0) return { parent, side, duplicate: cur };
     const goLeft = key < scene.value(cur);
     yield scene.frame({
-      codeLine: LINE.bstInsert,
+      step: STEP.bstInsert,
       explanation: `${key} ${goLeft ? '<' : '>'} ${scene.label(cur)}: go ${goLeft ? 'left' : 'right'}.`,
       highlights: { comparing: [cur], visited: [...path] },
       pointers: { cur },
@@ -83,10 +85,10 @@ function* bstDescend(scene: TreeScene, key: number, phase: string): Generator<Fr
   return { parent, side, duplicate: null };
 }
 
-function* rotateWithFrames(scene: TreeScene, x: string, direction: 'left' | 'right', line: number, why: string, phase: string): Gen {
+function* rotateWithFrames(scene: TreeScene, x: string, direction: 'left' | 'right', step: StepId, why: string, phase: string): Gen {
   const before = scene.child(x, direction === 'left' ? RIGHT : LEFT);
   yield scene.frame({
-    codeLine: line,
+    step,
     explanation: `${why} Rotate ${direction} at ${scene.label(x)}${before === null ? '' : `, lifting ${scene.label(before)}`}.`,
     highlights: { swapped: [x], ...(before === null ? {} : { pivot: [before] }) },
     pointers: { x },
@@ -94,7 +96,7 @@ function* rotateWithFrames(scene: TreeScene, x: string, direction: 'left' | 'rig
   });
   const { y, crossing } = scene.rotate(x, direction);
   yield scene.frame({
-    codeLine: line,
+    step,
     explanation: `${scene.label(y)} is the parent now and ${scene.label(x)} hangs off it${crossing === null ? '' : `; ${scene.label(crossing)} crossed over`}. In-order is unchanged.`,
     highlights: { swapped: [x], pivot: [y], ...(crossing === null ? {} : { candidate: [crossing] }) },
     pointers: { x, y },
@@ -104,14 +106,14 @@ function* rotateWithFrames(scene: TreeScene, x: string, direction: 'left' | 'rig
 
 function* fixup(scene: TreeScene, start: string, phase: string): Gen {
   let z = start;
-  scene.pushCall({ label: `fixup(${scene.label(z)})`, codeLine: LINE.fixupEnter });
+  scene.pushCall({ label: `fixup(${scene.label(z)})`, step: STEP.fixupEnter });
 
   for (;;) {
     const p = scene.parent(z);
     scene.countComparison();
     if (p === null || scene.color(p) !== 'red') {
       yield scene.frame({
-        codeLine: LINE.loop,
+        step: STEP.loop,
         explanation:
           p === null
             ? `${scene.label(z)} is the root, so the loop ends.`
@@ -128,7 +130,7 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
     const pSide = scene.sideOf(p) ?? LEFT;
     const uncle = scene.child(g, pSide === LEFT ? RIGHT : LEFT);
     yield scene.frame({
-      codeLine: LINE.uncle,
+      step: STEP.uncle,
       explanation: `Red ${scene.label(z)} under red ${scene.label(p)} violates the no-red-red rule. Grandparent ${scene.label(g)} is black. The uncle is ${uncle === null ? 'null (black)' : `${scene.label(uncle)} (${scene.color(uncle)})`}.`,
       highlights: { comparing: [z, p], active: [g], ...(uncle === null ? {} : { candidate: [uncle] }) },
       pointers: { z, p, g, ...(uncle === null ? {} : { u: uncle }) },
@@ -142,7 +144,7 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
       scene.setColor(g, 'red');
       scene.bump('recolours');
       yield scene.frame({
-        codeLine: LINE.case1Recolour,
+        step: STEP.case1Recolour,
         explanation: `Case 1, red uncle: paint ${scene.label(p)} and ${scene.label(uncle)} black and ${scene.label(g)} red. Every path through ${scene.label(g)} keeps its black count.`,
         highlights: { swapped: [p, uncle], pivot: [g] },
         pointers: { z, p, g, u: uncle },
@@ -150,7 +152,7 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
       });
       z = g;
       yield scene.frame({
-        codeLine: LINE.case1Push,
+        step: STEP.case1Push,
         explanation: `${scene.label(z)} is red now and may clash with its own parent, so continue from there.`,
         highlights: { comparing: [z] },
         pointers: { z },
@@ -163,7 +165,7 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
     scene.countComparison();
     if (zSide !== null && zSide !== pSide) {
       yield scene.frame({
-        codeLine: LINE.case2Test,
+        step: STEP.case2Test,
         explanation: `Case 2: ${scene.label(z)} is an inner grandchild (a zig-zag through ${scene.label(p)}). A single rotation at ${scene.label(g)} would not fix that shape.`,
         highlights: { comparing: [z], active: [p], pivot: [g] },
         pointers: { z, p, g },
@@ -171,7 +173,7 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
       });
       const oldP = p;
       z = p;
-      yield* rotateWithFrames(scene, oldP, pSide === LEFT ? 'left' : 'right', LINE.case2Rotate, `Straighten it:`, phase);
+      yield* rotateWithFrames(scene, oldP, pSide === LEFT ? 'left' : 'right', STEP.case2Rotate, `Straighten it:`, phase);
     }
 
     const parentNow = scene.parent(z);
@@ -182,21 +184,21 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
     scene.setColor(grand, 'red');
     scene.bump('recolours');
     yield scene.frame({
-      codeLine: LINE.case3Recolour,
+      step: STEP.case3Recolour,
       explanation: `Case 3: paint ${scene.label(parentNow)} black and ${scene.label(grand)} red, then rotate ${scene.label(grand)} down so the black node ends up on top.`,
       highlights: { swapped: [parentNow], pivot: [grand], comparing: [z] },
       pointers: { z, p: parentNow, g: grand },
       phase,
     });
     const zSideNow = scene.sideOf(z) ?? LEFT;
-    yield* rotateWithFrames(scene, grand, zSideNow === LEFT ? 'right' : 'left', LINE.case3Rotate, `Finish case 3.`, phase);
+    yield* rotateWithFrames(scene, grand, zSideNow === LEFT ? 'right' : 'left', STEP.case3Rotate, `Finish case 3.`, phase);
   }
 
   const root = scene.root;
   if (root !== null && scene.color(root) !== 'black') {
     scene.setColor(root, 'black');
     yield scene.frame({
-      codeLine: LINE.rootBlack,
+      step: STEP.rootBlack,
       explanation: `The root is always black; painting it costs nothing, since every path goes through it.`,
       highlights: { active: [root] },
       pointers: { root },
@@ -207,9 +209,9 @@ function* fixup(scene: TreeScene, start: string, phase: string): Gen {
 }
 
 function* insert(scene: TreeScene, key: number, phase: string): Gen {
-  scene.pushCall({ label: `insert(${key})`, codeLine: LINE.insertEnter });
+  scene.pushCall({ label: `insert(${key})`, step: STEP.insertEnter });
   yield scene.frame({
-    codeLine: LINE.insertEnter,
+    step: STEP.insertEnter,
     explanation: `insert(${key}): a plain BST insert, then fix any red-red violation walking up.`,
     phase,
   });
@@ -217,7 +219,7 @@ function* insert(scene: TreeScene, key: number, phase: string): Gen {
   const { parent, side, duplicate } = yield* bstDescend(scene, key, phase);
   if (duplicate !== null) {
     yield scene.frame({
-      codeLine: LINE.bstInsert,
+      step: STEP.bstInsert,
       explanation: `${key} is already in the tree; nothing changes.`,
       highlights: { excluded: [duplicate] },
       phase,
@@ -230,7 +232,7 @@ function* insert(scene: TreeScene, key: number, phase: string): Gen {
   if (parent === null) scene.setRoot(z);
   else scene.link(parent, side, z);
   yield scene.frame({
-    codeLine: LINE.newNode,
+    step: STEP.newNode,
     explanation: `${key} joins as a red leaf${parent === null ? ' at the root' : ` under ${scene.label(parent)}`}. Red, because adding a black node would change a black-height and that is the harder invariant to repair.`,
     highlights: { candidate: [z] },
     pointers: { z },
@@ -238,7 +240,7 @@ function* insert(scene: TreeScene, key: number, phase: string): Gen {
   });
 
   yield scene.frame({
-    codeLine: LINE.callFixup,
+    step: STEP.callFixup,
     explanation: `fixup(${key}).`,
     highlights: { candidate: [z] },
     pointers: { z },
@@ -250,7 +252,7 @@ function* insert(scene: TreeScene, key: number, phase: string): Gen {
 
 function beat(scene: TreeScene, key: number, phase: string): Frame {
   return scene.frame({
-    codeLine: 0,
+    step: null,
     explanation: `After insert ${key}: ${scene.size} nodes, height ${scene.height(scene.root) + 1}, black-height ${blackHeight(scene, scene.root)}.`,
     phase,
   });
@@ -293,6 +295,7 @@ export const redBlack = defineAlgorithm<RedBlackInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes'],
   },
   fields: [
@@ -308,7 +311,7 @@ export const redBlack = defineAlgorithm<RedBlackInput>({
 
     if (input.keys.length > 0) {
       yield scene.frame({
-        codeLine: LINE.insertEnter,
+        step: STEP.insertEnter,
         explanation: `Insert ${input.keys.length} keys in order: ${input.keys.join(', ')}. Watch the black count on every root-to-null path stay equal.`,
         phase: 'build',
       });
@@ -325,7 +328,7 @@ export const redBlack = defineAlgorithm<RedBlackInput>({
 
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Done: ${scene.size} nodes, height ${scene.height(scene.root) + 1}, black-height ${blackHeight(scene, scene.root)}, ${counters.extra.rotations ?? 0} rotation(s), ${counters.extra.recolours ?? 0} recolour step(s).`,
       phase: 'done',
     });

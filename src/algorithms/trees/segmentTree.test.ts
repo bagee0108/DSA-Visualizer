@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { makeRng, randomInt } from '../../core/random';
 import type { Frame, TreeNodeSnapshot } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, lastFrame, runFrames, treeOf } from '../frameHygiene';
-import { formatOp, LINE, MAX_LEAVES, parseOps, segmentTree, type SegmentOp } from './segmentTree';
+import { formatOp, MAX_LEAVES, parseOps, segmentTree, type SegmentOp, STEP } from './segmentTree';
 
 const HYGIENE = { allowSizeChange: true } as const;
 
@@ -14,7 +14,7 @@ function solve(values: readonly number[], ops: readonly SegmentOp[]): readonly F
 /** Query answers, read back from the summary frame each query ends with. */
 function answersOf(frames: readonly Frame[]): number[] {
   return frames
-    .filter((frame) => frame.codeLine === LINE.query && frame.phase === 'query')
+    .filter((frame) => frame.step === STEP.query && frame.phase === 'query')
     .map((frame) => /= (-?\d+), from/.exec(frame.explanation)?.[1])
     .filter((answer): answer is string => answer !== undefined)
     .map(Number);
@@ -126,7 +126,7 @@ describe('segment tree: logarithmic work', () => {
   it('touches only the path from root to leaf in an update', () => {
     const n = 16;
     const frames = solve(Array.from({ length: n }, () => 1), [{ kind: 'set', index: 11, value: 4 }]);
-    const updates = frames.filter((frame) => frame.phase === 'update' && frame.codeLine === LINE.refresh);
+    const updates = frames.filter((frame) => frame.phase === 'update' && frame.step === STEP.refresh);
     expect(updates).toHaveLength(Math.log2(n));
   });
 });

@@ -140,19 +140,29 @@ export function hash53(text: string): string {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
+/** A frame or call-stack entry with its step swapped for the JS line it maps to, as `codeLine`, in the step's place. */
+function withLine<T extends object>(value: T, lineOf: RegisteredAlgorithm['lineOf']): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).map(([key, field]) => (key === 'step' ? ['codeLine', lineOf(field as string | null)] : [key, field])));
+}
+
 /**
  * A run's frames as one fingerprint: every field of every frame, in order. The
  * graph is shared by every frame of a run, so it is hashed once, not per frame,
  * and only its topology: where the layout puts nodes is not part of a run.
+ *
+ * Steps are hashed as the JS lines they map to, under the name and in the
+ * place that line had while frames carried it, so a fingerprint recorded then
+ * still matches only if every step maps back to the line it replaced.
  */
-export function fingerprint(frames: readonly Frame[]): string {
+export function fingerprint(frames: readonly Frame[], lineOf: RegisteredAlgorithm['lineOf']): string {
   const first = frames[0];
   const graph = first === undefined ? null : graphOf(first).graph;
   const topology =
     graph === null
       ? null
       : { directed: graph.directed, weighted: graph.weighted, nodes: graph.nodes.map((node) => [node.id, node.label]), edges: graph.edges };
-  const body = JSON.stringify(frames, (key, value: unknown) => (key === 'graph' ? undefined : value));
+  const asLines = frames.map((frame) => ({ ...withLine(frame, lineOf), callStack: frame.callStack.map((entry) => withLine(entry, lineOf)) }));
+  const body = JSON.stringify(asLines, (key, value: unknown) => (key === 'graph' ? undefined : value));
   return `${frames.length}:${hash53(JSON.stringify(topology))}:${hash53(body)}`;
 }
 

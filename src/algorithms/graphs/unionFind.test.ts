@@ -194,7 +194,7 @@ describe('union-find: the shared forest helper', () => {
   it('leaves every frame of every golden case exactly as it was before the refactor', () => {
     const cases = unionFindCases(makeRng);
     expect(cases.map(([name]) => name).sort()).toEqual(Object.keys(GOLDEN).sort());
-    const changed = cases.filter(([name, params]) => fingerprint(runFrames(unionFind, params)) !== GOLDEN[name]).map(([name]) => name);
+    const changed = cases.filter(([name, params]) => fingerprint(runFrames(unionFind, params), unionFind.lineOf) !== GOLDEN[name]).map(([name]) => name);
     expect(changed).toEqual([]);
   }, 120000);
 
@@ -203,8 +203,8 @@ describe('union-find: the shared forest helper', () => {
     const list = parseEdgeList('0-1,1-2,2-3,3-4');
     if (!list.ok) throw new Error(list.error);
     const scene = new GraphScene(buildGraph(list.value, false, 'auto'));
-    const lines = { findEnter: 1, climb: 2, findReturn: 3, compressSet: 4, shorter: 5, taller: 6, equal: 7 };
-    const options: UnionFindOptions = { byRank: false, compress: true, lines, strips: () => [], findFrames: mode };
+    const steps = { findEnter: 'findEnter', climb: 'climb', findReturn: 'findReturn', compressSet: 'compressSet', shorter: 'shorter', taller: 'taller', equal: 'equal' };
+    const options: UnionFindOptions = { byRank: false, compress: true, steps, strips: () => [], findFrames: mode };
     const forest = new DisjointSets(scene, options);
     // Naive merge puts the second root under the first, so this builds 0 -> 1 -> 2 -> 3 -> 4 with 0 deepest.
     for (const [a, b] of [['1', '0'], ['2', '1'], ['3', '2'], ['4', '3']] as const) forest.merge(a, b);

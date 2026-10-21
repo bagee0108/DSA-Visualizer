@@ -4,6 +4,7 @@ import { defineAlgorithm, type FieldSpec, type ParamMap, type ParseResult, type 
 import { randomInt, shuffle } from '../../core/random';
 import { TreeScene } from '../../core/treeScene';
 import type { Frame, TreeStrip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 type TrieOp = { readonly kind: 'insert'; readonly word: string } | { readonly kind: 'search'; readonly prefix: string };
 
@@ -52,6 +53,7 @@ const LINE = {
   collectEmit: 20,
   collectRecurse: 21,
 } as const;
+const STEP = stepIds(LINE);
 
 type Gen = Generator<Frame, void, undefined>;
 
@@ -96,7 +98,7 @@ function* insert(trie: Trie, word: string, phase: string): Gen {
   const path: string[] = [];
 
   yield scene.frame({
-    codeLine: LINE.insertStart,
+    step: STEP.insertStart,
     explanation: `insert("${word}"): start at the root and follow one edge per character.`,
     highlights: { active: [node] },
     pointers: { node },
@@ -110,7 +112,7 @@ function* insert(trie: Trie, word: string, phase: string): Gen {
     if (existing === null) {
       const created = trie.addChild(node, ch);
       yield scene.frame({
-        codeLine: LINE.insertBranch,
+        step: STEP.insertBranch,
         explanation: `No edge for "${ch}" under "${word.slice(0, index)}": create a new branch. Everything from here on is new.`,
         highlights: { candidate: [created], visited: [...path], active: [node] },
         pointers: { node: created },
@@ -120,7 +122,7 @@ function* insert(trie: Trie, word: string, phase: string): Gen {
       node = created;
     } else {
       yield scene.frame({
-        codeLine: LINE.insertStep,
+        step: STEP.insertStep,
         explanation: `"${ch}" already exists under "${word.slice(0, index)}": follow it. The prefix "${word.slice(0, index + 1)}" is shared with an earlier word.`,
         highlights: { comparing: [existing], visited: [...path], active: [node] },
         pointers: { node: existing },
@@ -134,7 +136,7 @@ function* insert(trie: Trie, word: string, phase: string): Gen {
   scene.setTerminal(node, true);
   scene.bump('words');
   yield scene.frame({
-    codeLine: LINE.insertMark,
+    step: STEP.insertMark,
     explanation: `Mark the last node terminal: "${word}" is now a stored word, distinct from any longer word that merely passes through it.`,
     highlights: { sorted: [node], visited: [...path] },
     pointers: { node },
@@ -145,13 +147,13 @@ function* insert(trie: Trie, word: string, phase: string): Gen {
 function* collect(trie: Trie, node: string, acc: string, out: string[], phase: string): Gen {
   const { scene } = trie;
   scene.countCall();
-  scene.pushCall({ label: `collect("${acc}")`, codeLine: LINE.collectEnter });
+  scene.pushCall({ label: `collect("${acc}")`, step: STEP.collectEnter });
 
   const view = scene.visit(node);
   if (view.terminal) {
     out.push(acc);
     yield scene.frame({
-      codeLine: LINE.collectEmit,
+      step: STEP.collectEmit,
       explanation: `"${acc}" is terminal: emit it.`,
       highlights: { sorted: [node, `output:${acc}`] },
       pointers: { node },
@@ -164,7 +166,7 @@ function* collect(trie: Trie, node: string, acc: string, out: string[], phase: s
     const child = trie.childOf(node, ch);
     if (child === null) continue;
     yield scene.frame({
-      codeLine: LINE.collectRecurse,
+      step: STEP.collectRecurse,
       explanation: `Descend into "${acc + ch}".`,
       highlights: { comparing: [child], active: [node] },
       pointers: { node: child },
@@ -182,7 +184,7 @@ function* startsWith(trie: Trie, prefix: string): Gen {
   const path: string[] = [];
 
   yield scene.frame({
-    codeLine: LINE.searchEnter,
+    step: STEP.searchEnter,
     explanation: `startsWith("${prefix}"): walk the prefix, then harvest the subtree.`,
     highlights: { active: [node] },
     pointers: { node },
@@ -196,7 +198,7 @@ function* startsWith(trie: Trie, prefix: string): Gen {
     scene.visit(node);
     if (next === null) {
       yield scene.frame({
-        codeLine: LINE.searchMiss,
+        step: STEP.searchMiss,
         explanation: `No edge "${ch}" after "${prefix.slice(0, index)}": no stored word starts with "${prefix}". Return [].`,
         highlights: { excluded: [node], visited: [...path] },
         pointers: { node },
@@ -206,7 +208,7 @@ function* startsWith(trie: Trie, prefix: string): Gen {
       return;
     }
     yield scene.frame({
-      codeLine: LINE.searchStep,
+      step: STEP.searchStep,
       explanation: `"${ch}" found: now at "${prefix.slice(0, index + 1)}".`,
       highlights: { comparing: [next], visited: [...path] },
       pointers: { node: next },
@@ -218,7 +220,7 @@ function* startsWith(trie: Trie, prefix: string): Gen {
   }
 
   yield scene.frame({
-    codeLine: LINE.searchCollect,
+    step: STEP.searchCollect,
     explanation: `Prefix "${prefix}" exists. Every terminal in the subtree below is a match - the number of stored words never matters for this walk, only the subtree size.`,
     highlights: { pivot: [node], visited: [...path] },
     pointers: { node },
@@ -230,7 +232,7 @@ function* startsWith(trie: Trie, prefix: string): Gen {
   yield* collect(trie, node, prefix, out, 'search');
 
   yield scene.frame({
-    codeLine: LINE.searchCollect,
+    step: STEP.searchCollect,
     explanation: out.length === 0 ? `"${prefix}" is a path but no word ends at or below it.` : `${out.length} match(es): ${out.join(', ')}.`,
     highlights: { pivot: [node] },
     strips: [outputStrip(out, 'matches')],
@@ -337,6 +339,7 @@ export const trie = defineAlgorithm<TrieInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes', 'recursiveCalls'],
   },
   fields: [wordsField, opsSpec],
@@ -349,7 +352,7 @@ export const trie = defineAlgorithm<TrieInput>({
 
     if (input.words.length > 0) {
       yield scene.frame({
-        codeLine: LINE.insertEnter,
+        step: STEP.insertEnter,
         explanation: `Insert ${input.words.length} words in order. Shared prefixes share nodes.`,
         phase: 'build',
       });
@@ -363,7 +366,7 @@ export const trie = defineAlgorithm<TrieInput>({
 
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Done: ${counters.extra.words ?? 0} words stored in ${scene.size - 1} nodes.`,
       phase: 'done',
     });

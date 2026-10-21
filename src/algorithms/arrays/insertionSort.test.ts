@@ -106,7 +106,7 @@ describe('insertion sort: the level', () => {
     expect(new Set(frames.slice(1, -1).map((frame) => frame.phase))).toEqual(new Set(['insert']));
     const last = lastFrame(frames);
     expect(last.phase).toBe('done');
-    expect(last.codeLine).toBe(0);
+    expect(last.step).toBeNull();
     expect(last.explanation).toMatch(/^Sorted\. \d+ comparisons and \d+ writes/);
   });
 

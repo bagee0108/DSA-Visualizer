@@ -17,7 +17,7 @@ function frameWith(explanation: string): Frame {
     pointers: {},
     callStack: [],
     explanation,
-    codeLine: 1,
+    step: null,
     counters: ZERO_COUNTERS,
   };
 }

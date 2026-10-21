@@ -9,6 +9,7 @@ import { defineAlgorithm, type ParamMap, type ParseResult, type PresetSpec } fro
 import { cellRef, colRef, MatrixScene } from '../../core/matrixScene';
 import { randomInt } from '../../core/random';
 import type { EntityId, MatrixArrow, Strip, StripItem } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 export const MAX_SIZE = 16;
 export const MAX_OPS = 6;
@@ -61,6 +62,7 @@ export const LINE = {
   prefixStep: 23,
   ret: 25,
 } as const;
+export const STEP = stepIds(LINE);
 
 export const JUMPS = 'lowbit jumps';
 
@@ -167,6 +169,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['reads', 'writes'],
   },
   fields: [
@@ -233,7 +236,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
       scene.write(rowOf(i), col(i), sums[i] ?? 0);
     }
     yield scene.frame({
-      codeLine: LINE.copy,
+      step: STEP.copy,
       phase: 'build',
       explanation: `Start with tree = a. Column i is headed by i in binary, and tree[i] sits on the row of lowbit(i), the lowest 1 bit of i: the length of the range ending at i that it will sum.`,
       strips: strips(),
@@ -243,7 +246,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
       const parent = i + lowbit(i);
       if (parent > n) {
         yield scene.frame({
-          codeLine: LINE.parent,
+          step: STEP.parent,
           phase: 'build',
           explanation: `i = ${binary(i)}: ${i} + lowbit ${lowbit(i)} = ${parent} is past the end, so tree[${i}] has no range above it. It holds the sum of ${span(i)}.`,
           highlights: { active: [tree(i)], visited: covered(i) },
@@ -258,7 +261,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
       scene.write(rowOf(parent), col(parent), before + passed);
       scene.bump(JUMPS);
       yield scene.frame({
-        codeLine: LINE.pass,
+        step: STEP.pass,
         phase: 'build',
         explanation: `tree[${i}] is complete: the sum of ${span(i)}. ${binary(i)} + ${binary(lowbit(i))} = ${binary(parent)}, so pass it up: tree[${parent}] = ${before} + ${passed} = ${before + passed}.`,
         highlights: { active: [tree(parent)], comparing: [tree(i)], visited: covered(i) },
@@ -282,7 +285,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
         const next = i - lowbit(i);
         if (next > 0) scene.bump(JUMPS);
         yield scene.frame({
-          codeLine: LINE.prefixStep,
+          step: STEP.prefixStep,
           phase: 'query',
           explanation:
             next > 0
@@ -305,7 +308,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
 
       if (op.kind === 'add') {
         yield scene.frame({
-          codeLine: LINE.add,
+          step: STEP.add,
           phase: 'update',
           explanation: `${formatOp(op)}: a[${op.index}] changes by ${op.delta}. Every tree[i] whose range contains ${op.index} must change too; adding lowbit walks exactly those.`,
           pointers: { i: colRef(col(op.index)) },
@@ -321,7 +324,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
           const next = i + lowbit(i);
           if (next <= n) scene.bump(JUMPS);
           yield scene.frame({
-            codeLine: LINE.addStep,
+            step: STEP.addStep,
             phase: 'update',
             explanation:
               next <= n
@@ -339,7 +342,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
 
       const from = op.kind === 'range' ? op.from : 1;
       yield scene.frame({
-        codeLine: LINE.prefix,
+        step: STEP.prefix,
         phase: 'query',
         explanation:
           op.kind === 'range'
@@ -360,7 +363,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
           ? `sum of a[${from}..${op.to}] = ${result}${from > 1 ? ` = prefix(${op.to}) - prefix(${from - 1})` : ''}.`
           : `sum of a[1..${op.to}] = ${result}, from ${terms.length} range${terms.length === 1 ? '' : 's'}: one per 1 bit of ${binary(op.to)}.`;
       yield scene.frame({
-        codeLine: LINE.ret,
+        step: STEP.ret,
         phase: 'query',
         explanation: summary,
         strips: strips(),
@@ -369,7 +372,7 @@ export const fenwick = defineAlgorithm<FenwickInput>({
 
     scene.clearPath();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       phase: 'done',
       explanation: ops.length === 0 ? summary : `Done. ${summary}`,
       strips: strips(),

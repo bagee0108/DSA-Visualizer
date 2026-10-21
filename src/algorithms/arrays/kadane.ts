@@ -5,6 +5,7 @@ import { defineAlgorithm, type ParamMap, type ParseResult, type PresetSpec } fro
 import { randomInt } from '../../core/random';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface KadaneInput {
   readonly values: readonly number[];
@@ -48,6 +49,7 @@ const LINE = {
   updateBest: 18,
   ret: 24,
 } as const;
+const STEP = stepIds(LINE);
 
 function bands(
   start: number,
@@ -132,6 +134,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads'],
     inPlace: true,
   },
@@ -154,7 +157,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
     let bestTo = 0;
 
     yield scene.frame({
-      codeLine: LINE.initCurrent,
+      step: STEP.initCurrent,
       explanation: `Seed both sums with a[0] = ${first}. Starting best at 0 instead would break on an all-negative array.`,
       highlights: { active: [0] },
       pointers: { i: 0 },
@@ -169,7 +172,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
       if (extended >= value) {
         current = extended;
         yield scene.frame({
-          codeLine: LINE.extend,
+          step: STEP.extend,
           explanation: `Run sum ${current - value} is not negative, so extending beats restarting: ${current - value} + ${value} = ${current}.`,
           highlights: { comparing: [i], active: span(start, i - 1) },
           pointers: { i, start },
@@ -179,7 +182,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
         current = value;
         start = i;
         yield scene.frame({
-          codeLine: LINE.restart,
+          step: STEP.restart,
           explanation: `The run so far sums to ${extended - value}, which only drags a[${i}] = ${value} down. Abandon it and restart the run at ${i}.`,
           highlights: { swapped: [i], excluded: span(Math.max(0, i - 3), i - 1) },
           pointers: { i, start },
@@ -193,7 +196,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
         bestFrom = start;
         bestTo = i;
         yield scene.frame({
-          codeLine: LINE.updateBest,
+          step: STEP.updateBest,
           explanation: `${current} beats the old best: a[${bestFrom}..${bestTo}] is the new champion.`,
           highlights: { sorted: span(bestFrom, bestTo) },
           pointers: { i, start },
@@ -202,7 +205,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
         });
       } else {
         yield scene.frame({
-          codeLine: LINE.testBest,
+          step: STEP.testBest,
           explanation: `Current run sums to ${current}, short of the best ${best} at a[${bestFrom}..${bestTo}].`,
           highlights: { active: span(start, i) },
           pointers: { i, start },
@@ -212,7 +215,7 @@ export const kadane = defineAlgorithm<KadaneInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       explanation: `Maximum subarray sum is ${best}, from a[${bestFrom}] to a[${bestTo}], found in one pass over ${total} elements.`,
       highlights: { sorted: span(bestFrom, bestTo) },
       regions: [{ from: bestFrom, to: bestTo, label: `max sum ${best}`, tone: 'sorted' }],

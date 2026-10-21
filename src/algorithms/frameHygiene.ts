@@ -108,8 +108,13 @@ export function expectFrameHygiene(
   for (const [position, frame] of frames.entries()) {
     const where = `${algorithm.meta.id} frame ${position}`;
 
-    expect(frame.codeLine, `${where}: codeLine`).toBeGreaterThanOrEqual(0);
-    expect(frame.codeLine, `${where}: codeLine`).toBeLessThanOrEqual(codeLineCount);
+    // Every step a frame names is in the JS listing's map, on a line the listing has.
+    for (const step of [frame.step, ...frame.callStack.map((entry) => entry.step ?? null)]) {
+      if (step === null) continue;
+      expect(Object.hasOwn(algorithm.meta.stepLines, step), `${where}: step ${step} is in the code's map`).toBe(true);
+      expect(algorithm.lineOf(step), `${where}: line of ${step}`).toBeGreaterThanOrEqual(1);
+      expect(algorithm.lineOf(step), `${where}: line of ${step}`).toBeLessThanOrEqual(codeLineCount);
+    }
 
     expect(frame.explanation.trim().length, `${where}: explanation`).toBeGreaterThan(0);
 
@@ -576,7 +581,7 @@ export function expectDeterministic(algorithm: RegisteredAlgorithm, params: Para
   expect(a.length).toBe(b.length);
   expect(a.map((frame) => JSON.stringify(frame.structure))).toEqual(b.map((frame) => JSON.stringify(frame.structure)));
   expect(a.map((frame) => frame.explanation)).toEqual(b.map((frame) => frame.explanation));
-  expect(a.map((frame) => frame.codeLine)).toEqual(b.map((frame) => frame.codeLine));
+  expect(a.map((frame) => frame.step)).toEqual(b.map((frame) => frame.step));
 }
 
 export function expectInputContract(algorithm: RegisteredAlgorithm): void {

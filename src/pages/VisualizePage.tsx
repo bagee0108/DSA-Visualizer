@@ -428,7 +428,7 @@ function SourceView({ algorithm }: { algorithm: RegisteredAlgorithm }): ReactNod
   const { frame } = usePlayback();
   return (
     <div className="flex max-h-[40vh] min-h-56 flex-col">
-      <CodePanel lines={algorithm.codeLines} activeLine={frame?.codeLine ?? 0} />
+      <CodePanel lines={algorithm.codeLines} activeLine={algorithm.lineOf(frame?.step ?? null)} />
     </div>
   );
 }

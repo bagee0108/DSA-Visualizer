@@ -5,6 +5,7 @@
  * named with cellRef / rowRef / colRef, tree nodes by their own ids.
  */
 
+import type { StepId } from './steps';
 import { TreeScene } from './treeScene';
 import type { CallStackEntry, Counters, Frame, GridLine, GridSnapshot, Highlights, Pointers, Strip } from './types';
 
@@ -37,7 +38,7 @@ export const NOTE_LINE_LENGTH = 8;
 
 export interface GridFrameInput {
   readonly explanation: string;
-  readonly codeLine: number;
+  readonly step: StepId | null;
   readonly highlights?: Highlights;
   readonly pointers?: Pointers;
   readonly lines?: readonly GridLine[];
@@ -255,7 +256,7 @@ export class GridScene {
       pointers: input.pointers ?? NO_POINTERS,
       callStack: this.stackSnapshot(),
       explanation: input.explanation,
-      codeLine: input.codeLine,
+      step: input.step,
       counters: this.counters(),
       ...(input.phase === undefined ? {} : { phase: input.phase }),
     };

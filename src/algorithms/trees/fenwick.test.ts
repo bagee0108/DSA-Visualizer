@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { makeRng, randomInt } from '../../core/random';
 import type { Frame } from '../../core/types';
 import { expectDeterministic, expectFrameHygiene, expectInputContract, lastFrame, matrixOf, runFrames } from '../frameHygiene';
-import { fenwick, type FenwickOp, formatOp, JUMPS, LINE, lowbit, MAX_SIZE, parseOps } from './fenwick';
+import { fenwick, type FenwickOp, formatOp, JUMPS, lowbit, MAX_SIZE, parseOps, STEP } from './fenwick';
 
 function solve(values: readonly number[], ops: readonly FenwickOp[]): readonly Frame[] {
   return runFrames(fenwick, { input: values.join(', '), ops: ops.map(formatOp).join('; ') });
@@ -12,7 +12,7 @@ function solve(values: readonly number[], ops: readonly FenwickOp[]): readonly F
 /** Query answers, read back from the frame each query ends with. */
 function answersOf(frames: readonly Frame[]): number[] {
   return frames
-    .filter((frame) => frame.codeLine === LINE.ret)
+    .filter((frame) => frame.step === STEP.ret)
     .map((frame) => Number(/\] = (-?\d+)/.exec(frame.explanation)?.[1]));
 }
 
@@ -102,7 +102,7 @@ describe('fenwick: one jump per bit', () => {
   it('takes one range per 1 bit of i in a prefix sum', () => {
     for (let to = 1; to <= MAX_SIZE; to++) {
       const frames = solve(Array.from({ length: MAX_SIZE }, () => 1), [{ kind: 'sum', to }]);
-      const steps = frames.filter((frame) => frame.codeLine === LINE.prefixStep);
+      const steps = frames.filter((frame) => frame.step === STEP.prefixStep);
       expect(steps, `sum ${to}`).toHaveLength(to.toString(2).split('').filter((bit) => bit === '1').length);
     }
   });
@@ -110,7 +110,7 @@ describe('fenwick: one jump per bit', () => {
   it('touches at most log n + 1 cells in an update', () => {
     for (let index = 1; index <= MAX_SIZE; index++) {
       const frames = solve(Array.from({ length: MAX_SIZE }, () => 1), [{ kind: 'add', index, delta: 1 }]);
-      const steps = frames.filter((frame) => frame.codeLine === LINE.addStep);
+      const steps = frames.filter((frame) => frame.step === STEP.addStep);
       expect(steps.length).toBeLessThanOrEqual(Math.log2(MAX_SIZE) + 1);
     }
   });
@@ -125,7 +125,7 @@ describe('fenwick: one jump per bit', () => {
 describe('fenwick: frames do not change after they are yielded', () => {
   it('shows only the ranges summed so far at each prefix step', () => {
     const frames = solve([3, 2, 5, 1, 4, 6, 2, 7], [{ kind: 'sum', to: 7 }]);
-    const steps = frames.filter((frame) => frame.codeLine === LINE.prefixStep);
+    const steps = frames.filter((frame) => frame.step === STEP.prefixStep);
     // 7 covers a[7]; 6 adds a[5..6]; 4 adds a[1..4].
     expect(steps.map((frame) => frame.highlights.visited?.length)).toEqual([1, 3, 7]);
   });

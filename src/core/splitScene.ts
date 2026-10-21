@@ -8,6 +8,7 @@
  * a cellRef, rowRef or colRef with the pane's id.
  */
 
+import type { StepId } from './steps';
 import type { MatrixScene } from './matrixScene';
 import type { Counters, Frame, Highlights, MatrixArrow, Pointers, SplitPane, SplitSnapshot, Strip } from './types';
 
@@ -36,7 +37,7 @@ export interface SplitPaneSpec {
 
 export interface SplitFrameInput {
   readonly explanation: string;
-  readonly codeLine: number;
+  readonly step: StepId | null;
   readonly highlights?: Highlights;
   readonly pointers?: Pointers;
   /** Each pane's dependency arrows, by pane id. */
@@ -97,7 +98,7 @@ export class SplitScene {
       pointers: input.pointers ?? NO_POINTERS,
       callStack: this.panes[0]?.scene.callStack() ?? [],
       explanation: input.explanation,
-      codeLine: input.codeLine,
+      step: input.step,
       counters: this.counters(),
       ...(input.phase === undefined ? {} : { phase: input.phase }),
     };

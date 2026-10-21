@@ -10,6 +10,7 @@ import { cellRef, colRef, MatrixScene, rowRef } from '../../core/matrixScene';
 import { randomInt } from '../../core/random';
 import { paneRef, SplitScene } from '../../core/splitScene';
 import type { EntityId, MatrixArrow, Strip, StripItem } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface KnapsackInput {
   readonly weights: readonly number[];
@@ -59,6 +60,7 @@ const LINE = {
   take: 23,
   ret: 27,
 } as const;
+const STEP = stepIds(LINE);
 
 export const MAX_ITEMS = 8;
 export const MAX_CAPACITY = 12;
@@ -173,6 +175,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes'],
   },
   fields,
@@ -207,7 +210,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
     const items = weights.map((weight, at) => `${nameOf(at)} (weight ${weight}, value ${values[at] ?? 0})`).join(', ');
 
     yield scene.frame({
-      codeLine: LINE.table,
+      step: STEP.table,
       phase: 'setup',
       explanation: `Items ${items}; the bag holds ${capacity}. Each row header reads name weight/value. T[i][w] will be the best value using only the first i items with capacity w.`,
       strips: strips(),
@@ -220,7 +223,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       base.push(t(0, w), d(w));
     }
     yield scene.frame({
-      codeLine: LINE.row,
+      step: STEP.row,
       phase: 'base case',
       explanation: 'With no items the bag is worth 0 at every capacity. Row 0 of the table and the rolling row both start as zeros.',
       highlights: { active: base },
@@ -233,7 +236,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       const name = nameOf(i - 1);
 
       yield scene.frame({
-        codeLine: LINE.item,
+        step: STEP.item,
         phase: 'fill',
         explanation: `Item ${name}: weight ${wi}, value ${vi}. Row ${i} is filled right to left, so the rolling row still holds row ${i - 1}'s answers to the left of where it is working.`,
         highlights: { active: [paneRef(TABLE, rowRef(i))], comparing: [paneRef(TABLE, rowRef(i - 1))] },
@@ -262,7 +265,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
         ];
         const rowArrows: MatrixArrow[] = [{ from: { row: 0, col: w - wi }, to: { row: 0, col: w }, label: 'take' }];
         yield scene.frame({
-          codeLine: LINE.choose,
+          step: STEP.choose,
           phase: 'fill',
           explanation: `Capacity ${w}: skip ${name} and keep ${skip}, or take it and add ${vi} to the best in the ${w - wi} left, ${take - vi} + ${vi} = ${take}. ${verdict}. The rolling row makes the same choice in place.`,
           highlights: {
@@ -288,7 +291,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       }
       const range = wi > capacity ? 'at every capacity' : wi === 1 ? 'at capacity 0' : `at capacities 0 to ${wi - 1}`;
       yield scene.frame({
-        codeLine: LINE.heavy,
+        step: STEP.heavy,
         phase: 'fill',
         explanation: `${name} weighs ${wi}, too much ${range}, so those cells copy the answer from above. The rolling row does nothing there: it already holds those answers. That is the work one row saves.`,
         highlights: { active: light, comparing: above, sorted: kept },
@@ -299,7 +302,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       const done: EntityId[] = [];
       for (let w = 0; w <= capacity; w++) done.push(t(i, w), d(w));
       yield scene.frame({
-        codeLine: LINE.rowDone,
+        step: STEP.rowDone,
         phase: 'fill',
         explanation: `Row ${i} is done, and the rolling row now reads exactly the same. Right to left kept every dp[w - ${wi}] at its row ${i - 1} value until it was used; left to right could take ${name} twice.`,
         highlights: { sorted: done },
@@ -312,7 +315,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
     let w = capacity;
     table.walk(n, w);
     yield scene.frame({
-      codeLine: LINE.trace,
+      step: STEP.trace,
       phase: 'traceback',
       explanation: `The best value is ${best}, in T[${n}][${capacity}] and dp[${capacity}] alike. Only the table can say which items make it: the rolling row overwrote every earlier choice. Walk the table back up.`,
       highlights: { active: [t(n, w)], sorted: [d(capacity)] },
@@ -336,7 +339,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
       table.walk(i - 1, w);
       const tookIt = from !== w;
       yield scene.frame({
-        codeLine: tookIt ? LINE.take : LINE.test,
+        step: tookIt ? STEP.take : STEP.test,
         phase: 'traceback',
         explanation: tookIt
           ? `T[${i}][${from}] = ${here} beats ${up} above it, so ${name} was taken. Step up and left by its weight ${wi}, to capacity ${w}.`
@@ -349,7 +352,7 @@ export const knapsack = defineAlgorithm<KnapsackInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation:
         taken.length === 0

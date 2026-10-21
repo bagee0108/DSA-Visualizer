@@ -24,6 +24,7 @@ import type { LayoutKind } from '../../core/graphLayout';
 import { GraphScene, edgeRef } from '../../core/graphScene';
 import { randomInt, shuffle } from '../../core/random';
 import type { Frame, Graph, Strip } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface TarjanInput {
   readonly graph: Graph;
@@ -55,6 +56,7 @@ for (const u of nodes) {
 }`;
 
 const LINE = { enter: 1, discover: 2, push: 3, scan: 4, recurse: 6, lowFromChild: 7, onStack: 8, lowFromIndex: 9, closed: 10, rootTest: 12, pop: 15, emit: 18, outer: 22, start: 23 } as const;
+const STEP = stepIds(LINE);
 
 /** Shown beside a node before it is discovered: no index and no low-link yet. */
 export const UNDISCOVERED = '–';
@@ -189,6 +191,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'recursiveCalls'],
   },
   fields: [edgesField('0-10,1-4,2-6,3-8,4-1,5-0,5-3,6-4,6-9,7-3,8-7,9-2,9-7,10-2,10-5', false), directedOnlyField, layoutField, seedField],
@@ -215,7 +218,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
 
     function* strongConnect(u: string, parent: string | null): Gen {
       scene.countCall();
-      scene.pushCall({ label: `strongConnect(${name(u)})`, codeLine: LINE.enter });
+      scene.pushCall({ label: `strongConnect(${name(u)})`, step: STEP.enter });
       scene.visit(u);
       index.set(u, next);
       low.set(u, next);
@@ -224,7 +227,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
       onStack.add(u);
       show(u);
       yield scene.frame({
-        codeLine: LINE.push,
+        step: STEP.push,
         explanation:
           parent === null
             ? `strongConnect(${name(u)}): index ${index.get(u)}, and low-link ${low.get(u)} until something below shows it can reach higher. Push ${name(u)} on the stack.`
@@ -242,7 +245,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
         if (!index.has(v)) {
           scene.setTreeEdge(neighbour.edge);
           yield scene.frame({
-            codeLine: LINE.recurse,
+            step: STEP.recurse,
             explanation: `${name(u)} -> ${name(v)}: ${name(v)} has no index yet, so this is a tree edge. Dive into ${name(v)}; ${name(u)}'s other edges wait.`,
             highlights: { active: [u], candidate: [v, edge] },
             pointers: { u, v },
@@ -258,7 +261,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
           show(u);
           if (after < before) scene.bump('low-link updates');
           yield scene.frame({
-            codeLine: LINE.lowFromChild,
+            step: STEP.lowFromChild,
             explanation:
               after < before
                 ? `Back in ${name(u)}: ${name(v)}'s subtree reaches index ${low.get(v)}, higher up than ${name(u)} could alone. low[${name(u)}] drops from ${before} to ${after}.`
@@ -281,7 +284,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
           show(u);
           if (after < before) scene.bump('low-link updates');
           yield scene.frame({
-            codeLine: LINE.lowFromIndex,
+            step: STEP.lowFromIndex,
             explanation:
               after < before
                 ? `${name(u)} -> ${name(v)}: ${name(v)} is still on the stack, in the component being built, at index ${index.get(v)}. low[${name(u)}] drops from ${before} to ${after}.`
@@ -295,7 +298,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
         }
 
         yield scene.frame({
-          codeLine: LINE.closed,
+          step: STEP.closed,
           explanation: `${name(u)} -> ${name(v)}: ${name(v)} already belongs to a closed component, which has no way back to ${name(u)}. Ignore the edge.`,
           highlights: { active: [u], excluded: [v, edge] },
           pointers: { u, v },
@@ -307,7 +310,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
       scene.countComparison();
       const isRoot = low.get(u) === index.get(u);
       yield scene.frame({
-        codeLine: LINE.rootTest,
+        step: STEP.rootTest,
         explanation: isRoot
           ? `Every edge of ${name(u)} is done and low[${name(u)}] = index[${name(u)}] = ${index.get(u)}: nothing below ${name(u)} reaches above it. ${name(u)} is the root of a component.`
           : `Every edge of ${name(u)} is done, but low[${name(u)}] = ${low.get(u)} < index ${index.get(u)}: it reaches an ancestor, so it stays on the stack and returns${parent === null ? '' : ` to ${name(parent)}`}.`,
@@ -333,7 +336,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
             scene.bump('components');
           }
           yield scene.frame({
-            codeLine: done ? LINE.emit : LINE.pop,
+            step: done ? STEP.emit : STEP.pop,
             explanation: done
               ? `Pop ${name(w)}, the root. Component ${tag ?? ''}: { ${members.map(name).join(', ')} }, ${members.length === 1 ? 'a single node on no cycle' : `${members.length} nodes that all reach each other`}.`
               : `Pop ${name(w)}: it sits above ${name(u)} on the stack, so it joins ${name(u)}'s component.`,
@@ -348,7 +351,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.outer,
+      step: STEP.outer,
       explanation: 'Every node starts with no index, shown as a dash. Each label will read index/low: when the node was discovered, and the earliest index it can reach.',
       strips: strips(),
       phase: 'search',
@@ -358,7 +361,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
       if (index.has(u)) continue;
       if (index.size > 0) {
         yield scene.frame({
-          codeLine: LINE.start,
+          step: STEP.start,
           explanation: `${name(u)} has no index yet: nothing searched so far reaches it. Start a new search there.`,
           highlights: { candidate: [u] },
           pointers: { u },
@@ -371,7 +374,7 @@ export const tarjanScc = defineAlgorithm<TarjanInput>({
 
     const count = scene.componentCount;
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation:
         count === scene.nodeIds.length
           ? `Done: ${count} components, every one a single node. The graph has no cycle.`

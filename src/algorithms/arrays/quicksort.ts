@@ -5,6 +5,7 @@ import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/def
 import { makeRng, randomInt } from '../../core/random';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion, Frame } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 const PIVOT_STRATEGIES = ['last', 'first', 'middle', 'median3', 'random'] as const;
 type PivotStrategy = (typeof PIVOT_STRATEGIES)[number];
@@ -66,6 +67,7 @@ const LINE = {
   placePivot: 22,
   returnP: 23,
 } as const;
+const STEP = stepIds(LINE);
 
 interface Context {
   readonly scene: ArrayScene;
@@ -101,7 +103,7 @@ function* choosePivot(ctx: Context, lo: number, hi: number): Generator<Frame, vo
     if (scene.compare(hi, mid) < 0) scene.swap(hi, mid);
     scene.swap(mid, hi);
     yield scene.frame({
-      codeLine: LINE.choosePivot,
+      step: STEP.choosePivot,
       explanation: `Median of a[${lo}], a[${mid}], a[${hi}] is ${scene.peek(hi)} - moved to the end to act as the pivot.`,
       highlights: { pivot: [hi], comparing: [lo, mid] },
       pointers: { lo, hi },
@@ -120,7 +122,7 @@ function* choosePivot(ctx: Context, lo: number, hi: number): Generator<Frame, vo
     const value = scene.peek(chosen);
     scene.swap(chosen, hi);
     yield scene.frame({
-      codeLine: LINE.choosePivot,
+      step: STEP.choosePivot,
       explanation: `Pivot strategy "${STRATEGY_LABEL[strategy]}" picked a[${chosen}] = ${value}; swap it to the end so the loop can scan a[${lo}..${hi - 1}].`,
       highlights: { pivot: [hi], swapped: [chosen, hi] },
       pointers: { lo, hi },
@@ -133,10 +135,10 @@ function* choosePivot(ctx: Context, lo: number, hi: number): Generator<Frame, vo
 function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, number, undefined> {
   const { scene } = ctx;
   scene.bump('partitions');
-  scene.pushCall({ label: `partition(${lo}, ${hi})`, codeLine: LINE.enterPartition });
+  scene.pushCall({ label: `partition(${lo}, ${hi})`, step: STEP.enterPartition });
 
   yield scene.frame({
-    codeLine: LINE.enterPartition,
+    step: STEP.enterPartition,
     explanation: `Partition a[${lo}..${hi}] (${hi - lo + 1} elements).`,
     pointers: { lo, hi },
     regions: subarrayRegion(lo, hi),
@@ -147,7 +149,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
 
   const pivot = scene.read(hi);
   yield scene.frame({
-    codeLine: LINE.readPivot,
+    step: STEP.readPivot,
     explanation: `pivot = a[${hi}] = ${pivot}. Everything smaller ends up left of it, everything else right.`,
     highlights: { pivot: [hi] },
     pointers: { lo, hi },
@@ -157,7 +159,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
 
   let i = lo;
   yield scene.frame({
-    codeLine: LINE.initI,
+    step: STEP.initI,
     explanation: `i = ${i}. The region a[${lo}..i-1] is empty for now and will hold every value below ${pivot}.`,
     highlights: { pivot: [hi] },
     pointers: { lo, hi, i },
@@ -170,7 +172,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
     const isLess = scene.compareValue(j, pivot) < 0;
 
     yield scene.frame({
-      codeLine: LINE.compare,
+      step: STEP.compare,
       explanation: isLess
         ? `a[${j}] = ${value} < pivot ${pivot} - it belongs in the left region.`
         : `a[${j}] = ${value} >= pivot ${pivot} - leave it in place, the right region grows by one.`,
@@ -184,7 +186,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
       const displaced = scene.peek(i);
       scene.swap(i, j);
       yield scene.frame({
-        codeLine: LINE.swap,
+        step: STEP.swap,
         explanation:
           i === j
             ? `i === j === ${i}, so swap(a, i, j) is a no-op: ${value} is already at the boundary.`
@@ -197,7 +199,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
 
       i += 1;
       yield scene.frame({
-        codeLine: LINE.advanceI,
+        step: STEP.advanceI,
         explanation: `i advances to ${i}: a[${lo}..${i - 1}] now holds ${i - lo} value(s) below the pivot.`,
         highlights: { pivot: [hi] },
         pointers: { lo, hi, i, j },
@@ -208,7 +210,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
   }
 
   yield scene.frame({
-    codeLine: LINE.loop,
+    step: STEP.loop,
     explanation: `Scan done: a[${lo}..${i - 1}] < ${pivot} <= a[${i}..${hi - 1}]. Slot ${i} is where the pivot belongs.`,
     highlights: { pivot: [hi], candidate: [i] },
     pointers: { lo, hi, i },
@@ -219,7 +221,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
   scene.swap(i, hi);
   scene.markSorted(i);
   yield scene.frame({
-    codeLine: LINE.placePivot,
+    step: STEP.placePivot,
     explanation: `Swap the pivot ${pivot} into slot ${i}. It is in its final position now and will never move again.`,
     highlights: { swapped: [i, hi] },
     pointers: { lo, hi, i },
@@ -229,7 +231,7 @@ function* partition(ctx: Context, lo: number, hi: number): Generator<Frame, numb
 
   scene.popCall();
   yield scene.frame({
-    codeLine: LINE.returnP,
+    step: STEP.returnP,
     explanation: `Return p = ${i}. Quicksort recurses on a[${lo}..${i - 1}] and a[${i + 1}..${hi}].`,
     pointers: { lo, hi, p: i },
     regions: subarrayRegion(lo, hi),
@@ -244,13 +246,13 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
   scene.countCall();
   scene.pushCall({
     label: `quicksort(${lo}, ${hi})`,
-    codeLine: LINE.enter,
+    step: STEP.enter,
     detail: `${Math.max(0, hi - lo + 1)} elements`,
   });
 
   if (lo > hi) {
     yield scene.frame({
-      codeLine: LINE.baseCase,
+      step: STEP.baseCase,
       explanation: `quicksort(${lo}, ${hi}): empty range, return immediately.`,
       pointers: { lo, hi },
       phase: 'recursion',
@@ -260,7 +262,7 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
   }
 
   yield scene.frame({
-    codeLine: LINE.enter,
+    step: STEP.enter,
     explanation: `quicksort(${lo}, ${hi}) on ${hi - lo + 1} element(s), depth ${scene.depth}.`,
     highlights: { active: rangeIds(lo, hi) },
     pointers: { lo, hi },
@@ -271,7 +273,7 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
   if (lo === hi) {
     scene.markSorted(lo);
     yield scene.frame({
-      codeLine: LINE.baseCase,
+      step: STEP.baseCase,
       explanation: `Base case: one element is already sorted, so a[${lo}] = ${scene.peek(lo)} is final.`,
       pointers: { lo, hi },
       phase: 'recursion',
@@ -281,7 +283,7 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
   }
 
   yield scene.frame({
-    codeLine: LINE.callPartition,
+    step: STEP.callPartition,
     explanation: `Call partition(a, ${lo}, ${hi}) to place one pivot correctly.`,
     highlights: { active: rangeIds(lo, hi) },
     pointers: { lo, hi },
@@ -292,7 +294,7 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
   const p = yield* partition(ctx, lo, hi);
 
   yield scene.frame({
-    codeLine: LINE.recurseLeft,
+    step: STEP.recurseLeft,
     explanation: `Recurse left: quicksort(a, ${lo}, ${p - 1}).`,
     pointers: { lo, hi, p },
     regions: p - 1 >= lo ? subarrayRegion(lo, p - 1) : [],
@@ -301,7 +303,7 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
   yield* sort(ctx, lo, p - 1);
 
   yield scene.frame({
-    codeLine: LINE.recurseRight,
+    step: STEP.recurseRight,
     explanation: `Recurse right: quicksort(a, ${p + 1}, ${hi}).`,
     pointers: { lo, hi, p },
     regions: p + 1 <= hi ? subarrayRegion(p + 1, hi) : [],
@@ -311,7 +313,7 @@ function* sort(ctx: Context, lo: number, hi: number): Generator<Frame, void, und
 
   scene.popCall();
   yield scene.frame({
-    codeLine: LINE.returnFromCall,
+    step: STEP.returnFromCall,
     explanation: `a[${lo}..${hi}] is fully sorted; return to depth ${scene.depth}.`,
     highlights: { active: rangeIds(lo, hi) },
     pointers: { lo, hi },
@@ -352,6 +354,7 @@ export const quicksort = defineAlgorithm<QuicksortInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'swaps', 'accesses', 'recursiveCalls'],
     stable: false,
     inPlace: true,
@@ -376,7 +379,7 @@ export const quicksort = defineAlgorithm<QuicksortInput>({
     const ctx: Context = { scene, strategy: input.strategy, rng: makeRng(input.seed) };
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: `Quicksort ${input.values.length} elements. Lomuto partition, pivot = ${STRATEGY_LABEL[input.strategy]}.`,
       pointers: { lo: 0, hi: input.values.length - 1 },
     });
@@ -386,7 +389,7 @@ export const quicksort = defineAlgorithm<QuicksortInput>({
     scene.markSortedRange(0, input.values.length - 1);
     const counters = scene.counters();
     yield scene.frame({
-      codeLine: 0,
+      step: null,
       explanation: `Sorted. ${counters.comparisons} comparisons, ${counters.swaps} swaps, ${counters.recursiveCalls} calls.`,
       phase: 'done',
     });

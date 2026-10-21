@@ -5,6 +5,7 @@ import { cellRef, colRef, MatrixScene, rowRef } from '../../core/matrixScene';
 import { randomInt } from '../../core/random';
 import { mutate, parseString, randomString, stringField, stringPairSize } from '../../core/stringInput';
 import type { EntityId, MatrixArrow, MatrixCell, Strip, StripItem } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface EditInput {
   readonly a: string;
@@ -64,6 +65,7 @@ const LINE = {
   traceInsert: 34,
   ret: 37,
 } as const;
+const STEP = stepIds(LINE);
 
 const ALPHABET = 'ABCDEFGH';
 
@@ -104,7 +106,7 @@ function parse(params: ParamMap): ParseResult<EditInput> {
 type Move = 'keep' | 'replace' | 'delete' | 'insert';
 
 /** Where each move comes from, relative to the cell it fills. */
-const STEP: Record<Move, readonly [number, number]> = {
+const DELTA: Record<Move, readonly [number, number]> = {
   keep: [1, 1],
   replace: [1, 1],
   delete: [1, 0],
@@ -112,7 +114,7 @@ const STEP: Record<Move, readonly [number, number]> = {
 };
 
 function arrow(to: MatrixCell, move: Move): MatrixArrow {
-  const [dr, dc] = STEP[move];
+  const [dr, dc] = DELTA[move];
   return { from: { row: to.row - dr, col: to.col - dc }, to, label: move };
 }
 
@@ -133,6 +135,7 @@ export const editDistance = defineAlgorithm<EditInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads', 'writes'],
   },
   fields: [stringField('a', 'From', 'kitten'), stringField('b', 'To', 'sitting')],
@@ -153,7 +156,7 @@ export const editDistance = defineAlgorithm<EditInput>({
     const strips = (): readonly Strip[] => [{ kind: 'output', label: 'edits', items: [...script] }];
 
     yield scene.frame({
-      codeLine: LINE.table,
+      step: STEP.table,
       phase: 'setup',
       explanation: `D[i][j] will hold the fewest edits that turn the first i characters of "${a}" into the first j of "${b}". Each insert, delete or replace costs one.`,
       strips: strips(),
@@ -165,7 +168,7 @@ export const editDistance = defineAlgorithm<EditInput>({
       column.push(cellRef(i, 0));
     }
     yield scene.frame({
-      codeLine: LINE.baseCol,
+      step: STEP.baseCol,
       phase: 'base case',
       explanation: 'Turning i characters into nothing takes i deletes, so column 0 counts up.',
       highlights: { active: column },
@@ -178,7 +181,7 @@ export const editDistance = defineAlgorithm<EditInput>({
       row.push(cellRef(0, j));
     }
     yield scene.frame({
-      codeLine: LINE.baseRow,
+      step: STEP.baseRow,
       phase: 'base case',
       explanation: 'Turning nothing into j characters takes j inserts, so row 0 counts up too.',
       highlights: { active: row },
@@ -194,7 +197,7 @@ export const editDistance = defineAlgorithm<EditInput>({
 
         scene.countComparison();
         yield scene.frame({
-          codeLine: LINE.test,
+          step: STEP.test,
           phase: 'fill',
           explanation: `D[${i}][${j}]: compare a[${i - 1}] = '${ca}' with b[${j - 1}] = '${cb}'.`,
           highlights: { active: [cellRef(i, j)], comparing: [rowRef(i), colRef(j)] },
@@ -206,7 +209,7 @@ export const editDistance = defineAlgorithm<EditInput>({
           const diagonal = scene.read(i - 1, j - 1);
           scene.write(i, j, diagonal);
           yield scene.frame({
-            codeLine: LINE.keep,
+            step: STEP.keep,
             phase: 'fill',
             explanation: `'${ca}' is already right, so keeping it is free: the diagonal's ${diagonal} carries over.`,
             highlights: { active: [cellRef(i, j)], comparing: [cellRef(i - 1, j - 1)], sorted: [rowRef(i), colRef(j)] },
@@ -240,7 +243,7 @@ export const editDistance = defineAlgorithm<EditInput>({
         }
         const how = winners.length === 1 ? `${winners[0]} is cheapest` : `${winners.join(' and ')} tie`;
         yield scene.frame({
-          codeLine: LINE.min,
+          step: STEP.min,
           phase: 'fill',
           explanation: `'${ca}' ≠ '${cb}', so one edit is needed here. Delete ${cost.delete}, insert ${cost.insert}, replace ${cost.replace}: ${how}, so 1 + ${best} = ${best + 1}.`,
           highlights: { active: [cellRef(i, j)], comparing: kept, excluded: dropped },
@@ -256,7 +259,7 @@ export const editDistance = defineAlgorithm<EditInput>({
     let j = m;
     scene.walk(i, j);
     yield scene.frame({
-      codeLine: LINE.trace,
+      step: STEP.trace,
       phase: 'traceback',
       explanation: `D[${n}][${m}] = ${distance} is the distance. Walk back from the corner to read off one script that achieves it.`,
       highlights: { active: [cellRef(i, j)] },
@@ -285,7 +288,7 @@ export const editDistance = defineAlgorithm<EditInput>({
       const chip =
         move === 'keep' ? `=${ca}` : move === 'replace' ? `${ca}→${cb}` : move === 'delete' ? `-${ca}` : `+${cb}`;
       script.unshift({ id, label: chip });
-      const [dr, dc] = STEP[move];
+      const [dr, dc] = DELTA[move];
       i -= dr;
       j -= dc;
       scene.walk(i, j);
@@ -297,7 +300,7 @@ export const editDistance = defineAlgorithm<EditInput>({
         insert: `D came from the left plus one: insert '${cb}'.`,
       };
       yield scene.frame({
-        codeLine: { keep: LINE.traceKeep, replace: LINE.traceReplace, delete: LINE.traceDelete, insert: LINE.traceInsert }[move],
+        step: { keep: STEP.traceKeep, replace: STEP.traceReplace, delete: STEP.traceDelete, insert: STEP.traceInsert }[move],
         phase: 'traceback',
         explanation: said[move],
         highlights: { active: [cellRef(i, j)], candidate: [`output:${id}`] },
@@ -309,7 +312,7 @@ export const editDistance = defineAlgorithm<EditInput>({
 
     const changes = script.filter((item) => !item.label.startsWith('='));
     yield scene.frame({
-      codeLine: LINE.ret,
+      step: STEP.ret,
       phase: 'done',
       explanation:
         distance === 0

@@ -7,6 +7,7 @@ import { arrayField, arrayPresets, parseNumberList } from '../../core/arrayInput
 import { defineAlgorithm, type ParamMap, type ParseResult } from '../../core/define';
 import { ArrayScene } from '../../core/scene';
 import type { ArrayRegion } from '../../core/types';
+import { stepIds } from '../../core/steps';
 
 interface TwoPointersInput {
   readonly values: readonly number[];
@@ -40,6 +41,7 @@ const LINE = {
   retreatR: 10,
   notFound: 12,
 } as const;
+const STEP = stepIds(LINE);
 
 function spanRegions(l: number, r: number, total: number): ArrayRegion[] {
   const regions: ArrayRegion[] = [];
@@ -79,6 +81,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
       ],
     },
     code: CODE,
+    stepLines: LINE,
     trackedCounters: ['comparisons', 'reads'],
     inPlace: true,
   },
@@ -101,7 +104,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
     const { target } = input;
 
     yield scene.frame({
-      codeLine: LINE.enter,
+      step: STEP.enter,
       explanation: input.wasUnsorted
         ? `Looking for two values summing to ${target}. The input was sorted first, since the method depends on order.`
         : `Looking for two values summing to ${target} in ${total} sorted elements.`,
@@ -112,7 +115,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
     let r = total - 1;
 
     yield scene.frame({
-      codeLine: LINE.initR,
+      step: STEP.initR,
       explanation: `Start at both ends: l = ${l}, r = ${r}.`,
       highlights: { active: [l, r] },
       pointers: { l, r },
@@ -127,7 +130,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
       scene.countComparison();
       if (sum === target) {
         yield scene.frame({
-          codeLine: LINE.checkEqual,
+          step: STEP.checkEqual,
           explanation: `a[${l}] + a[${r}] = ${left} + ${right} = ${target}. Found the pair after ${scene.counters().comparisons} comparisons.`,
           highlights: { sorted: [l, r] },
           pointers: { l, r },
@@ -141,7 +144,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
       scene.countComparison();
       if (sum < target) {
         yield scene.frame({
-          codeLine: LINE.advanceL,
+          step: STEP.advanceL,
           explanation: `${left} + ${right} = ${sum}, short of ${target}. a[${r}] is the biggest partner left, so a[${l}] can never reach ${target}: drop it.`,
           highlights: { comparing: [l, r] },
           pointers: { l, r },
@@ -150,7 +153,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
         l += 1;
       } else {
         yield scene.frame({
-          codeLine: LINE.retreatR,
+          step: STEP.retreatR,
           explanation: `${left} + ${right} = ${sum}, over ${target}. a[${l}] is the smallest partner left, so a[${r}] is too big for anything: drop it.`,
           highlights: { comparing: [l, r] },
           pointers: { l, r },
@@ -161,7 +164,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
 
       if (l < r) {
         yield scene.frame({
-          codeLine: LINE.loop,
+          step: STEP.loop,
           explanation: `Range narrows to [${l}..${r}], ${r - l + 1} values still in play.`,
           highlights: { active: [l, r] },
           pointers: { l, r },
@@ -171,7 +174,7 @@ export const twoPointers = defineAlgorithm<TwoPointersInput>({
     }
 
     yield scene.frame({
-      codeLine: LINE.notFound,
+      step: STEP.notFound,
       explanation: `The pointers met at ${l}, so every pair has been ruled out: no two values sum to ${target}.`,
       pointers: { l, r },
       phase: 'not found',
