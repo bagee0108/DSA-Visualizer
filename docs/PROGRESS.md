@@ -6,15 +6,14 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 
 - **Branch:** dev. main is untouched by this run; production is the owner's
   call.
-- **STOPPED after 9b, at the owner's request** ("stop once done with this
-  task", given while 9b was in progress). Done from the brief of 2026-10-20
-  (after the item 9 stop): the hotfix (`hotfix/step-crash` pushed, main
-  untouched), ruling 1 (insertion sort as a level), ruling 3 (the clearance
-  scale, which needed a fix) and 9b. dev is pushed. main and Vercel are
+- **STOPPED at the end of the brief of 2026-10-20** (after the item 9 stop),
+  as the brief says: after item 10, stop and write a full summary. All five
+  parts are done: the hotfix, ruling 1, ruling 3, 9b and 10. The summary is
+  the "STOP after item 10" entry below. dev is pushed; main and Vercel are
   untouched.
-- **Not started:** item 10, the step-anchor refactor. The brief's closing
-  "full summary" is the 9b stop entry below, since 10 did not run.
-- **Resume:** item 10, as written in ROADMAP.
+- **Resume:** nothing is queued. The next work needs a new brief (ROADMAP's
+  "Not yet" list: the Figma redesign, other languages' code, quizzes,
+  accounts).
 
 ## Done before this run
 
@@ -84,6 +83,113 @@ Against [ROADMAP.md](ROADMAP.md). Newest entry first under each heading.
 ## Log
 
 (One entry per item and per stop, newest first.)
+
+### STOP after item 10 (end of the brief)
+
+**The brief, all done.** Commits on dev, all signed, typecheck, suite and
+build clean at each:
+
+| Part | Commits | Result |
+| --- | --- | --- |
+| Hotfix (ruling 4) | `7687831` `c84bdfb` on `hotfix/step-crash` | Both cherry-picks applied cleanly on `bd48036`; branch pushed, main untouched. See the hotfix entry. |
+| Ruling 1, insertion sort as a level | `db2bb39` `cde32a3` | Level 5 with code panel, explanation, presets including nearly sorted, marquee op, sitemap. Race mode uses the same generator and is now level 34. |
+| Ruling 3, clearance scale | `73d0aa7` `999e924` | The strips panel let the graph draw up to 10% smaller than on main; fixed so the check is never more lenient. |
+| 9b, Dijkstra islands at 150 | `65e0e66` `df52279` | Already under 17 ms before the changes (medians 6.6-7.3 ms); 2x CPU throttle 15.7-16.0 ms after them. Also fixed the explanation bar's 1 px jump. |
+| 10, step-anchor refactor | `5d68018` `9c116bd` | See item 10 below. Zero visible change, measured. |
+
+Suite 728 at the start of the brief, 802 at the end. No golden or
+fingerprint hash re-recorded, no test on `it.fails`, no dependency added,
+no history rewritten.
+
+**For the owner:**
+
+1. **`5d68018`'s message miscounts its own table**: it says 470 cases over
+   34 levels; the table has 491 cases over 33 levels (34 tests counting the
+   coverage check). It is pushed now, so it stays as is; `9c116bd`'s
+   message and this log carry the right numbers.
+2. **`df52279`** (explanation bar jump, on main too) is still a candidate
+   for main beside the hotfix.
+3. **Another language** now needs only a listing and a step-to-line map
+   per level, with the panel choosing between them. The ids are the JS
+   map's keys, so they follow the JS listing's names; a language whose
+   code splits a step in two would need a new id, which is a generator
+   change and would show up in these tests.
+
+### Item 10: step-anchor refactor (done)
+
+Frames name a step (`step: STEP.shift`, `null` for none) instead of the JS
+line (`codeLine: 6`); so do call-stack entries, which carried a line but
+were never drawn. Each generator's `LINE` map stays as the JS listing's map,
+now `meta.stepLines`; `stepIds(LINE)` gives the ids by name, checked at
+compile time. The code panel asks `algorithm.lineOf(step)`. Helpers that
+took lines from their caller (union-find core, BST descend, red-black
+rotate) now take step ids, so Kruskal still sends several core steps to its
+one `find` and one `union` line. Tree traversals' four functions share one
+listing, so their ids name the function (`inorder.visit`). No other language
+added.
+
+**How it was held to the brief:**
+
+- **Old lines recorded first** (`5d68018`, on the pre-refactor code): per
+  level, the default run, each option of every select field, and every
+  preset at the smallest, default and largest size. That is 491 cases over
+  33 levels, each stored as the frame count plus a hash of every frame's
+  line and its call entries' lines. Five cases are the directed/undirected
+  refusals and record the error text.
+- **The proof** (`codeLines.test.ts` after `9c116bd`): each frame's step and
+  each call's step, mapped through the JS map, reproduce that table exactly
+  in all 491 cases.
+- **Every emitted step is in the map**: a test per level over the same 491
+  cases, and `expectFrameHygiene` checks it per frame, plus that the line
+  is inside the listing.
+- **Goldens:** the Union-Find golden is not re-recorded. `fingerprint()`
+  hashes each step as the line it maps to, under the old key and in the
+  old place, so the old hashes match only if every step maps back. The
+  pre-authorisation to change goldens for this field was not needed.
+- **Mutation checks**, run and reverted: one BFS frame on the wrong step
+  fails the trace test; an id missing from the map fails hygiene and both
+  new tests; moving Union-Find's `climb` by one line fails the golden.
+- **Tests that changed beyond the rename:** comparisons of `frame.codeLine`
+  with an exported `LINE` entry now compare `frame.step` with `STEP`. Only
+  tree traversals has ids that share a line (`levelorder.base/left/right`,
+  unused), and no test filters on them, so no filter matches fewer frames.
+  Scene fixtures that run through hygiene got a map covering exactly the
+  steps they emit, so tests expecting hygiene to throw still throw for their
+  own reason. Edit distance's move deltas, also called `STEP`, are now
+  `DELTA`. CONTRIBUTING's worked example and rules now describe steps.
+
+**Zero visible change, measured in the real app.** The whole `<main>` was
+hashed before the first step, after each of 40 steps and after End, on all
+33 levels and race mode, in both themes, with motion on and reduced: 136
+runs x 42 = 5,712 snapshots. Both builds were made with `npm run build` and
+served the same way. The old build was recorded twice and its two runs
+differ in 1 snapshot (trie, reduced motion, step 39), so a snapshot counts
+as unchanged when it matches either run. After the refactor 5,711 match.
+The one that does not is trie step 39 again (light theme); after an 800 ms
+settle it hashes the same on both builds, in both themes, three runs each.
+
+**Step time** (README method, 120 steps, both builds side by side):
+
+| Case | Before | After |
+| --- | --- | --- |
+| Dijkstra islands at 150, 5 seeds, medians over 2 rounds | 6.3-12.9 ms | 6.7-11.7 ms |
+| Quicksort, 200, 4 alternating rounds | 4.4-4.9 ms | 4.6-5.0 ms |
+| Heapsort, 200, 4 alternating rounds | 6.9-7.3 ms | 7.2-7.3 ms |
+
+The machine was noisy (the old build alone moved by 4 ms between rounds).
+In the first two, non-alternating rounds quicksort read 1 ms slower after;
+alternating runs put that down to ordering.
+
+**Not checked:** axe and the keyboard walk were not re-run, since the
+markup is identical; the Union-Find golden covers union-find only, and the
+other levels' frame bodies are held by the line table, not by full-frame
+fingerprints, as before.
+
+**How the check went wrong once:** the first after-recording used a
+modified scratch server that returned `index.html` for scripts (a
+Windows path comparison), so every snapshot was an empty page. It was
+discarded; the recording above uses the same build and server setup as the
+baseline.
 
 ### STOP after 9b (owner's request)
 
